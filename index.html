@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <title>Finance of Medtech 67</title>
 
@@ -24,6 +24,13 @@
             background-color: #F0F4F8;
             color: #1F2937;
             -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* ใส่ในแท็บ <style> เดิมของคุณ */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+            font-size: 16px !important; /* บังคับให้เป็น 16px เฉพาะในมือถือ */
+          }
         }
 
         /* 📱 iOS Slide In Animation */
