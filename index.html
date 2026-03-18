@@ -1174,6 +1174,9 @@
             const isCancelled = currentStatus === 'ยกเลิก';
             let currentStepIndex = steps.findIndex(s => s.status === currentStatus);
             if (currentStepIndex === -1 && !isCancelled) currentStepIndex = 0; 
+            
+            // ✅ เช็คว่าถึงขั้นตอนรับของหรือยัง (สถานะ index 4 หรือ 5)
+            const isReadyForPickup = currentStepIndex >= 4;
 
             const showQR = () => {
                 Swal.fire({
@@ -1181,15 +1184,15 @@
                     html: `
                         <div class="flex flex-col items-center">
                             <p class="text-sm text-gray-500 mb-4">แสดงหน้านี้ให้แอดมินเพื่อรับของ</p>
-                            <div class="bg-white p-4 rounded-xl border-2 border-dashed border-[#0066FF] inline-block shadow-sm">
+                            <div class="bg-white p-4 rounded-xl border-2 border-dashed border-green-500 inline-block shadow-sm">
                                 <img src="https://quickchart.io/qr?text=${order.id}&size=200" class="w-48 h-48" alt="QR Code" />
                             </div>
-                            <p class="mt-4 font-mono text-xl font-bold text-[#0066FF] tracking-widest bg-blue-50 px-4 py-1 rounded-lg">${order.id}</p>
+                            <p class="mt-4 font-mono text-xl font-bold text-green-600 tracking-widest bg-green-50 px-4 py-1 rounded-lg">${order.id}</p>
                             <p class="text-xs text-gray-400 mt-3"><i class="fa-solid fa-box mr-1"></i> ${order.items}</p>
                         </div>
                     `,
                     confirmButtonText: 'ปิดหน้าต่าง',
-                    confirmButtonColor: '#0066FF',
+                    confirmButtonColor: '#10B981', // สีเขียว
                     customClass: { popup: 'rounded-[2rem] pb-6', title: 'text-xl font-bold text-gray-800 mt-2' }
                 });
             };
@@ -1210,9 +1213,12 @@
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">รหัสออเดอร์</p>
                                     <p className="font-mono font-black text-[#0066FF] text-lg">{order.id}</p>
                                 </div>
-                                <button onClick={showQR} className="bg-blue-50 hover:bg-blue-100 text-[#0066FF] w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-blue-100/50 shadow-sm shrink-0">
-                                    <i className="fa-solid fa-qrcode text-xl"></i>
-                                </button>
+                                {/* ✅ โชว์ปุ่ม QR Code สีเขียว เฉพาะตอนถึงสถานะรับของเท่านั้น */}
+                                {isReadyForPickup && (
+                                    <button onClick={showQR} className="bg-green-50 hover:bg-green-100 text-green-600 w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-green-200 shadow-sm shrink-0 animate-[pop_0.5s_ease-out]">
+                                        <i className="fa-solid fa-qrcode text-xl animate-pulse"></i>
+                                    </button>
+                                )}
                             </div>
                             <div>
                                 <p className="font-bold text-gray-800 text-sm leading-relaxed mb-2"><i className="fa-solid fa-bag-shopping text-orange-400 mr-2"></i>{order.items}</p>
@@ -1223,26 +1229,64 @@
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
-                            <h3 className="font-bold text-gray-800 mb-6 flex items-center"><i className="fa-solid fa-route text-[#0066FF] mr-2"></i> ลำดับสถานะ</h3>
+                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 overflow-hidden">
+                            <h3 className="font-bold text-gray-800 mb-8 flex items-center"><i className="fa-solid fa-route text-[#0066FF] mr-2"></i> ลำดับสถานะ</h3>
                             {isCancelled ? (
                                 <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center"><div className="w-16 h-16 bg-white text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-ban"></i></div><h4 className="font-bold text-red-600 text-lg">รายการถูกยกเลิก</h4><p className="text-sm text-red-400 mt-1">คำสั่งซื้อนี้ถูกยกเลิกแล้ว</p></div>
                             ) : (
-                                <div className="relative pl-4 space-y-7">
-                                    <div className="absolute left-[31px] top-4 bottom-8 w-0.5 bg-gray-100"></div>
+                                <div className="relative pl-4 space-y-8 pb-4">
+                                    {/* เส้นสีเทาเป็นพื้นหลัง */}
+                                    <div className="absolute left-[31px] top-4 bottom-10 w-0.5 bg-gray-100"></div>
+                                    
                                     {steps.map((step, idx) => {
-                                        const isCompleted = idx <= currentStepIndex; const isCurrent = idx === currentStepIndex; const isLastStep = idx === steps.length - 1;
-                                        const iconBg = isCurrent ? 'bg-[#0066FF] ring-4 ring-blue-50 shadow-md' : (isCompleted ? 'bg-[#0066FF]' : 'bg-gray-100 border-2 border-white');
+                                        const isCompleted = idx <= currentStepIndex; 
+                                        const isCurrent = idx === currentStepIndex; 
+                                        const isLastStep = idx === steps.length - 1;
+                                        
+                                        // ✅ เช็คว่าเป็นสเตปสีเขียว (พร้อมรับของ หรือ รับแล้ว) หรือไม่
+                                        const isGreenStep = idx >= 4; 
+
+                                        // ตั้งค่าชุดสี
+                                        const themeColorBg = isGreenStep ? 'bg-green-500' : 'bg-[#0066FF]';
+                                        const themeColorText = isGreenStep ? 'text-green-600' : 'text-[#0066FF]';
+                                        const themeRing = isGreenStep ? 'ring-green-100' : 'ring-blue-50';
+
+                                        // ✅ การจัดสไตล์วงกลมไอคอน (ถ้าปัจจุบันให้ขยายใหญ่สุดๆ)
+                                        const iconBg = isCurrent 
+                                            ? `${themeColorBg} ring-4 ${themeRing} shadow-lg transform scale-125` 
+                                            : (isCompleted ? themeColorBg : 'bg-gray-100 border-2 border-white');
                                         const iconColor = isCompleted ? 'text-white' : 'text-gray-300';
-                                        const textColor = isCurrent ? 'text-[#0066FF]' : (isCompleted ? 'text-gray-800' : 'text-gray-400');
+                                        
+                                        // ✅ การจัดสไตล์ข้อความ (ใหญ่ขึ้นถ้าเป็นอันปัจจุบัน หรือถ้าเป็นสเตปสีเขียว)
+                                        let textColor = isCurrent ? themeColorText : (isCompleted ? 'text-gray-800' : 'text-gray-400');
+                                        if (isCompleted && isGreenStep && !isCurrent) textColor = 'text-green-600'; 
+                                        
+                                        let titleClass = "font-bold transition-all duration-300 transform origin-left";
+                                        if (isCurrent) {
+                                            titleClass += isGreenStep ? " text-xl font-black scale-105" : " text-base font-black scale-105";
+                                        } else if (isGreenStep) {
+                                            titleClass += " text-base font-extrabold"; // ขั้นตอนสีเขียวให้ใหญ่และหนาขึ้น
+                                        } else {
+                                            titleClass += " text-sm";
+                                        }
+
+                                        // เส้นสีเติมสถานะ
                                         const lineFillHeight = isCurrent ? '50%' : (isCompleted && !isLastStep ? '100%' : '0%');
+                                        // ให้เส้นเชื่อมลงไปหาของสีเขียว เปลี่ยนเป็นสีเขียวด้วย
+                                        const lineBgColor = (isCompleted && idx >= 3) ? 'bg-green-500' : 'bg-[#0066FF]'; 
+
                                         return (
-                                            <div key={idx} className="relative flex items-start gap-4 group">
-                                                {!isLastStep && <div className="absolute left-[15px] top-8 w-0.5 bg-[#0066FF] transition-all duration-500" style={{ height: `calc(${lineFillHeight} + 20px)` }}></div>}
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 ${iconBg} ${iconColor} transition-all duration-500`}><i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm' : 'text-xs'}`}></i></div>
-                                                <div className={`pt-1 flex-1 transition-all duration-300 ${isCompleted ? 'opacity-100' : 'opacity-40'}`}>
-                                                    <h4 className={`font-bold text-sm leading-none ${textColor}`}>{step.title}</h4>
-                                                    {(isCurrent || isCompleted) && <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-snug">{step.desc}</p>}
+                                            <div key={idx} className="relative flex items-center gap-5 group min-h-[40px]">
+                                                {/* เส้นเชื่อมสีทับเส้นเทา */}
+                                                {!isLastStep && <div className={`absolute left-[15px] top-8 w-0.5 transition-all duration-700 ${lineBgColor}`} style={{ height: `calc(${lineFillHeight} + 24px)` }}></div>}
+                                                
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 transition-all duration-500 ${iconBg} ${iconColor}`}>
+                                                    <i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm animate-[bounce_2s_infinite]' : 'text-xs'}`}></i>
+                                                </div>
+                                                
+                                                <div className={`flex-1 transition-all duration-500 ${isCompleted ? 'opacity-100' : 'opacity-50'} ${isCurrent ? 'pl-2' : ''}`}>
+                                                    <h4 className={`${titleClass} ${textColor}`}>{step.title}</h4>
+                                                    {(isCurrent || isCompleted) && <p className={`text-xs font-medium mt-1 leading-snug ${isGreenStep ? 'text-green-600/80' : 'text-gray-500'}`}>{step.desc}</p>}
                                                 </div>
                                             </div>
                                         );
