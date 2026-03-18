@@ -106,18 +106,17 @@
 
         const runGoogleScript = async (funcName, args = []) => {
             try {
-                // เปลี่ยนจากการเรียกใช้ google.script.run เป็นการยิง fetch (POST) ไปหา API
+                // ✅ เปลี่ยนวิธีแพ็คข้อมูลเป็นแบบ Form (URLSearchParams) ป้องกันปัญหาเบราว์เซอร์จับเด้งแล้วลืมข้อมูล
+                const formData = new URLSearchParams();
+                formData.append('data', JSON.stringify({ action: funcName, args: args }));
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify({ action: funcName, args: args })
+                    body: formData
                 });
                 
                 const result = await response.json();
                 
-                // ถ้าระบบหลังบ้านพ่น Error ออกมา
                 if (result.error) {
                     throw new Error(result.error);
                 }
