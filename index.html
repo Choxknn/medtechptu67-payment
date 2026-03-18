@@ -1606,17 +1606,76 @@
         };
 
         // ==========================================
-        // 📱 Main App Component (แบบไม่จดจำรหัสผ่าน - รีเฟรชล็อกเอาท์ทันที)
+        // 🚧 หน้าจอตอนปิดปรับปรุงระบบ
+        // ==========================================
+        const MaintenanceMode = () => {
+            return (
+                <div className="bg-gray-50 flex items-center justify-center min-h-screen overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+                        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '2s'}}></div>
+                        <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '4s'}}></div>
+                    </div>
+
+                    <div className="relative z-10 text-center p-8 max-w-lg mx-auto animate-[pop_0.4s_ease-out]">
+                        <div className="mb-8 relative inline-block">
+                            <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl mx-auto relative z-10 animate-bounce">
+                                <i className="fa-solid fa-screwdriver-wrench text-6xl text-blue-500"></i>
+                            </div>
+                            <div className="absolute inset-0 bg-blue-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
+                        </div>
+                        
+                        <h1 className="text-4xl font-bold text-gray-800 mb-4 tracking-tight">ปิดปรับปรุงระบบ</h1>
+                        <p className="text-gray-500 text-lg mb-8 leading-relaxed">
+                            ขออภัยในความไม่สะดวก<br/>เรากำลังพัฒนาระบบให้ดียิ่งขึ้นสำหรับคุณ
+                        </p>
+                        
+                        <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center justify-center space-x-3 text-sm text-gray-600 font-bold">
+                                <span className="flex h-3 w-3 relative">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                                </span>
+                                <span>กำลังดำเนินการ...</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">โปรดลองใหม่อีกครั้งในภายหลัง</p>
+                        </div>
+
+                        <div className="mt-8 text-gray-400 text-xs font-bold tracking-wider uppercase">
+                            MedTech 67 Payment System
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // ==========================================
+        // 📱 Main App Component 
         // ==========================================
         const App = () => {
-            // ✅ 1. ตั้งค่าเริ่มต้นให้ไปที่หน้า login เสมอ
-            const [page, setPage] = useState('login'); 
+            // ✅ ตั้งหน้าเริ่มต้นเป็น loading เพื่อรอถามหลังบ้านก่อน
+            const [page, setPage] = useState('loading'); 
             const [user, setUser] = useState(null);
             const [dashboardData, setDashboardData] = useState(null);
             const [loading, setLoading] = useState(false);
 
-            // ✅ 2. ลบ useEffect ที่ใช้ตรวจสอบ localStorage เดิมออก
-            // ไม่ต้องมีการดึงค่าใดๆ จากเครื่องผู้ใช้ตอนโหลดหน้าเว็บ
+            // ✅ สั่งให้เช็คสถานะการปิดปรับปรุง ทันทีที่เปิดเว็บ
+            useEffect(() => {
+                const checkSystemStatus = async () => {
+                    try {
+                        const res = await runGoogleScript('checkStatus');
+                        if (res && res.maintenance) {
+                            setPage('maintenance'); // ถ้าระบบตอบว่าปิด ให้ไปหน้าปิดปรับปรุง
+                        } else {
+                            setPage('login'); // ถ้าเปิดอยู่ ให้ไปหน้า Login ตามปกติ
+                        }
+                    } catch (e) {
+                        console.error("Check status failed", e);
+                        setPage('login'); // ถ้าเช็คไม่สำเร็จ ปล่อยให้ไปหน้า Login ไว้ก่อน
+                    }
+                };
+                checkSystemStatus();
+            }, []);
 
             const handleLogin = async (u, p) => {
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
@@ -1624,13 +1683,8 @@
                 try {
                     const res = await runGoogleScript('loginUser', [u, p]);
                     if(res.success) {
-                        // ✅ 3. ลบบรรทัด localStorage.setItem ออกทั้งหมด
-                        // ข้อมูลจะเก็บไว้แค่ใน State (Memory) เท่านั้น พอรีเฟรชทุกอย่างจะหายไป
-                        
                         let dashData = res.dashboardData;
-                        if (!dashData) {
-                             dashData = await runGoogleScript('getDashboardData', [res.studentId]);
-                        }
+                        if (!dashData) { dashData = await runGoogleScript('getDashboardData', [res.studentId, true]); }
                         
                         setUser(res); 
                         setDashboardData(dashData); 
@@ -1659,7 +1713,6 @@
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
             const handleLogout = () => {
-                // ✅ 4. ลบบรรทัด localStorage.removeItem ออกทั้งหมด
                 setUser(null); 
                 setDashboardData(null);
                 setPage('login'); 
@@ -1668,6 +1721,7 @@
             return (
                 <div>
                     {page === 'loading' && <Loading />} 
+                    {page === 'maintenance' && <MaintenanceMode />} {/* ✅ โชว์หน้านี้ถ้าปิดปรับปรุง */}
                     {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && <Dashboard user={user} initialData={dashboardData} onLogout={handleLogout} />}
