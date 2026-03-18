@@ -1347,9 +1347,13 @@
 
             useEffect(() => { const timer = setInterval(() => fetchData(true), 60000); return () => clearInterval(timer); }, []);
 
+            // ✅ (คงเดิม) เช็คบิล
             const overdueCount = data?.bills ? data.bills.filter(b => b.daysLate > 0).length : 0;
             const hasBills = data?.bills && data.bills.length > 0;
-            const hasOrders = data?.orders && data.orders.length > 0;
+            
+            // ✅ (เพิ่มใหม่) กรองเอาเฉพาะออเดอร์ที่ "ยังไม่ได้รับของ" และ "ยังไม่ถูกยกเลิก"
+            const activeOrders = data?.orders ? data.orders.filter(o => o.status?.trim() !== 'รับแล้ว' && o.status?.trim() !== 'ยกเลิก') : [];
+            const hasActiveOrders = activeOrders.length > 0;
             
             const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
 
@@ -1406,7 +1410,7 @@
 
             const renderHomeContent = () => {
                 let statusColorClass = "border-[#0066FF]"; let statusIconBg = "bg-blue-100"; let statusIconText = "text-[#0066FF]";
-                let statusTitle = "สถานะสินค้าปัจจุบัน"; let statusSubtitle = ""; let actionColorClass = "text-[#0066FF] bg-blue-50 hover:bg-blue-100";
+                let statusTitle = "สถานะปัจจุบัน"; let statusSubtitle = ""; let actionColorClass = "text-[#0066FF] bg-blue-50 hover:bg-blue-100";
 
                 if (hasBills) {
                     statusTitle = "มีบิลค้างชำระ";
@@ -1414,25 +1418,26 @@
                         statusColorClass = "border-red-500"; statusIconBg = "bg-red-100"; statusIconText = "text-red-600";
                         statusSubtitle = `มียอดเกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-red-600 bg-red-50 hover:bg-red-100";
                     } else { statusSubtitle = `มียอดชำระ ${data?.bills?.length || 0} รายการ`; }
-                } else if (hasOrders) { 
-                    statusSubtitle = `คำสั่งซื้อล่าสุด: ${data?.orders?.[0]?.status || ''}`; 
+                } else if (hasActiveOrders) { 
+                    // ✅ จะเข้าเงื่อนไขนี้ ก็ต่อเมื่อมีออเดอร์ที่ "ยังไม่ได้รับของ" เท่านั้น
+                    statusSubtitle = `คำสั่งซื้อล่าสุด: ${activeOrders[0]?.status || ''}`; 
                 }
 
                 return (
                     <div className="space-y-6 animate-pop w-full pb-10 pt-2">
-                        {(hasBills || hasOrders) && (
+                        {/* ✅ ซ่อนกล่องกระดิ่งแจ้งเตือน หากไม่มีบิล และ ไม่มีออเดอร์ที่ค้างอยู่ */}
+                        {(hasBills || hasActiveOrders) && (
                             <div className={`bg-white p-4 rounded-[1.5rem] shadow-sm flex items-center gap-4 border-l-4 ${statusColorClass} transition-colors duration-300`}>
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center animate-pulse ${statusIconBg} ${statusIconText} shadow-inner`}><i className="fa-solid fa-bell text-xl"></i></div>
                                 <div className="flex-grow">
                                     <h4 className="font-bold text-gray-800 text-sm">{statusTitle}</h4>
                                     <p className={`text-xs font-bold mt-0.5 ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
                                 </div>
-                                {/* ✅ แก้ไขปุ่ม "ดูเลย" ตรงนี้ครับ ให้เช็คว่าถ้าเป็นคำสั่งซื้อ ให้เปิดหน้า Tracking ทันที */}
                                 <button onClick={() => {
                                     if (hasBills) {
                                         setTab('bills');
-                                    } else if (hasOrders) {
-                                        setTrackingOrder(data.orders[0]); // ดึงออเดอร์ล่าสุดมาโชว์สถานะ
+                                    } else if (hasActiveOrders) {
+                                        setTrackingOrder(activeOrders[0]); // ✅ เปิดออเดอร์ที่ค้างอยู่ขึ้นมา
                                     }
                                 }} className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm ${actionColorClass}`}>ดูเลย</button>
                             </div>
