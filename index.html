@@ -1166,17 +1166,17 @@
                 { status: 'ชำระแล้ว', icon: 'fa-money-bill-wave', title: 'ชำระแล้ว', desc: 'ระบบยืนยันยอดเงินเรียบร้อย' },
                 { status: 'อยู่ระหว่างสั่งซื้อ', icon: 'fa-cart-shopping', title: 'กำลังสั่งซื้อ', desc: 'แอดมินกำลังรวบรวมออเดอร์' },
                 { status: 'อยู่ระหว่างผลิต', icon: 'fa-hammer', title: 'กำลังผลิต', desc: 'กำลังดำเนินการผลิตสินค้า' },
-                { status: 'รอรับของ', icon: 'fa-box', title: 'พร้อมรับของ', desc: 'นำ QR Code มารับได้เลย' },
+                // ✅ เปลี่ยนชื่อเป็น พร้อมรับสินค้า
+                { status: 'รอรับของ', icon: 'fa-box', title: 'พร้อมรับสินค้า', desc: 'นำ QR Code มารับได้เลย' }, 
                 { status: 'รับแล้ว', icon: 'fa-box-open', title: 'รับสินค้าแล้ว', desc: 'ส่งมอบให้คุณเรียบร้อย' }
             ];
 
             const currentStatus = order.status?.trim() || 'รอตรวจสอบ';
             const isCancelled = currentStatus === 'ยกเลิก';
-            let currentStepIndex = steps.findIndex(s => s.status === currentStatus);
-            if (currentStepIndex === -1 && !isCancelled) currentStepIndex = 0; 
+            const isReceived = currentStatus === 'รับแล้ว'; // ✅ เช็คสถานะรับของแล้ว
             
-            // ✅ เช็คว่าถึงขั้นตอนรับของหรือยัง (สถานะ index 4 หรือ 5)
-            const isReadyForPickup = currentStepIndex >= 4;
+            let currentStepIndex = steps.findIndex(s => s.status === currentStatus);
+            if (currentStepIndex === -1 && !isCancelled && !isReceived) currentStepIndex = 0; 
 
             const showQR = () => {
                 Swal.fire({
@@ -1192,7 +1192,7 @@
                         </div>
                     `,
                     confirmButtonText: 'ปิดหน้าต่าง',
-                    confirmButtonColor: '#10B981', // สีเขียว
+                    confirmButtonColor: '#10B981', 
                     customClass: { popup: 'rounded-[2rem] pb-6', title: 'text-xl font-bold text-gray-800 mt-2' }
                 });
             };
@@ -1213,12 +1213,10 @@
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">รหัสออเดอร์</p>
                                     <p className="font-mono font-black text-[#0066FF] text-lg">{order.id}</p>
                                 </div>
-                                {/* ✅ โชว์ปุ่ม QR Code สีเขียว เฉพาะตอนถึงสถานะรับของเท่านั้น */}
-                                {isReadyForPickup && (
-                                    <button onClick={showQR} className="bg-green-50 hover:bg-green-100 text-green-600 w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-green-200 shadow-sm shrink-0 animate-[pop_0.5s_ease-out]">
-                                        <i className="fa-solid fa-qrcode text-xl animate-pulse"></i>
-                                    </button>
-                                )}
+                                {/* ✅ ปุ่ม QR Code แสดงตลอดเวลา ไม่โดนซ่อนแล้ว */}
+                                <button onClick={showQR} className="bg-blue-50 hover:bg-blue-100 text-[#0066FF] w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-blue-100/50 shadow-sm shrink-0">
+                                    <i className="fa-solid fa-qrcode text-xl"></i>
+                                </button>
                             </div>
                             <div>
                                 <p className="font-bold text-gray-800 text-sm leading-relaxed mb-2"><i className="fa-solid fa-bag-shopping text-orange-400 mr-2"></i>{order.items}</p>
@@ -1231,33 +1229,40 @@
 
                         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 overflow-hidden">
                             <h3 className="font-bold text-gray-800 mb-8 flex items-center"><i className="fa-solid fa-route text-[#0066FF] mr-2"></i> ลำดับสถานะ</h3>
+                            
+                            {/* เช็คสถานะ ยกเลิก หรือ รับของแล้ว */}
                             {isCancelled ? (
-                                <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center"><div className="w-16 h-16 bg-white text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-ban"></i></div><h4 className="font-bold text-red-600 text-lg">รายการถูกยกเลิก</h4><p className="text-sm text-red-400 mt-1">คำสั่งซื้อนี้ถูกยกเลิกแล้ว</p></div>
+                                <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center animate-[pop_0.4s_ease-out]">
+                                    <div className="w-16 h-16 bg-white text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-ban"></i></div>
+                                    <h4 className="font-bold text-red-600 text-lg">รายการถูกยกเลิก</h4>
+                                    <p className="text-sm text-red-400 mt-1">คำสั่งซื้อนี้ถูกยกเลิกแล้ว</p>
+                                </div>
+                            ) : isReceived ? (
+                                /* ✅ กล่องสำเร็จสีเขียว (โชว์เมื่อรับของแล้ว) */
+                                <div className="bg-green-50 border border-green-100 p-6 rounded-2xl text-center animate-[pop_0.4s_ease-out]">
+                                    <div className="w-16 h-16 bg-white text-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-check-circle"></i></div>
+                                    <h4 className="font-bold text-green-600 text-lg">รับสินค้าเรียบร้อยแล้ว</h4>
+                                    <p className="text-sm text-green-500 mt-1">ขอบคุณที่ใช้บริการ MedTech 67 Payment</p>
+                                </div>
                             ) : (
                                 <div className="relative pl-4 space-y-8 pb-4">
-                                    {/* เส้นสีเทาเป็นพื้นหลัง */}
                                     <div className="absolute left-[31px] top-4 bottom-10 w-0.5 bg-gray-100"></div>
                                     
                                     {steps.map((step, idx) => {
                                         const isCompleted = idx <= currentStepIndex; 
                                         const isCurrent = idx === currentStepIndex; 
                                         const isLastStep = idx === steps.length - 1;
-                                        
-                                        // ✅ เช็คว่าเป็นสเตปสีเขียว (พร้อมรับของ หรือ รับแล้ว) หรือไม่
                                         const isGreenStep = idx >= 4; 
 
-                                        // ตั้งค่าชุดสี
                                         const themeColorBg = isGreenStep ? 'bg-green-500' : 'bg-[#0066FF]';
                                         const themeColorText = isGreenStep ? 'text-green-600' : 'text-[#0066FF]';
                                         const themeRing = isGreenStep ? 'ring-green-100' : 'ring-blue-50';
 
-                                        // ✅ การจัดสไตล์วงกลมไอคอน (ถ้าปัจจุบันให้ขยายใหญ่สุดๆ)
                                         const iconBg = isCurrent 
                                             ? `${themeColorBg} ring-4 ${themeRing} shadow-lg transform scale-125` 
                                             : (isCompleted ? themeColorBg : 'bg-gray-100 border-2 border-white');
                                         const iconColor = isCompleted ? 'text-white' : 'text-gray-300';
                                         
-                                        // ✅ การจัดสไตล์ข้อความ (ใหญ่ขึ้นถ้าเป็นอันปัจจุบัน หรือถ้าเป็นสเตปสีเขียว)
                                         let textColor = isCurrent ? themeColorText : (isCompleted ? 'text-gray-800' : 'text-gray-400');
                                         if (isCompleted && isGreenStep && !isCurrent) textColor = 'text-green-600'; 
                                         
@@ -1265,28 +1270,32 @@
                                         if (isCurrent) {
                                             titleClass += isGreenStep ? " text-xl font-black scale-105" : " text-base font-black scale-105";
                                         } else if (isGreenStep) {
-                                            titleClass += " text-base font-extrabold"; // ขั้นตอนสีเขียวให้ใหญ่และหนาขึ้น
+                                            titleClass += " text-base font-extrabold";
                                         } else {
                                             titleClass += " text-sm";
                                         }
 
-                                        // เส้นสีเติมสถานะ
                                         const lineFillHeight = isCurrent ? '50%' : (isCompleted && !isLastStep ? '100%' : '0%');
-                                        // ให้เส้นเชื่อมลงไปหาของสีเขียว เปลี่ยนเป็นสีเขียวด้วย
                                         const lineBgColor = (isCompleted && idx >= 3) ? 'bg-green-500' : 'bg-[#0066FF]'; 
 
                                         return (
-                                            <div key={idx} className="relative flex items-center gap-5 group min-h-[40px]">
-                                                {/* เส้นเชื่อมสีทับเส้นเทา */}
+                                            <div key={idx} className="relative flex items-start gap-5 group min-h-[40px]">
                                                 {!isLastStep && <div className={`absolute left-[15px] top-8 w-0.5 transition-all duration-700 ${lineBgColor}`} style={{ height: `calc(${lineFillHeight} + 24px)` }}></div>}
                                                 
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 transition-all duration-500 ${iconBg} ${iconColor}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 transition-all duration-500 ${iconBg} ${iconColor} mt-0.5`}>
                                                     <i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm animate-[bounce_2s_infinite]' : 'text-xs'}`}></i>
                                                 </div>
                                                 
                                                 <div className={`flex-1 transition-all duration-500 ${isCompleted ? 'opacity-100' : 'opacity-50'} ${isCurrent ? 'pl-2' : ''}`}>
                                                     <h4 className={`${titleClass} ${textColor}`}>{step.title}</h4>
                                                     {(isCurrent || isCompleted) && <p className={`text-xs font-medium mt-1 leading-snug ${isGreenStep ? 'text-green-600/80' : 'text-gray-500'}`}>{step.desc}</p>}
+                                                    
+                                                    {/* ✅ ปุ่ม QR Code อันเล็ก โชว์เฉพาะตอนถึงสถานะ "พร้อมรับสินค้า" */}
+                                                    {isCurrent && step.status === 'รอรับของ' && (
+                                                        <button onClick={showQR} className="mt-3 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 shadow-md shadow-green-200 active:scale-95 transition-all animate-[pop_0.4s_ease-out]">
+                                                            <i className="fa-solid fa-qrcode text-sm"></i> เปิดคิวอาร์โค้ดรับของ
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
