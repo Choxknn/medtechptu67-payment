@@ -1158,7 +1158,105 @@
         };
 
         // ==========================================
-        // 📱 Dashboard Main Component (แก้ไขป้องกันจอขาว 100%)
+        // 📱 5. หน้าต่างติดตามสถานะการสั่งซื้อ (Order Tracking)
+        // ==========================================
+        const OrderTrackingSubPage = ({ order, onClose }) => {
+            const steps = [
+                { status: 'รอตรวจสอบ', icon: 'fa-clock', title: 'รอตรวจสอบ', desc: 'กำลังตรวจสอบการชำระเงิน' },
+                { status: 'ชำระแล้ว', icon: 'fa-money-bill-wave', title: 'ชำระแล้ว', desc: 'ระบบยืนยันยอดเงินเรียบร้อย' },
+                { status: 'อยู่ระหว่างสั่งซื้อ', icon: 'fa-cart-shopping', title: 'กำลังสั่งซื้อ', desc: 'แอดมินกำลังรวบรวมออเดอร์' },
+                { status: 'อยู่ระหว่างผลิต', icon: 'fa-hammer', title: 'กำลังผลิต', desc: 'กำลังดำเนินการผลิตสินค้า' },
+                { status: 'รอรับของ', icon: 'fa-box', title: 'พร้อมรับของ', desc: 'นำ QR Code มารับได้เลย' },
+                { status: 'รับแล้ว', icon: 'fa-box-open', title: 'รับสินค้าแล้ว', desc: 'ส่งมอบให้คุณเรียบร้อย' }
+            ];
+
+            const currentStatus = order.status?.trim() || 'รอตรวจสอบ';
+            const isCancelled = currentStatus === 'ยกเลิก';
+            let currentStepIndex = steps.findIndex(s => s.status === currentStatus);
+            if (currentStepIndex === -1 && !isCancelled) currentStepIndex = 0; 
+
+            const showQR = () => {
+                Swal.fire({
+                    title: 'QR Code รับสินค้า',
+                    html: `
+                        <div class="flex flex-col items-center">
+                            <p class="text-sm text-gray-500 mb-4">แสดงหน้านี้ให้แอดมินเพื่อรับของ</p>
+                            <div class="bg-white p-4 rounded-xl border-2 border-dashed border-[#0066FF] inline-block shadow-sm">
+                                <img src="https://quickchart.io/qr?text=${order.id}&size=200" class="w-48 h-48" alt="QR Code" />
+                            </div>
+                            <p class="mt-4 font-mono text-xl font-bold text-[#0066FF] tracking-widest bg-blue-50 px-4 py-1 rounded-lg">${order.id}</p>
+                            <p class="text-xs text-gray-400 mt-3"><i class="fa-solid fa-box mr-1"></i> ${order.items}</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'ปิดหน้าต่าง',
+                    confirmButtonColor: '#0066FF',
+                    customClass: { popup: 'rounded-[2rem] pb-6', title: 'text-xl font-bold text-gray-800 mt-2' }
+                });
+            };
+
+            return (
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                        <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0">
+                            <i className="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <h2 className="font-bold text-lg ml-3 text-gray-800">ติดตามสถานะสินค้า</h2>
+                    </div>
+
+                    <div className="px-5">
+                        <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
+                            <div className="flex justify-between items-start mb-3 border-b border-gray-100 pb-3">
+                                <div>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">รหัสออเดอร์</p>
+                                    <p className="font-mono font-black text-[#0066FF] text-lg">{order.id}</p>
+                                </div>
+                                <button onClick={showQR} className="bg-blue-50 hover:bg-blue-100 text-[#0066FF] w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-blue-100/50 shadow-sm shrink-0">
+                                    <i className="fa-solid fa-qrcode text-xl"></i>
+                                </button>
+                            </div>
+                            <div>
+                                <p className="font-bold text-gray-800 text-sm leading-relaxed mb-2"><i className="fa-solid fa-bag-shopping text-orange-400 mr-2"></i>{order.items}</p>
+                                <div className="flex justify-between items-center mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    <div><p className="text-[10px] text-gray-400 font-bold mb-0.5">วันที่สั่งซื้อ</p><p className="text-xs text-gray-600 font-medium">{order.date}</p></div>
+                                    <div className="text-right"><p className="text-[10px] text-gray-400 font-bold mb-0.5">ยอดรวม</p><p className="font-black text-base text-gray-800 leading-none">{formatCurrency(order.price)}</p></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
+                            <h3 className="font-bold text-gray-800 mb-6 flex items-center"><i className="fa-solid fa-route text-[#0066FF] mr-2"></i> ลำดับสถานะ</h3>
+                            {isCancelled ? (
+                                <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center"><div className="w-16 h-16 bg-white text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-ban"></i></div><h4 className="font-bold text-red-600 text-lg">รายการถูกยกเลิก</h4><p className="text-sm text-red-400 mt-1">คำสั่งซื้อนี้ถูกยกเลิกแล้ว</p></div>
+                            ) : (
+                                <div className="relative pl-4 space-y-7">
+                                    <div className="absolute left-[31px] top-4 bottom-8 w-0.5 bg-gray-100"></div>
+                                    {steps.map((step, idx) => {
+                                        const isCompleted = idx <= currentStepIndex; const isCurrent = idx === currentStepIndex; const isLastStep = idx === steps.length - 1;
+                                        const iconBg = isCurrent ? 'bg-[#0066FF] ring-4 ring-blue-50 shadow-md' : (isCompleted ? 'bg-[#0066FF]' : 'bg-gray-100 border-2 border-white');
+                                        const iconColor = isCompleted ? 'text-white' : 'text-gray-300';
+                                        const textColor = isCurrent ? 'text-[#0066FF]' : (isCompleted ? 'text-gray-800' : 'text-gray-400');
+                                        const lineFillHeight = isCurrent ? '50%' : (isCompleted && !isLastStep ? '100%' : '0%');
+                                        return (
+                                            <div key={idx} className="relative flex items-start gap-4 group">
+                                                {!isLastStep && <div className="absolute left-[15px] top-8 w-0.5 bg-[#0066FF] transition-all duration-500" style={{ height: `calc(${lineFillHeight} + 20px)` }}></div>}
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 ${iconBg} ${iconColor} transition-all duration-500`}><i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm' : 'text-xs'}`}></i></div>
+                                                <div className={`pt-1 flex-1 transition-all duration-300 ${isCompleted ? 'opacity-100' : 'opacity-40'}`}>
+                                                    <h4 className={`font-bold text-sm leading-none ${textColor}`}>{step.title}</h4>
+                                                    {(isCurrent || isCompleted) && <p className="text-[11px] font-medium text-gray-500 mt-1.5 leading-snug">{step.desc}</p>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 📱 Dashboard Main Component
         // ==========================================
         const Dashboard = ({ user, initialData, onLogout }) => {
             const [data, setData] = useState(initialData || {});
@@ -1166,11 +1264,12 @@
             const [tab, setTab] = useState('home'); 
             const [showDropdown, setShowDropdown] = useState(false);
             
-            // State ควบคุมการเปิดหน้าต่างย่อย
+            // State ควบคุมหน้าย่อย
             const [selectedBill, setSelectedBill] = useState(null);
             const [selectedProduct, setSelectedProduct] = useState(null);
             const [pendingOrder, setPendingOrder] = useState(null);
             const [selectedProject, setSelectedProject] = useState(null); 
+            const [trackingOrder, setTrackingOrder] = useState(null); // ✅ ตัวแก้หน้าขาว
             const [viewSlipUrl, setViewSlipUrl] = useState(null);
             const [showAnnouncement, setShowAnnouncement] = useState(false); 
             
@@ -1193,15 +1292,13 @@
                 if(!silent) setLoading(false);
             };
 
-            // ✅ เปลี่ยนจาก 1000 (1 วิ) เป็น 60000 (60 วิ) เพื่อไม่ให้ Google บล็อกจนแครช
             useEffect(() => { const timer = setInterval(() => fetchData(true), 60000); return () => clearInterval(timer); }, []);
 
-            // ✅ ใส่ ? ป้องกัน Error เวลาข้อมูลส่งมาไม่ครบ
             const overdueCount = data?.bills ? data.bills.filter(b => b.daysLate > 0).length : 0;
             const hasBills = data?.bills && data.bills.length > 0;
             const hasOrders = data?.orders && data.orders.length > 0;
             
-            const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject;
+            const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
 
             const handleChangePassword = async () => {
                 setShowDropdown(false);
@@ -1246,7 +1343,7 @@
             const renderNavItem = (id, icon, label, badge) => {
                 if (!hasAccess(id)) return null; 
                 return (
-                    <button onClick={() => { setTab(id); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); }} className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative ${tab === id && !isSubPageOpen ? themeText : 'text-gray-400'}`}>
+                    <button onClick={() => { setTab(id); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative ${tab === id && !isSubPageOpen ? themeText : 'text-gray-400'}`}>
                         <div className={`text-xl mb-1 transition-transform ${tab === id && !isSubPageOpen ? '-translate-y-1' : ''}`}><i className={`fa-solid ${icon}`}></i></div>
                         <span className="text-[10px] font-bold">{label}</span>
                         {badge > 0 && <span className="absolute top-1 right-[25%] w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>}
@@ -1287,6 +1384,40 @@
                             {hasAccess('settings') && renderMenuCard('ตั้งค่า', 'จัดการบัญชี', 'fa-gear', 'bg-gray-500', () => setTab('settings'), 0)}
                         </div>
 
+                        {/* ✅ เพิ่มส่วน "สถานะการสั่งซื้อสินค้า" ตรงหน้าแรก */}
+                        {hasAccess('orders') && data?.orders && data.orders.length > 0 && (
+                            <div className="mt-6">
+                                <div className="flex justify-between items-center mb-3 px-2">
+                                    <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-box-open text-[#0066FF] mr-2"></i> สถานะการสั่งซื้อ</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    {data.orders.slice(0, 3).map(order => {
+                                        let statusBadgeColor = "bg-gray-100 text-gray-600";
+                                        const stat = order.status?.trim();
+                                        if (stat === 'รอตรวจสอบ') statusBadgeColor = "bg-yellow-50 text-yellow-600 border border-yellow-100";
+                                        else if (stat === 'รอรับของ') statusBadgeColor = "bg-green-50 text-green-600 border border-green-100 shadow-sm animate-pulse";
+                                        else if (stat === 'รับแล้ว') statusBadgeColor = "bg-emerald-500 text-white border border-emerald-600";
+                                        else if (stat === 'ยกเลิก') statusBadgeColor = "bg-red-50 text-red-600 border border-red-100";
+                                        else statusBadgeColor = "bg-blue-50 text-[#0066FF] border border-blue-100"; 
+
+                                        return (
+                                            <div key={order.id} onClick={() => setTrackingOrder(order)} className="bg-white p-4 rounded-[1.5rem] shadow-sm border border-gray-50 active:scale-95 transition-transform cursor-pointer relative overflow-hidden flex items-center justify-between group hover:border-blue-200">
+                                                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0066FF]"></div>
+                                                <div className="pl-3 pr-2 flex-1">
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1"><i className="fa-solid fa-receipt mr-1"></i> {order.id}</p>
+                                                    <h4 className="font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-[#0066FF] transition-colors">{order.items}</h4>
+                                                </div>
+                                                <div className="text-right shrink-0 ml-2 flex flex-col items-end">
+                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${statusBadgeColor}`}>{order.status}</span>
+                                                    <p className="text-[10px] text-gray-400 mt-1">กดเพื่อดู &gt;</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {data?.announcement && (
                             <div className="mt-4 bg-gradient-to-r from-[#0066FF] to-[#004ECC] rounded-[1.5rem] p-5 text-white shadow-lg relative overflow-hidden">
                                 <div className="absolute top-0 right-0 opacity-20 transform translate-x-4 -translate-y-4 pointer-events-none"><i className="fa-solid fa-bullhorn text-7xl"></i></div>
@@ -1301,10 +1432,7 @@
             const renderFinanceContent = () => {
                 const fin = data?.finance || { balance: 0, income: 0, expense: 0, projects: [] };
                 const safeProjects = fin.projects || [];
-
-                const sortedProjects = financeSort === 'desc' 
-                    ? [...safeProjects].reverse() 
-                    : [...safeProjects];
+                const sortedProjects = financeSort === 'desc' ? [...safeProjects].reverse() : [...safeProjects];
 
                 return (
                     <div className="space-y-6 animate-pop pb-8 pt-2">
@@ -1312,30 +1440,20 @@
                             <div className="absolute -right-4 -top-4 opacity-10"><i className="fa-solid fa-sack-dollar text-8xl"></i></div>
                             <p className="text-purple-100 text-sm font-bold tracking-wider mb-1 relative z-10"><i className="fa-solid fa-vault mr-1"></i> ยอดเงินคงเหลือชั้นปี</p>
                             <h2 className="text-4xl font-black relative z-10">{formatCurrency(fin.balance)}</h2>
-                            
                             <div className="flex gap-4 mt-6 pt-4 border-t border-purple-400/30 relative z-10">
-                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
-                                    <p className="text-purple-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับรวม</p>
-                                    <p className="font-bold text-green-300 text-lg">{formatCurrency(fin.income)}</p>
-                                </div>
-                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
-                                    <p className="text-purple-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่ายรวม</p>
-                                    <p className="font-bold text-red-300 text-lg">{formatCurrency(fin.expense)}</p>
-                                </div>
+                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-purple-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับรวม</p><p className="font-bold text-green-300 text-lg">{formatCurrency(fin.income)}</p></div>
+                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-purple-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่ายรวม</p><p className="font-bold text-red-300 text-lg">{formatCurrency(fin.expense)}</p></div>
                             </div>
                         </div>
 
                         <div>
                             <div className="flex justify-between items-center mb-4 px-2">
-                                <h3 className="font-bold text-gray-800 flex items-center">
-                                    <i className="fa-solid fa-folder-open text-[#0066FF] mr-2"></i> โครงการทั้งหมด
-                                </h3>
+                                <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-folder-open text-[#0066FF] mr-2"></i> โครงการทั้งหมด</h3>
                                 <button onClick={() => setFinanceSort(financeSort === 'desc' ? 'asc' : 'desc')} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 active:scale-95 transition">
                                     <i className={`fa-solid ${financeSort === 'desc' ? 'fa-arrow-up-short-wide text-orange-500' : 'fa-arrow-down-short-wide text-[#0066FF]'}`}></i>
                                     {financeSort === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
                                 </button>
                             </div>
-
                             <div className="space-y-3">
                                 {sortedProjects.length === 0 ? (
                                     <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50 shadow-sm"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ไม่มีข้อมูลโครงการ</div>
@@ -1350,15 +1468,10 @@
                                                         {proj.expense > 0 && <span className="text-red-500 bg-red-50 px-2 py-1 rounded-md border border-red-100/50"><i className="fa-solid fa-arrow-up mr-1"></i>{formatCurrency(proj.expense)}</span>}
                                                     </div>
                                                 </div>
-                                                <div className="w-10 h-10 rounded-full bg-blue-50 text-[#0066FF] flex items-center justify-center shadow-inner shrink-0 group-hover:bg-[#0066FF] group-hover:text-white transition-colors">
-                                                    <i className="fa-solid fa-chevron-right"></i>
-                                                </div>
+                                                <div className="w-10 h-10 rounded-full bg-blue-50 text-[#0066FF] flex items-center justify-center shadow-inner shrink-0 group-hover:bg-[#0066FF] group-hover:text-white transition-colors"><i className="fa-solid fa-chevron-right"></i></div>
                                             </div>
                                             {(proj.income > 0 || proj.expense > 0) && (
-                                                <>
-                                                    <div className="absolute bottom-0 left-0 h-1 bg-green-400 transition-all duration-500" style={{ width: `${(proj.income/(proj.income+proj.expense)*100)||0}%` }}></div>
-                                                    <div className="absolute bottom-0 right-0 h-1 bg-red-400 transition-all duration-500" style={{ width: `${(proj.expense/(proj.income+proj.expense)*100)||0}%` }}></div>
-                                                </>
+                                                <><div className="absolute bottom-0 left-0 h-1 bg-green-400 transition-all duration-500" style={{ width: `${(proj.income/(proj.income+proj.expense)*100)||0}%` }}></div><div className="absolute bottom-0 right-0 h-1 bg-red-400 transition-all duration-500" style={{ width: `${(proj.expense/(proj.income+proj.expense)*100)||0}%` }}></div></>
                                             )}
                                         </div>
                                     ))
@@ -1461,7 +1574,7 @@
                                     </>
                                 ) : (
                                     <div className="flex items-center gap-3 transition-all duration-500">
-                                        <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); }} className="flex items-center justify-center w-8 h-8 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
+                                        <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-8 h-8 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
                                             <i className="fa-solid fa-chevron-left text-[14px]"></i>
                                         </button>
                                         <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1">
@@ -1587,10 +1700,14 @@
                             {tab === 'settings' && hasAccess('settings') && renderSettingsContent()}
                         </div>
 
+                        {/* พื้นที่หน้าย่อยต่างๆ */}
                         {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null); fetchData();}} />}
                         {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
                         {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); fetchData(); }} />}
                         {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
+                        
+                        {/* ✅ เพิ่มบรรทัดนี้ เพื่อโชว์สถานะการสั่งซื้อ */}
+                        {trackingOrder && <OrderTrackingSubPage order={trackingOrder} onClose={() => setTrackingOrder(null)} />}
 
                     </main> 
 
@@ -1608,6 +1725,7 @@
                 </div>
             );
         };
+        
         // ==========================================
         // 🚧 หน้าจอตอนปิดปรับปรุงระบบ
         // ==========================================
