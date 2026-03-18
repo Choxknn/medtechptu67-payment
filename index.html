@@ -1159,10 +1159,10 @@
         };
 
         // ==========================================
-        // 📱 Dashboard Main Component
+        // 📱 Dashboard Main Component (แก้ไขป้องกันจอขาว 100%)
         // ==========================================
         const Dashboard = ({ user, initialData, onLogout }) => {
-            const [data, setData] = useState(initialData);
+            const [data, setData] = useState(initialData || {});
             const [loading, setLoading] = useState(false);
             const [tab, setTab] = useState('home'); 
             const [showDropdown, setShowDropdown] = useState(false);
@@ -1175,28 +1175,32 @@
             const [viewSlipUrl, setViewSlipUrl] = useState(null);
             const [showAnnouncement, setShowAnnouncement] = useState(false); 
             
-            // ✅ เพิ่มตัวแปรตรงนี้ (ตัวแก้จอขาว!)
             const [financeSort, setFinanceSort] = useState('desc');
 
             const themeColor = "bg-[#0066FF]"; 
             const themeText = "text-[#0066FF]";
 
             const hasAccess = (menuId) => {
-                if (!user.permissions || !Array.isArray(user.permissions)) return true;
+                if (!user?.permissions || !Array.isArray(user.permissions)) return true;
                 return user.permissions.includes(menuId);
             };
 
             const fetchData = async (silent = false) => {
                 if(!silent) setLoading(true);
-                try { const res = await runGoogleScript('getDashboardData', [user.studentId]); setData(res); } catch(e) { console.error(e); }
+                try { 
+                    const res = await runGoogleScript('getDashboardData', [user.studentId]); 
+                    if(res) setData(res); 
+                } catch(e) { console.error(e); }
                 if(!silent) setLoading(false);
             };
 
-            useEffect(() => { const timer = setInterval(() => fetchData(true), 1000); return () => clearInterval(timer); }, []);
+            // ✅ เปลี่ยนจาก 1000 (1 วิ) เป็น 60000 (60 วิ) เพื่อไม่ให้ Google บล็อกจนแครช
+            useEffect(() => { const timer = setInterval(() => fetchData(true), 60000); return () => clearInterval(timer); }, []);
 
-            const overdueCount = data.bills ? data.bills.filter(b => b.daysLate > 0).length : 0;
-            const hasBills = data.bills && data.bills.length > 0;
-            const hasOrders = data.orders && data.orders.length > 0;
+            // ✅ ใส่ ? ป้องกัน Error เวลาข้อมูลส่งมาไม่ครบ
+            const overdueCount = data?.bills ? data.bills.filter(b => b.daysLate > 0).length : 0;
+            const hasBills = data?.bills && data.bills.length > 0;
+            const hasOrders = data?.orders && data.orders.length > 0;
             
             const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject;
 
@@ -1260,8 +1264,8 @@
                     if (overdueCount > 0) {
                         statusColorClass = "border-red-500"; statusIconBg = "bg-red-100"; statusIconText = "text-red-600";
                         statusSubtitle = `มียอดเกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-red-600 bg-red-50 hover:bg-red-100";
-                    } else { statusSubtitle = `มียอดชำระ ${data.bills.length} รายการ`; }
-                } else if (hasOrders) { statusSubtitle = `คำสั่งซื้อล่าสุด: ${data.orders[0]?.status}`; }
+                    } else { statusSubtitle = `มียอดชำระ ${data?.bills?.length || 0} รายการ`; }
+                } else if (hasOrders) { statusSubtitle = `คำสั่งซื้อล่าสุด: ${data?.orders?.[0]?.status || ''}`; }
 
                 return (
                     <div className="space-y-6 animate-pop w-full pb-10 pt-2">
@@ -1277,14 +1281,14 @@
                         )}
 
                         <div className="grid grid-cols-2 gap-3">
-                            {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => setTab('bills'), data.bills.length)}
-                            {hasAccess('orders') && data.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => setTab('orders'), 0)}
+                            {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => setTab('bills'), data?.bills?.length || 0)}
+                            {hasAccess('orders') && data?.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => setTab('orders'), 0)}
                             {hasAccess('history') && renderMenuCard('ประวัติ', 'รายการย้อนหลัง', 'fa-clock-rotate-left', 'bg-cyan-500', () => setTab('history'), 0)}
                             {hasAccess('finance') && renderMenuCard('การเงิน', 'สรุปยอดเงินชั้นปี', 'fa-wallet', 'bg-purple-500', () => setTab('finance'), 0)}
                             {hasAccess('settings') && renderMenuCard('ตั้งค่า', 'จัดการบัญชี', 'fa-gear', 'bg-gray-500', () => setTab('settings'), 0)}
                         </div>
 
-                        {data.announcement && (
+                        {data?.announcement && (
                             <div className="mt-4 bg-gradient-to-r from-[#0066FF] to-[#004ECC] rounded-[1.5rem] p-5 text-white shadow-lg relative overflow-hidden">
                                 <div className="absolute top-0 right-0 opacity-20 transform translate-x-4 -translate-y-4 pointer-events-none"><i className="fa-solid fa-bullhorn text-7xl"></i></div>
                                 <h3 className="font-bold text-lg mb-2 relative z-10 flex items-center gap-2"><i className="fa-solid fa-circle-info text-sm"></i> ประกาศ</h3>
@@ -1296,18 +1300,15 @@
             };
 
             const renderFinanceContent = () => {
-                // ✅ กันแครชถ้า finance หรือ projects ส่งมาเป็น undefined
-                const fin = data.finance || { balance: 0, income: 0, expense: 0, projects: [] };
+                const fin = data?.finance || { balance: 0, income: 0, expense: 0, projects: [] };
                 const safeProjects = fin.projects || [];
 
-                // ✅ เรียงโครงการ: ถ้าเป็น 'desc' ให้เอาอันล่าสุด (ท้ายชีต) ขึ้นก่อน
                 const sortedProjects = financeSort === 'desc' 
                     ? [...safeProjects].reverse() 
                     : [...safeProjects];
 
                 return (
                     <div className="space-y-6 animate-pop pb-8 pt-2">
-                        {/* กล่องสรุปยอดรวม */}
                         <div className="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 rounded-[2rem] text-white shadow-lg shadow-purple-200 relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 opacity-10"><i className="fa-solid fa-sack-dollar text-8xl"></i></div>
                             <p className="text-purple-100 text-sm font-bold tracking-wider mb-1 relative z-10"><i className="fa-solid fa-vault mr-1"></i> ยอดเงินคงเหลือชั้นปี</p>
@@ -1325,9 +1326,7 @@
                             </div>
                         </div>
 
-                        {/* รายการโครงการ */}
                         <div>
-                            {/* ปุ่มจัดเรียงของหน้าโครงการหลัก */}
                             <div className="flex justify-between items-center mb-4 px-2">
                                 <h3 className="font-bold text-gray-800 flex items-center">
                                     <i className="fa-solid fa-folder-open text-[#0066FF] mr-2"></i> โครงการทั้งหมด
@@ -1444,11 +1443,10 @@
                 <div className="flex flex-col min-h-screen bg-[#F0F4F8] relative overflow-hidden">
                     {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
-                    {/* --- Header (Fix อยู่ด้านบนเสมอ) --- */}
+                    {/* --- Header --- */}
                     <header className={`sticky top-0 z-40 ${themeColor} text-white pt-safe px-5 shadow-md flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-5 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
                         <div className="flex justify-between items-center pt-2 relative">
                             <div className="relative z-50 flex-1 flex items-center">
-                                {/* ✅ ถ้าอยู่หน้า Home แสดง Profile ถ้าหน้าอื่นแสดงปุ่มย้อนกลับและชื่อหน้า */}
                                 {tab === 'home' && !isSubPageOpen ? (
                                     <>
                                         <div onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition select-none border border-white/10 shadow-sm">
@@ -1483,7 +1481,6 @@
                             </div>
                         </div>
 
-                        {/* ✅ ชื่อแอปหลัก (จะค่อยๆ หดและหายไปอย่างสวยงามเมื่อเปลี่ยนหน้า) */}
                         <div className={`transition-all duration-500 ease-in-out overflow-hidden ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
                             <div className="px-1">
                                 <h1 className="text-2xl font-bold tracking-tight">MedTech 67 Finance System</h1>
@@ -1493,25 +1490,22 @@
 
                     {/* --- Content Area --- */}
                     <main className="flex-1 w-full max-w-lg mx-auto relative overflow-hidden">
-                        
-                        {/* ✅ เปลี่ยน pb-28 เป็น pb-36 เพื่อดันเนื้อหาให้พ้นแถบเมนูด้านล่างแบบ 100% */}
                         <div className={`absolute inset-0 px-5 pt-4 pb-36 overflow-y-auto no-scrollbar transition-opacity duration-300 ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                            {/* เช็คสิทธิ์ก่อน render component */}
                             {tab === 'home' && hasAccess('home') && renderHomeContent()}
                             {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
                             
                             {tab === 'bills' && hasAccess('bills') && (
                                 <div className="space-y-4 animate-pop pt-2">
-                                    {data.bills.length === 0 && !loading && (
+                                    {data?.bills?.length === 0 && !loading && (
                                         <div className="bg-white p-8 rounded-[2rem] text-center shadow-sm border border-gray-50">
                                             <div className="text-6xl mb-4">🎉</div>
                                             <h3 className="font-bold text-gray-800 text-lg">ยอดเยี่ยมมาก!</h3>
                                             <p className="text-gray-500 text-sm mt-1">ไม่มีบิลค้างชำระในขณะนี้</p>
                                         </div>
                                     )}
-                                    {data.bills.map(bill => {
-                                        // ✅ ตรวจสอบวันที่ ถ้าไม่มี หรือปีเป็น 1899 ให้โชว์คำว่า "ไม่มีกำหนด"
-                                        const isNoDate = !bill.dueDate || bill.dueDate.includes('1899') || bill.dueDate.includes('1970');
+                                    {(data?.bills || []).map(bill => {
+                                        // ✅ ป้องกันแครชกรณีวันที่ไม่ได้ถูกส่งมา
+                                        const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
                                         
                                         return (
                                             <div key={bill.billId} className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-gray-50 relative overflow-hidden">
@@ -1520,14 +1514,12 @@
                                                         <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-xl text-[#0066FF] shadow-inner"><i className="fa-solid fa-file-invoice-dollar"></i></div>
                                                         <div>
                                                             <h4 className="font-bold text-gray-800 line-clamp-1">{bill.item}</h4>
-                                                            {/* ✅ เปลี่ยนข้อความวันที่ตรงนี้ */}
                                                             <p className="text-[11px] font-bold text-gray-400 mt-0.5">ครบกำหนด: <span className="text-gray-500">{isNoDate ? 'ไม่มีกำหนด' : bill.dueDate}</span></p>
                                                         </div>
                                                     </div>
                                                     <span className="font-black text-lg text-[#0066FF]">{formatCurrency(bill.total)}</span>
                                                 </div>
                                                 <div className="mt-4 flex items-center gap-3">
-                                                    {/* ไม่โชว์นาฬิกาจับเวลา ถ้าไม่มีกำหนด */}
                                                     {bill.status !== 'รอตรวจสอบ' && bill.daysLate === 0 && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
                                                     {bill.status === 'รอตรวจสอบ' ? (
                                                         <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3 rounded-xl text-sm font-bold border border-yellow-100/50">รอตรวจสอบ <i className="fa-solid fa-clock ml-1"></i></button>
@@ -1538,10 +1530,12 @@
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
 
                             {tab === 'orders' && hasAccess('orders') && (
                                 <div className="animate-pop pt-2">
-                                    {(!data.products || data.products.filter(p => p.status !== 'OFF').length === 0) ? (
+                                    {(!data?.products || data.products.filter(p => p.status !== 'OFF').length === 0) ? (
                                         <div className="bg-white rounded-[2rem] p-10 text-center shadow-sm border border-gray-50 mt-4">
                                             <div className="text-5xl mb-3 text-gray-300"><i className="fa-solid fa-store-slash"></i></div>
                                             <h3 className="font-bold text-gray-800 text-lg">ยังไม่มีสินค้า</h3>
@@ -1575,7 +1569,7 @@
 
                             {tab === 'history' && hasAccess('history') && (
                                 <div className="space-y-3 animate-pop pt-2">
-                                    {data.history.map((hist, i) => (
+                                    {(data?.history || []).map((hist, i) => (
                                         <div key={i} className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between border-l-4 border-gray-100 hover:border-[#0066FF] transition-colors">
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm ${hist.status==='ชำระแล้ว'?'bg-emerald-500':'bg-yellow-400'}`}><i className={`fa-solid ${hist.status==='ชำระแล้ว'?'fa-check':'fa-clock'}`}></i></div>
@@ -1587,28 +1581,26 @@
                                             </div>
                                         </div>
                                     ))}
-                                    {data.history.length === 0 && <div className="text-center text-gray-400 py-10 font-bold bg-white rounded-3xl border border-gray-50"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-clock-rotate-left"></i></div>ไม่มีประวัติทำรายการ</div>}
+                                    {data?.history?.length === 0 && <div className="text-center text-gray-400 py-10 font-bold bg-white rounded-3xl border border-gray-50"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-clock-rotate-left"></i></div>ไม่มีประวัติทำรายการ</div>}
                                 </div>
                             )}
                             
                             {tab === 'settings' && hasAccess('settings') && renderSettingsContent()}
                         </div>
 
-                        {/* พื้นที่หน้าย่อยต่างๆ */}
                         {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null); fetchData();}} />}
                         {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
-                        {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data.qrMap} defaultQr={data.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); fetchData(); }} />}
+                        {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); fetchData(); }} />}
                         {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
 
                     </main> 
 
-                    {showAnnouncement && data.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
+                    {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                    {/* --- แถบเมนูด้านล่าง (ปรับให้ลอยต่ำลงมาสวยๆ) --- */}
                     <nav className={`fixed left-4 right-4 bg-white rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] px-2 py-1 flex justify-between items-center z-40 max-w-md mx-auto border border-gray-100 transition-all duration-500 ease-in-out ${isSubPageOpen || tab === 'finance' ? 'bottom-[-100px] opacity-0 pointer-events-none' : 'bottom-3 opacity-100'}`}>
                         {renderNavItem('home', 'fa-house', 'หน้าแรก', 0)}
-                        {renderNavItem('bills', 'fa-file-invoice-dollar', 'บิล', data.bills.length)}
-                        {data.orderEnabled && renderNavItem('orders', 'fa-bag-shopping', 'ร้านค้า', 0)}
+                        {renderNavItem('bills', 'fa-file-invoice-dollar', 'บิล', data?.bills?.length || 0)}
+                        {data?.orderEnabled && renderNavItem('orders', 'fa-bag-shopping', 'ร้านค้า', 0)}
                         {renderNavItem('history', 'fa-clock-rotate-left', 'ประวัติ', 0)}
                         {renderNavItem('settings', 'fa-gear', 'ตั้งค่า', 0)}
                     </nav>
@@ -1617,7 +1609,6 @@
                 </div>
             );
         };
-
         // ==========================================
         // 🚧 หน้าจอตอนปิดปรับปรุงระบบ
         // ==========================================
