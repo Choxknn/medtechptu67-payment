@@ -1181,7 +1181,7 @@
                 if(!silent) setLoading(false);
             };
 
-            useEffect(() => { const timer = setInterval(() => fetchData(true), 20000); return () => clearInterval(timer); }, []);
+            useEffect(() => { const timer = setInterval(() => fetchData(true), 1000); return () => clearInterval(timer); }, []);
 
             const overdueCount = data.bills ? data.bills.filter(b => b.daysLate > 0).length : 0;
             const hasBills = data.bills && data.bills.length > 0;
