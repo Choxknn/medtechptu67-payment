@@ -1687,27 +1687,83 @@
                                         </div>
                                     )}
                                     {(data?.bills || []).map(bill => {
-                                        // ✅ ป้องกันแครชกรณีวันที่ไม่ได้ถูกส่งมา
+                                        // เช็คเงื่อนไขวันที่
                                         const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
                                         
+                                        // ✅ เช็คว่าบิลเกินกำหนดหรือไม่ (และต้องไม่ใช่สถานะรอตรวจสอบ)
+                                        const isOverdue = bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ';
+                                        
                                         return (
-                                            <div key={bill.billId} className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-gray-50 relative overflow-hidden">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex gap-3">
-                                                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-xl text-[#0066FF] shadow-inner"><i className="fa-solid fa-file-invoice-dollar"></i></div>
+                                            <div key={bill.billId} className={`bg-white rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden transition-all duration-300 ${isOverdue ? 'border-2 border-red-400 shadow-red-100 ring-4 ring-red-50' : 'border border-gray-100'}`}>
+                                                
+                                                {/* ✅ แถบแจ้งเตือนด้านบนสุดกรณีเกินกำหนด */}
+                                                {isOverdue && (
+                                                    <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4 border border-red-100 flex items-start gap-3 animate-[pop_0.4s_ease-out]">
+                                                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5 animate-pulse">
+                                                            <i className="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i>
+                                                        </div>
                                                         <div>
-                                                            <h4 className="font-bold text-gray-800 line-clamp-1">{bill.item}</h4>
-                                                            <p className="text-[11px] font-bold text-gray-400 mt-0.5">ครบกำหนด: <span className="text-gray-500">{isNoDate ? 'ไม่มีกำหนด' : bill.dueDate}</span></p>
+                                                            <h5 className="font-bold text-sm">เกินกำหนดชำระ {bill.daysLate} วัน</h5>
+                                                            <p className="text-[10px] font-medium text-red-500 mt-0.5 leading-snug">กรุณารีบดำเนินการชำระเงินโดยด่วน เพื่อหลีกเลี่ยงค่าปรับเพิ่มเติม</p>
                                                         </div>
                                                     </div>
-                                                    <span className="font-black text-lg text-[#0066FF]">{formatCurrency(bill.total)}</span>
+                                                )}
+
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="flex gap-3">
+                                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner shrink-0 ${isOverdue ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#0066FF]'}`}>
+                                                            <i className="fa-solid fa-file-invoice-dollar"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-800 text-base line-clamp-1 pr-2">{bill.item}</h4>
+                                                            <p className={`text-[11px] font-bold mt-1 px-2 py-0.5 inline-block rounded-md ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                                ครบกำหนด: {isNoDate ? 'ไม่มีกำหนด' : bill.dueDate}
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-4 flex items-center gap-3">
-                                                    {bill.status !== 'รอตรวจสอบ' && bill.daysLate === 0 && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
+
+                                                {/* ✅ กล่องแจกแจงรายละเอียดเงิน (Breakdown) */}
+                                                <div className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100 space-y-2.5">
+                                                    <div className="flex justify-between items-center text-xs font-medium text-gray-500">
+                                                        <span><i className="fa-solid fa-receipt mr-1.5 opacity-50"></i> ยอดบิลเริ่มต้น</span>
+                                                        <span>{formatCurrency(bill.amount)}</span>
+                                                    </div>
+                                                    
+                                                    {bill.discount > 0 && (
+                                                        <div className="flex justify-between items-center text-xs font-bold text-green-600">
+                                                            <span><i className="fa-solid fa-tags mr-1.5 opacity-70"></i> ส่วนลด / หักยอดโอนแล้ว</span>
+                                                            <span>-{formatCurrency(bill.discount)}</span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {bill.fine > 0 && (
+                                                        <div className="flex justify-between items-center text-xs font-bold text-red-500">
+                                                            <span><i className="fa-solid fa-scale-unbalanced mr-1.5 opacity-70"></i> ค่าปรับล่าช้า ({bill.daysLate} วัน)</span>
+                                                            <span>+{formatCurrency(bill.fine)}</span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="pt-2.5 mt-1 border-t border-gray-200/80 flex justify-between items-center">
+                                                        <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">ยอดชำระสุทธิ</span>
+                                                        <span className={`font-black text-xl ${isOverdue ? 'text-red-600' : 'text-[#0066FF]'}`}>
+                                                            {formatCurrency(bill.total)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                    {/* โชว์นาฬิกาเฉพาะบิลที่ยังไม่เกินกำหนด และ ไม่ใช่วันที่ 1899 */}
+                                                    {bill.status !== 'รอตรวจสอบ' && !isOverdue && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
+                                                    
                                                     {bill.status === 'รอตรวจสอบ' ? (
-                                                        <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3 rounded-xl text-sm font-bold border border-yellow-100/50">รอตรวจสอบ <i className="fa-solid fa-clock ml-1"></i></button>
+                                                        <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3.5 rounded-xl text-sm font-bold border border-yellow-100/50 flex justify-center items-center gap-2">
+                                                            รอตรวจสอบ <div className="loader w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
+                                                        </button>
                                                     ) : (
-                                                        <button onClick={() => setSelectedBill(bill)} className={`flex-1 py-3 rounded-xl text-white text-sm font-bold shadow-md active:scale-95 transition ${bill.daysLate > 0 ? 'bg-red-500 shadow-red-200' : 'bg-[#0066FF] shadow-blue-200'}`}>ชำระเงิน <i className="fa-solid fa-arrow-right ml-1"></i></button>
+                                                        <button onClick={() => setSelectedBill(bill)} className={`flex-1 py-3.5 rounded-xl text-white text-sm font-bold shadow-lg active:scale-95 transition-all transform flex justify-center items-center gap-2 ${isOverdue ? 'bg-red-500 shadow-red-200 hover:bg-red-600' : 'bg-[#0066FF] shadow-blue-200 hover:bg-blue-700'}`}>
+                                                            ชำระเงิน <i className="fa-solid fa-arrow-right"></i>
+                                                        </button>
                                                     )}
                                                 </div>
                                             </div>
