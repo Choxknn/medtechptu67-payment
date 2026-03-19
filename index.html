@@ -96,17 +96,15 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        // 🌐 API Connection (ยิงข้อมูลไปหา Google Script)
+        // 🌐 API Connection
         // ==========================================
-        // ⚠️ เอา Web App URL ที่ก๊อปปี้มาจากขั้นตอนที่ 2 มาใส่ในเครื่องหมายคำพูดด้านล่างนี้ครับ
         const API_URL = "https://script.google.com/macros/s/AKfycbzEXjfZSgs3riQmjc22AZu45dn50etSm_lMqkior3UmHa8M84mwW_7qoqXCl2N3XX--sw/exec";
 
         const runGoogleScript = async (funcName, args = []) => {
             try {
-                // ✅ เปลี่ยนวิธีแพ็คข้อมูลเป็นแบบ Form (URLSearchParams) ป้องกันปัญหาเบราว์เซอร์จับเด้งแล้วลืมข้อมูล
                 const formData = new URLSearchParams();
                 formData.append('data', JSON.stringify({ action: funcName, args: args }));
 
@@ -116,12 +114,8 @@
                 });
                 
                 const result = await response.json();
-                
-                if (result.error) {
-                    throw new Error(result.error);
-                }
+                if (result.error) throw new Error(result.error);
                 return result;
-
             } catch (error) {
                 console.error(`[API Error] ${funcName}:`, error);
                 throw error;
@@ -189,8 +183,7 @@
                     <div className="loader mb-3"></div>
                     <p className="text-[#0066FF] font-bold">กำลังประมวลผล...</p>
                 </div>
-            </div>,
-            document.body
+            </div>, document.body
         );
 
         const ProgressLoading = ({ progress }) => ReactDOM.createPortal(
@@ -207,13 +200,9 @@
                     <h3 className="text-lg font-bold text-gray-800 mb-1 loading-text">กำลังตรวจสอบสลีป</h3>
                     <p className="text-xs text-gray-500">ผ่านระบบ SlipOK อัตโนมัติ</p>
                 </div>
-            </div>,
-            document.body
+            </div>, document.body
         );
 
-       // ==========================================
-        // 🖼️ หน้าต่างดูสลีป (ปรับขนาดให้เล็กลงและดูง่ายขึ้น)
-        // ==========================================
         const SlipModal = ({ url, onClose }) => {
             const [imgSrc, setImgSrc] = useState(null);
             useEffect(() => { setImgSrc(getDirectDriveUrl(url)); }, [url]);
@@ -221,51 +210,28 @@
             return ReactDOM.createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
                     <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-[pop_0.3s_ease-out] relative" onClick={e => e.stopPropagation()}>
-                        
-                        {/* ปุ่มปิดมุมขวาบน */}
-                        <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center transition active:scale-90 z-10">
-                            <i className="fa-solid fa-xmark text-gray-600 text-xl"></i>
-                        </button>
-
-                        {/* หัวข้อ */}
+                        <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center transition active:scale-90 z-10"><i className="fa-solid fa-xmark text-gray-600 text-xl"></i></button>
                         <div className="p-5 border-b border-gray-50 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-[#0066FF]">
-                                <i className="fa-solid fa-receipt text-lg"></i>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-800 leading-none">หลักฐาน</h3>
-                                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Evidence</p>
-                            </div>
+                            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-receipt text-lg"></i></div>
+                            <div><h3 className="font-bold text-gray-800 leading-none">หลักฐาน</h3><p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Evidence</p></div>
                         </div>
-
-                        {/* พื้นที่แสดงรูปภาพ (จำกัดความสูงไม่ให้เกินหน้าจอ) */}
                         <div className="p-4 bg-gray-50">
                             <div className="bg-white rounded-2xl overflow-hidden shadow-inner border border-gray-100 flex items-center justify-center min-h-[250px] max-h-[60vh]">
-                                <img src={imgSrc} className="w-full h-full object-contain" alt="Slip" 
-                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x500?text=Image+Load+Error'; }} 
-                                />
+                                <img src={imgSrc} className="w-full h-full object-contain" alt="Slip" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x500?text=Image+Load+Error'; }} />
                             </div>
                         </div>
-
-                        {/* ปุ่มกดดูรูปเต็ม */}
                         <div className="p-4 bg-white">
-                            <a href={url} target="_blank" className="w-full bg-blue-50 hover:bg-blue-100 text-[#0066FF] font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm">
-                                <i className="fa-solid fa-up-right-from-square text-xs"></i> เปิดดูรูปภาพต้นฉบับ
-                            </a>
+                            <a href={url} target="_blank" className="w-full bg-blue-50 hover:bg-blue-100 text-[#0066FF] font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm"><i className="fa-solid fa-up-right-from-square text-xs"></i> เปิดดูรูปภาพต้นฉบับ</a>
                         </div>
                     </div>
-                </div>,
-                document.body
+                </div>, document.body
             );
         };
 
-        // ==========================================
-        // 📢 หน้าต่างป๊อปอัปประกาศสำคัญ (เด้งขึ้นมาสวยๆ)
-        // ==========================================
         const AnnouncementModal = ({ text, onClose }) => {
             return ReactDOM.createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-5 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
-                    <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-[pop_0.3s_ease-out]" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-[pop_0.3s_ease-out]" onClick={e => e.stopPropagation()}>
                         <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-center relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 opacity-20"><i className="fa-solid fa-bullhorn text-8xl text-white"></i></div>
                             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md border border-white/30 shadow-inner">
@@ -282,8 +248,7 @@
                             </button>
                         </div>
                     </div>
-                </div>,
-                document.body
+                </div>, document.body
             );
         };
 
@@ -326,85 +291,74 @@
         };
 
        // ==========================================
-        // 🔐 Login Component (ปรับระยะให้กระชับขึ้น พอดีจอมือถือ)
+        // 📱 Login Component (รองรับคอมพิวเตอร์ Split Screen)
         // ==========================================
         const Login = ({ onLogin, onRegister }) => {
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
 
             return (
-                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] relative overflow-hidden">
-                    {/* Background Blobs */}
-                    <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-                    <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse animation-delay-2000"></div>
-
-                    <div className="w-full max-w-sm relative z-10">
-                        {/* ✅ ลดระยะห่างด้านล่างโลโก้จาก mb-8 เป็น mb-5 */}
-                        <div className="text-center mb-2">
-                            <div className="relative inline-block">
-                                <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                                <div className="relative w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
-                                    <img 
-                                        src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} 
-                                        alt="MedTech 67 Logo" 
-                                        className="w-XL h-full object-cover rounded-full transform transition-transform scale-150 hover:scale-[1.65] duration-500" 
-                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* ✅ ลดระยะห่างตัวหนังสือ mt-5 เป็น mt-3 */}
-                            <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-3">ระบบชำระเงินชั้นปีที่ 3</h1>
-                            <p className="text-[#0066FF] mt-0.5 font-extrabold text-sm tracking-wide">MedTech 67 Payment System</p>
+                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
+                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
+                        
+                        {/* 🖥️ ส่วนซ้ายสำหรับหน้าจอคอม */}
+                        <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
+                            <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
+                            <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} className="w-56 h-56 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }} />
+                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight">ระบบชำระเงิน<br/>ชั้นปีที่ 3</h2>
+                            <p className="text-blue-100 z-10 mt-3 font-bold text-lg tracking-wider">MedTech 67 Payment</p>
+                            <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-black/10 rounded-full blur-3xl"></div>
                         </div>
 
-                        {/* ✅ ลด padding ในกล่องจาก p-8 เป็น p-6 */}
-                        <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] shadow-xl shadow-blue-900/5 border border-white">
-                            {/* ✅ ลดระยะห่างระหว่างช่องกรอกจาก space-y-5 เป็น space-y-4 */}
-                            <div className="space-y-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-gray-500 ml-1 uppercase tracking-wider">รหัสนักศึกษา</label>
-                                    <div className="relative group">
-                                        <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors">
-                                            <i className="fa-solid fa-user-graduate"></i>
-                                        </span>
-                                        {/* ✅ ลดความสูงช่องกรอกจาก py-4 เป็น py-3.5 */}
-                                        <input type="text" value={id} onChange={e => setId(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] focus:bg-white outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="67XXXXXXXX" />
+                        {/* 📱 ส่วนขวา (ฟอร์ม) สำหรับทุกหน้าจอ */}
+                        <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
+                            {/* บนมือถือโชว์โลโก้ */}
+                            <div className="md:hidden text-center mb-2">
+                                <div className="relative inline-block">
+                                    <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                                    <div className="relative w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
+                                        <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} alt="Logo" className="w-XL h-full object-cover rounded-full transform transition-transform scale-150" onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }} />
                                     </div>
                                 </div>
+                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-3">ระบบชำระเงินชั้นปีที่ 3</h1>
+                                <p className="text-[#0066FF] mt-0.5 font-extrabold text-sm tracking-wide">MedTech 67 Payment System</p>
+                            </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-gray-500 ml-1 uppercase tracking-wider">รหัสผ่าน</label>
-                                    <div className="relative group">
-                                        <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors">
-                                            <i className="fa-solid fa-lock"></i>
-                                        </span>
-                                        <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] focus:bg-white outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="••••••••" />
+                            <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none mt-2">
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] md:text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">รหัสนักศึกษา</label>
+                                        <div className="relative group">
+                                            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-user-graduate"></i></span>
+                                            <input type="text" value={id} onChange={e => setId(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="67XXXXXXXX" />
+                                        </div>
                                     </div>
-                                </div>
-
-                                {/* ✅ ลดระยะห่างปุ่ม และลดความสูงปุ่ม */}
-                                <button onClick={() => onLogin(id, pass)} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-2 text-base">
-                                    เข้าสู่ระบบ
-                                </button>
-                                
-                                <div className="flex items-center justify-center px-1 pt-2">
-                                    <button onClick={onRegister} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors">ลืมรหัสผ่าน? / สร้างรหัสผ่าน</button>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] md:text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">รหัสผ่าน</label>
+                                        <div className="relative group">
+                                            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-lock"></i></span>
+                                            <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="••••••••" />
+                                        </div>
+                                    </div>
+                                    <button onClick={() => onLogin(id, pass)} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 md:py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-4 text-base">เข้าสู่ระบบ</button>
+                                    <div className="flex items-center justify-center px-1 pt-3">
+                                        <button onClick={onRegister} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors">ลืมรหัสผ่าน? / สร้างรหัสผ่าน</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* ✅ ลดระยะห่าง footer ด้านล่างจาก mt-8 เป็น mt-5 */}
-                        <div className="mt-5 text-center">
-                            <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTech 67. All rights reserved.</p>
-                            <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
+                            <div className="mt-8 md:mt-12 text-center">
+                                <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTech 67. All rights reserved.</p>
+                                <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         };
+        
         // ==========================================
-        // 📝 Register / Forgot Password Component (อัปเดตโลโก้และดีไซน์ใหม่)
+        // 📝 Register Component (รองรับคอมพิวเตอร์)
         // ==========================================
         const Register = ({ onBack, onRegisterSuccess }) => {
             const [step, setStep] = useState(1);
@@ -419,15 +373,9 @@
                 setLoading(true);
                 try {
                     const res = await runGoogleScript('verifyStudentId', [studentId]);
-                    if (res.found) {
-                        setStudentInfo(res);
-                        setStep(2);
-                    } else {
-                        Swal.fire('ข้อผิดพลาด', res.message || 'ไม่พบข้อมูลในระบบ', 'error');
-                    }
-                } catch (e) {
-                    Swal.fire('Error', e.toString(), 'error');
-                }
+                    if (res.found) { setStudentInfo(res); setStep(2); } 
+                    else { Swal.fire('ข้อผิดพลาด', res.message || 'ไม่พบข้อมูลในระบบ', 'error'); }
+                } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
                 setLoading(false);
             };
 
@@ -435,18 +383,12 @@
                 if (!newPass || !confirmPass) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสผ่านให้ครบ', 'warning');
                 if (newPass.length < 6) return Swal.fire('แจ้งเตือน', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'warning');
                 if (newPass !== confirmPass) return Swal.fire('แจ้งเตือน', 'รหัสผ่านไม่ตรงกัน', 'warning');
-                
                 setLoading(true);
                 try {
                     const res = await runGoogleScript('setNewPassword', [studentId, newPass]);
-                    if (res.success) {
-                        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'สร้างรหัสผ่านเรียบร้อยแล้ว', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => onRegisterSuccess());
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: res.message, customClass: { popup: 'rounded-3xl' } });
-                    }
-                } catch (e) {
-                    Swal.fire('Error', e.toString(), 'error');
-                }
+                    if (res.success) { Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'สร้างรหัสผ่านเรียบร้อยแล้ว', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => onRegisterSuccess()); } 
+                    else { Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: res.message, customClass: { popup: 'rounded-3xl' } }); }
+                } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
                 setLoading(false);
             };
 
@@ -454,118 +396,81 @@
                 setLoading(true);
                 try {
                     const res = await runGoogleScript('sendRecoveryMessage', [studentId]);
-                    if (res.success) {
-                        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: res.message, confirmButtonColor: '#00B900', customClass: { popup: 'rounded-3xl' } }).then(() => onBack());
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: res.message, customClass: { popup: 'rounded-3xl' } });
-                    }
-                } catch (e) {
-                    Swal.fire('Error', e.toString(), 'error');
-                }
+                    if (res.success) { Swal.fire({ icon: 'success', title: 'สำเร็จ', text: res.message, confirmButtonColor: '#00B900', customClass: { popup: 'rounded-3xl' } }).then(() => onBack()); } 
+                    else { Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: res.message, customClass: { popup: 'rounded-3xl' } }); }
+                } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
                 setLoading(false);
             };
 
             return (
-                <div className="min-h-screen flex items-center justify-center p-6 bg-[#F0F4F8] relative overflow-hidden">
-                    {/* Background Blobs (ตกแต่งพื้นหลัง) */}
-                    <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-                    <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse animation-delay-2000"></div>
+                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
+                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
+                        
+                        <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
+                            <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
+                            <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-56 h-56 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
+                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight">สร้างรหัสผ่านใหม่</h2>
+                            <p className="text-blue-100 z-10 mt-3 font-bold text-lg tracking-wider">MedTech 67 Payment</p>
+                        </div>
 
-                    <div className="w-full max-w-sm relative z-10">
-                        <div className="text-center mb-8">
-                            {/* 🔵 ส่วนรูปโลโก้จาก Google Drive */}
-                            <div className="relative inline-block">
-                                {/* วงแหวนเรืองแสงรอบนอก */}
-                                <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                                
-                                {/* วงกลมหลักสำหรับใส่รูป */}
-                                <div className="relative w-36 h-28 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
-                                    <img 
-                                        src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} 
-                                        alt="MedTech 67 Logo" 
-                                        className="w-full h-full object-cover rounded-full transform transition-transform hover:scale-105 duration-500" 
-                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }}
-                                    />
+                        <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
+                            <div className="md:hidden text-center mb-6">
+                                <div className="relative inline-block">
+                                    <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                                    <div className="relative w-32 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
+                                        <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-full h-full object-cover rounded-full" />
+                                    </div>
                                 </div>
+                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-4">ลืมรหัสผ่าน / สร้างรหัสผ่าน</h1>
+                                <p className="text-[#0066FF] mt-1 font-extrabold text-sm tracking-wide">MedTech 67 Payment System</p>
                             </div>
 
-                            {/* ชื่อระบบ */}
-                            <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-5">ลืมรหัสผ่าน / สร้างรหัสผ่าน</h1>
-                            <p className="text-[#0066FF] mt-1 font-extrabold text-sm tracking-wide">MedTech 67 Payment System</p>
-                        </div>
-
-                        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-white">
-                            
-                            {/* ขั้นตอนที่ 1: กรอกรหัสนักศึกษา */}
-                            {step === 1 && (
-                                <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">ตรวจสอบรหัสนักศึกษา</label>
-                                        <div className="relative group">
-                                            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors">
-                                                <i className="fa-solid fa-id-card"></i>
-                                            </span>
-                                            <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] focus:bg-white outline-none transition-all font-bold text-gray-700 shadow-sm" placeholder="67XXXXXXXX" />
+                            <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2.5rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none">
+                                {step === 1 && (
+                                    <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">ตรวจสอบรหัสนักศึกษา</label>
+                                            <div className="relative group">
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-id-card"></i></span>
+                                                <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 shadow-sm" placeholder="67XXXXXXXX" />
+                                            </div>
                                         </div>
+                                        <button onClick={handleVerify} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-[0.98] mt-4 flex justify-center items-center text-lg">{loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'ตรวจสอบข้อมูล'}</button>
                                     </div>
-                                    <button onClick={handleVerify} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-4 flex justify-center items-center gap-2 text-lg">
-                                        {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'ตรวจสอบข้อมูล'}
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* ขั้นตอนที่ 2: ตั้งรหัสผ่าน หรือ ส่งรหัสไปที่ LINE */}
-                            {step === 2 && studentInfo && (
-                                <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
-                                    <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl text-center mb-4">
-                                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-blue-500">
-                                            <i className="fa-solid fa-user-check text-xl"></i>
+                                )}
+                                {step === 2 && studentInfo && (
+                                    <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
+                                        <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl text-center mb-4">
+                                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-blue-500"><i className="fa-solid fa-user-check text-xl"></i></div>
+                                            <p className="text-sm text-gray-500 font-bold mb-1">ยินดีต้อนรับ</p>
+                                            <h3 className="font-bold text-gray-800 text-lg leading-tight">{studentInfo.name}</h3>
                                         </div>
-                                        <p className="text-sm text-gray-500 font-bold mb-1">ยินดีต้อนรับ</p>
-                                        <h3 className="font-bold text-gray-800 text-lg leading-tight">{studentInfo.name}</h3>
+                                        {studentInfo.hasPassword ? (
+                                            <div className="text-center space-y-4">
+                                                <div className="bg-yellow-50 text-yellow-700 p-4 rounded-xl text-sm font-bold border border-yellow-100"><i className="fa-solid fa-circle-exclamation mr-2"></i>คุณมีรหัสผ่านในระบบแล้ว</div>
+                                                <p className="text-sm text-gray-500 font-medium px-2">หากจำไม่ได้ สามารถให้ระบบส่งรหัสผ่านเดิมไปที่แอป LINE ของคุณได้</p>
+                                                <button onClick={handleRecovery} disabled={loading} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
+                                                    {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><i className="fa-brands fa-line text-xl"></i> ส่งรหัสผ่านไปที่ LINE</>}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div className="bg-green-50 text-green-700 p-3 rounded-xl text-xs font-bold text-center border border-green-100 mb-2"><i className="fa-solid fa-unlock-keyhole mr-1.5"></i>กรุณาตั้งรหัสผ่านใหม่เพื่อเข้าใช้งาน</div>
+                                                <div className="space-y-2"><div className="relative group"><span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF]"><i className="fa-solid fa-key"></i></span><input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 text-sm" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" /></div></div>
+                                                <div className="space-y-2"><div className="relative group"><span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF]"><i className="fa-solid fa-check-double"></i></span><input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 text-sm" placeholder="ยืนยันรหัสผ่านใหม่" /></div></div>
+                                                <button onClick={handleSetPassword} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
+                                                    {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'บันทึกรหัสผ่าน'}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {studentInfo.hasPassword ? (
-                                        <div className="text-center space-y-4">
-                                            <div className="bg-yellow-50 text-yellow-700 p-4 rounded-xl text-sm font-bold border border-yellow-100 shadow-inner">
-                                                <i className="fa-solid fa-circle-exclamation mr-2"></i>คุณมีรหัสผ่านในระบบแล้ว
-                                            </div>
-                                            <p className="text-sm text-gray-500 font-medium px-2">หากจำไม่ได้ สามารถให้ระบบส่งรหัสผ่านเดิมไปที่แอป LINE ของคุณได้เลยครับ</p>
-                                            <button onClick={handleRecovery} disabled={loading} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-200 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
-                                                {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><i className="fa-brands fa-line text-xl"></i> ส่งรหัสผ่านไปที่ LINE</>}
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div className="bg-green-50 text-green-700 p-3 rounded-xl text-xs font-bold text-center border border-green-100 mb-2 shadow-inner">
-                                                <i className="fa-solid fa-unlock-keyhole mr-1.5"></i>กรุณาตั้งรหัสผ่านใหม่เพื่อเข้าใช้งาน
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="relative group">
-                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-key"></i></span>
-                                                    <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] focus:bg-white outline-none transition-all font-bold text-gray-700 text-sm shadow-sm" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="relative group">
-                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-check-double"></i></span>
-                                                    <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] focus:bg-white outline-none transition-all font-bold text-gray-700 text-sm shadow-sm" placeholder="ยืนยันรหัสผ่านใหม่" />
-                                                </div>
-                                            </div>
-                                            <button onClick={handleSetPassword} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
-                                                {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'บันทึกรหัสผ่าน'}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* ปุ่มย้อนกลับไปหน้า Login */}
-                        <div className="mt-8 text-center">
-                            <button onClick={onBack} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors flex items-center justify-center mx-auto gap-2 bg-white/50 px-4 py-2 rounded-full border border-white hover:bg-white shadow-sm">
-                                <i className="fa-solid fa-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ
-                            </button>
+                                )}
+                            </div>
+                            <div className="mt-8 text-center">
+                                <button onClick={onBack} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors flex items-center justify-center mx-auto gap-2 bg-white/50 md:bg-gray-50 px-4 py-2 rounded-full border border-white md:border-gray-200 hover:bg-white shadow-sm">
+                                    <i className="fa-solid fa-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -612,18 +517,18 @@
 
             const { days, hours, minutes, seconds } = timeLeft;
             let label = ""; let unit = "";
-            let color = "#10B981"; let bgColor = "#ECFDF5"; let borderColor = "#10B981";
+            let color = "#10B981"; let bgColor = "#ECFDF5"; 
             let isUrgent = false;
 
             if (days > 0) {
                 label = days; unit = "วัน";
-                if (days <= 3) { color = "#d97706"; bgColor = "#FFFBEB"; borderColor = "#F59E0B"; } 
-                else { color = "#059669"; bgColor = "#ECFDF5"; borderColor = "#10B981"; }
+                if (days <= 3) { color = "#d97706"; bgColor = "#FFFBEB"; } 
+                else { color = "#059669"; bgColor = "#ECFDF5"; }
             } else if (hours > 0) {
-                label = hours; unit = "ชม."; color = "#EA580C"; bgColor = "#FFF7ED"; borderColor = "#F97316"; isUrgent = true; 
+                label = hours; unit = "ชม."; color = "#EA580C"; bgColor = "#FFF7ED"; isUrgent = true; 
             } else {
                 label = `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`; unit = ""; 
-                color = "#DC2626"; bgColor = "#FEF2F2"; borderColor = "#EF4444"; isUrgent = true; 
+                color = "#DC2626"; bgColor = "#FEF2F2"; isUrgent = true; 
             }
             
             return (
@@ -641,7 +546,7 @@
         };
 
         // ==========================================
-        // 📱 1. หน้าต่างรายละเอียดสินค้า (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
+        // 📱 หน้าต่างย่อย: OrderProductModal, PaymentModal ฯลฯ
         // ==========================================
         const OrderProductModal = ({ product, onClose, onConfirm }) => {
             const [selections, setSelections] = useState({});
@@ -668,10 +573,7 @@
                                     const parts = v.split('=');
                                     const label = parts[0].trim();
                                     let priceAddOn = 0;
-                                    if (parts.length > 1) {
-                                        const valStr = parts[1].trim().replace('+', '');
-                                        priceAddOn = Number(valStr) || 0;
-                                    }
+                                    if (parts.length > 1) { priceAddOn = Number(parts[1].trim().replace('+', '')) || 0; }
                                     return { label, price: priceAddOn };
                                 })
                             };
@@ -692,23 +594,16 @@
 
             const nextImage = () => setCurrentImgIndex((prev) => (prev + 1) % images.length);
             const prevImage = () => setCurrentImgIndex((prev) => (prev - 1 + images.length) % images.length);
-            const nextSizeChart = (e) => { e.stopPropagation(); setCurrentSizeChartIndex((prev) => (prev + 1) % sizeCharts.length); };
-            const prevSizeChart = (e) => { e.stopPropagation(); setCurrentSizeChartIndex((prev) => (prev - 1 + sizeCharts.length) % sizeCharts.length); };
 
             const handleConfirm = () => {
-                const newErrors = {};
-                let isValid = true;
+                const newErrors = {}; let isValid = true;
                 optionGroups.forEach(group => { if (!selections[group.name]) { newErrors[group.name] = true; isValid = false; } });
                 if (!isValid) {
                     setErrors(newErrors);
                     Swal.fire({ toast: true, position: 'top', icon: 'warning', title: 'กรุณาเลือกตัวเลือกให้ครบ', showConfirmButton: false, timer: 2000 });
                     return;
                 }
-                let sizeDetail = optionGroups.length > 0 ? Object.entries(selections).map(([key, val]) => {
-                        let detail = `${key}: ${val.label}`;
-                        if (val.price > 0) detail += ` (+${val.price})`;
-                        return detail;
-                    }).join(', ') : "-";
+                let sizeDetail = optionGroups.length > 0 ? Object.entries(selections).map(([key, val]) => `${key}: ${val.label}${val.price > 0 ? ` (+${val.price})` : ''}`).join(', ') : "-";
                 onConfirm({ ...product, size: sizeDetail, qty, price: currentPrice, total, img: images[0] });
             };
 
@@ -718,109 +613,96 @@
             };
 
             return (
-                // ✅ แก้ตรงนี้: ใช้ absolute ปิดทับเนื้อหาด้านล่าง แต่ให้ Header ข้างบนโผล่
-                <div className="absolute top-0 left-0 right-0 bottom-0 bg-[#F0F4F8] z-30 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
-                    
-                    {/* ปุ่มย้อนกลับ */}
-                    <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center">
-                        <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
-                            <i className="fa-solid fa-chevron-left"></i>
-                        </button>
-                    </div>
-
-                    <div className="px-5">
-                        <div className="relative h-80 bg-gray-100 rounded-[2rem] overflow-hidden mb-6 shadow-sm border border-white">
-                            {images.length > 0 ? <img src={getDirectDriveUrl(images[currentImgIndex])} className="w-full h-full object-cover transition-opacity duration-300" onError={(e)=>{e.target.src='https://via.placeholder.com/400?text=No+Image'}} /> : <div className="w-full h-full flex items-center justify-center text-gray-400">ไม่มีรูปภาพ</div>}
-                            {images.length > 1 && (
-                                <>
-                                    <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-md flex items-center justify-center transition backdrop-blur-sm active:scale-95"><i className="fa-solid fa-chevron-left"></i></button>
-                                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-md flex items-center justify-center transition backdrop-blur-sm active:scale-95"><i className="fa-solid fa-chevron-right"></i></button>
-                                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
-                                        {images.map((_, idx) => (<div key={idx} className={`h-1.5 rounded-full transition-all shadow-sm ${idx === currentImgIndex ? 'bg-white w-6' : 'bg-white/50 w-1.5'}`}></div>))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
-                            <h3 className="text-2xl font-extrabold text-gray-900 leading-tight">{product.name}</h3>
-                            <p className="text-[#0066FF] font-black text-3xl mt-1 mb-4">{formatCurrency(currentPrice)}</p>
-                            
-                            {sizeCharts.length > 0 && (
-                                <button onClick={() => setShowSizeChart(true)} className="w-full bg-blue-50/70 hover:bg-blue-100 text-blue-700 py-3.5 rounded-2xl text-sm font-bold transition flex items-center justify-center gap-2 active:scale-95 mb-5 border border-blue-100/50">
-                                    <i className="fa-solid fa-ruler-combined text-lg"></i> ดูตารางไซส์ / รายละเอียด
-                                    {sizeCharts.length > 1 && <span className="text-xs bg-white/70 px-2 py-0.5 rounded-full text-blue-600 shadow-sm">{sizeCharts.length} รูป</span>}
-                                </button>
-                            )}
-
-                            {optionGroups.map((group, idx) => (
-                                <div key={idx} className={`transition-all p-4 rounded-2xl mb-4 ${errors[group.name] ? 'bg-red-50 ring-2 ring-red-200' : 'bg-gray-50 border border-gray-100'}`}>
-                                    <label className={`block text-sm font-extrabold mb-3 ${errors[group.name] ? 'text-red-600' : 'text-gray-700'}`}>
-                                        {group.name} {errors[group.name] && <span className="text-xs font-normal ml-1 text-red-500">(กรุณาเลือก)</span>}
-                                    </label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {group.choices.map((choice, cIdx) => {
-                                            const isSelected = selections[group.name]?.label === choice.label;
-                                            return (
-                                                <button key={cIdx} onClick={() => handleSelect(group.name, choice)}
-                                                    className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95
-                                                    ${isSelected ? 'bg-[#0066FF] text-white shadow-blue-200 ring-4 ring-blue-100' : errors[group.name] ? 'bg-white text-red-500 border border-red-200' : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'}`}>
-                                                    <span>{choice.label}</span>
-                                                    {choice.price > 0 && <span className={`text-[11px] ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>+{choice.price}</span>}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-
-                            <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
-                                <label className="block text-base font-extrabold text-gray-700">จำนวน</label>
-                                <div className="flex items-center gap-1">
-                                    <div className="flex items-center bg-gray-50 rounded-full p-1 border border-gray-200">
-                                        <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-9 h-9 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 shadow-sm transition active:scale-90"><i className="fa-solid fa-minus"></i></button>
-                                        <span className="text-lg font-bold w-12 text-center text-gray-800">{qty}</span>
-                                        <button onClick={() => setQty(q => Math.min(product.stock, q + 1))} disabled={qty >= product.stock} className={`w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shadow-sm transition active:scale-90 ${qty >= product.stock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white text-[#0066FF]'}`}><i className="fa-solid fa-plus"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 flex justify-between items-center gap-4">
-                            <div>
-                                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">ยอดชำระรวม</p>
-                                <p className="text-2xl font-black text-[#0066FF] leading-none">{formatCurrency(total)}</p>
-                            </div>
-                            <button onClick={handleConfirm} className="flex-1 bg-[#0066FF] text-white px-6 py-4 rounded-[1.5rem] font-bold shadow-lg shadow-blue-200 transition transform active:scale-95 flex items-center justify-center text-lg">
-                                ชำระเงิน <i className="fa-solid fa-arrow-right ml-2"></i>
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="max-w-2xl mx-auto relative">
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
+                                <i className="fa-solid fa-chevron-left"></i>
                             </button>
                         </div>
-                    </div>
-
-                    {/* 🟢 Size Chart Popup (ดีดทะลุกรอบให้เต็มหน้าจอเป๊ะๆ) */}
-                    {showSizeChart && ReactDOM.createPortal(
-                        <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center animate-[fadeIn_0.2s_ease-out] p-4">
-                            <button onClick={() => setShowSizeChart(false)} className="absolute top-5 right-5 text-white w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center backdrop-blur-md z-50 transition active:scale-90"><i className="fa-solid fa-xmark text-2xl"></i></button>
-                            <div className="relative w-full h-full flex items-center justify-center">
-                                <img src={getDirectDriveUrl(sizeCharts[currentSizeChartIndex])} className="max-w-full max-h-full object-contain rounded-2xl" />
-                                {sizeCharts.length > 1 && (
+                        <div className="px-5">
+                            <div className="relative h-80 bg-gray-100 rounded-[2rem] overflow-hidden mb-6 shadow-sm border border-white">
+                                {images.length > 0 ? <img src={getDirectDriveUrl(images[currentImgIndex])} className="w-full h-full object-cover transition-opacity duration-300" onError={(e)=>{e.target.src='https://via.placeholder.com/400?text=No+Image'}} /> : <div className="w-full h-full flex items-center justify-center text-gray-400">ไม่มีรูปภาพ</div>}
+                                {images.length > 1 && (
                                     <>
-                                        <button onClick={prevSizeChart} className="absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 bg-white text-black rounded-full flex items-center justify-center transition shadow-xl active:scale-90"><i className="fa-solid fa-chevron-left text-xl"></i></button>
-                                        <button onClick={nextSizeChart} className="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 bg-white text-black rounded-full flex items-center justify-center transition shadow-xl active:scale-90"><i className="fa-solid fa-chevron-right text-xl"></i></button>
-                                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                                            {sizeCharts.map((_, idx) => (<div key={idx} className={`h-1.5 rounded-full transition-all ${idx === currentSizeChartIndex ? 'bg-white w-6' : 'bg-white/30 w-1.5'}`}></div>))}
+                                        <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-md flex items-center justify-center transition backdrop-blur-sm active:scale-95"><i className="fa-solid fa-chevron-left"></i></button>
+                                        <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 hover:bg-white text-gray-800 rounded-full shadow-md flex items-center justify-center transition backdrop-blur-sm active:scale-95"><i className="fa-solid fa-chevron-right"></i></button>
+                                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+                                            {images.map((_, idx) => (<div key={idx} className={`h-1.5 rounded-full transition-all shadow-sm ${idx === currentImgIndex ? 'bg-white w-6' : 'bg-white/50 w-1.5'}`}></div>))}
                                         </div>
                                     </>
                                 )}
                             </div>
-                            <p className="text-white/60 text-sm mt-4 font-medium"><i className="fa-solid fa-magnifying-glass-plus mr-2"></i>สามารถซูมดูรายละเอียดได้</p>
-                        </div>,
-                        document.body
-                    )}
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
+                                <h3 className="text-2xl font-extrabold text-gray-900 leading-tight">{product.name}</h3>
+                                <p className="text-[#0066FF] font-black text-3xl mt-1 mb-4">{formatCurrency(currentPrice)}</p>
+                                {sizeCharts.length > 0 && (
+                                    <button onClick={() => setShowSizeChart(true)} className="w-full bg-blue-50/70 hover:bg-blue-100 text-blue-700 py-3.5 rounded-2xl text-sm font-bold transition flex items-center justify-center gap-2 active:scale-95 mb-5 border border-blue-100/50">
+                                        <i className="fa-solid fa-ruler-combined text-lg"></i> ดูตารางไซส์ / รายละเอียด
+                                        {sizeCharts.length > 1 && <span className="text-xs bg-white/70 px-2 py-0.5 rounded-full text-blue-600 shadow-sm">{sizeCharts.length} รูป</span>}
+                                    </button>
+                                )}
+                                {optionGroups.map((group, idx) => (
+                                    <div key={idx} className={`transition-all p-4 rounded-2xl mb-4 ${errors[group.name] ? 'bg-red-50 ring-2 ring-red-200' : 'bg-gray-50 border border-gray-100'}`}>
+                                        <label className={`block text-sm font-extrabold mb-3 ${errors[group.name] ? 'text-red-600' : 'text-gray-700'}`}>
+                                            {group.name} {errors[group.name] && <span className="text-xs font-normal ml-1 text-red-500">(กรุณาเลือก)</span>}
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {group.choices.map((choice, cIdx) => {
+                                                const isSelected = selections[group.name]?.label === choice.label;
+                                                return (
+                                                    <button key={cIdx} onClick={() => handleSelect(group.name, choice)}
+                                                        className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95
+                                                        ${isSelected ? 'bg-[#0066FF] text-white shadow-blue-200 ring-4 ring-blue-100' : errors[group.name] ? 'bg-white text-red-500 border border-red-200' : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'}`}>
+                                                        <span>{choice.label}</span>
+                                                        {choice.price > 0 && <span className={`text-[11px] ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>+{choice.price}</span>}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
+                                    <label className="block text-base font-extrabold text-gray-700">จำนวน</label>
+                                    <div className="flex items-center gap-1">
+                                        <div className="flex items-center bg-gray-50 rounded-full p-1 border border-gray-200">
+                                            <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-9 h-9 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 shadow-sm transition active:scale-90"><i className="fa-solid fa-minus"></i></button>
+                                            <span className="text-lg font-bold w-12 text-center text-gray-800">{qty}</span>
+                                            <button onClick={() => setQty(q => Math.min(product.stock, q + 1))} disabled={qty >= product.stock} className={`w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold shadow-sm transition active:scale-90 ${qty >= product.stock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white text-[#0066FF]'}`}><i className="fa-solid fa-plus"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 flex justify-between items-center gap-4">
+                                <div>
+                                    <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">ยอดชำระรวม</p>
+                                    <p className="text-2xl font-black text-[#0066FF] leading-none">{formatCurrency(total)}</p>
+                                </div>
+                                <button onClick={handleConfirm} className="flex-1 bg-[#0066FF] text-white px-6 py-4 rounded-[1.5rem] font-bold shadow-lg shadow-blue-200 transition transform active:scale-95 flex items-center justify-center text-lg">
+                                    ชำระเงิน <i className="fa-solid fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {showSizeChart && ReactDOM.createPortal(
+                            <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center animate-[fadeIn_0.2s_ease-out] p-4">
+                                <button onClick={() => setShowSizeChart(false)} className="absolute top-5 right-5 text-white w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center backdrop-blur-md z-50 transition active:scale-90"><i className="fa-solid fa-xmark text-2xl"></i></button>
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                    <img src={getDirectDriveUrl(sizeCharts[currentSizeChartIndex])} className="max-w-full max-h-full object-contain rounded-2xl" />
+                                    {sizeCharts.length > 1 && (
+                                        <>
+                                            <button onClick={(e) => {e.stopPropagation(); setCurrentSizeChartIndex((prev) => (prev - 1 + sizeCharts.length) % sizeCharts.length);}} className="absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 bg-white text-black rounded-full flex items-center justify-center transition shadow-xl active:scale-90"><i className="fa-solid fa-chevron-left text-xl"></i></button>
+                                            <button onClick={(e) => {e.stopPropagation(); setCurrentSizeChartIndex((prev) => (prev + 1) % sizeCharts.length);}} className="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 bg-white text-black rounded-full flex items-center justify-center transition shadow-xl active:scale-90"><i className="fa-solid fa-chevron-right text-xl"></i></button>
+                                        </>
+                                    )}
+                                </div>
+                                <p className="text-white/60 text-sm mt-4 font-medium"><i className="fa-solid fa-magnifying-glass-plus mr-2"></i>สามารถซูมดูรายละเอียดได้</p>
+                            </div>, document.body
+                        )}
+                    </div>
                 </div>
             );
         };
-
         // ==========================================
         // 📱 2. หน้าชำระเงินบิลค่าเทอม (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
         // ==========================================
@@ -851,8 +733,7 @@
                         billId: bill.billId, rowIndex: bill.row, 
                         studentId: user.studentId, studentName: user.name, studentLineId: user.userId, 
                         item: bill.item, amount: bill.amount, total: bill.total, 
-                        fileData: reader.result.split(',')[1], mimeType: file.type, 
-                        forceSubmit: force 
+                        fileData: reader.result.split(',')[1], mimeType: file.type, forceSubmit: force 
                     };
                     
                     try {
@@ -883,62 +764,57 @@
             };
 
             return (
-                // ✅ แก้ตรงนี้: ใช้ absolute ปิดทับเนื้อหาด้านล่าง แต่ให้ Header ข้างบนโผล่
-                <div className="absolute top-0 left-0 right-0 bottom-0 bg-[#F0F4F8] z-30 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
-                    {isSubmitting && <ProgressLoading progress={progress} />}
-                    
-                    {/* ปุ่มย้อนกลับ */}
-                    <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
-                        <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
-                            <i className="fa-solid fa-chevron-left"></i>
-                        </button>
-                        <h2 className="font-bold text-xl ml-3 text-gray-800">ชำระเงินบิล</h2>
-                    </div>
-
-                    <div className="px-5">
-                        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
-                            <div className="mb-5">
-                                <span className="text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 shadow-sm animate-pulse">
-                                    <i className="fa-solid fa-arrow-down mr-1"></i> กรุณาแนบหลักฐานด้านล่าง
-                                </span>
-                            </div>
-                            <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-blue-100 inline-block shadow-sm relative mb-4">
-                                <img src={bill.qrCode} className="w-52 h-52 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://via.placeholder.com/200'} />
-                                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#0066FF] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-md tracking-wider">SCAN ME</div>
-                            </div>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">ยอดที่ต้องชำระ</p>
-                            <p className="text-4xl font-extrabold text-[#0066FF] leading-tight">{formatCurrency(bill.total)}</p>
-                            <p className="text-sm font-bold text-gray-500 mt-2 bg-gray-50 inline-block px-4 py-1.5 rounded-xl border border-gray-100">{bill.item}</p>
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="max-w-2xl mx-auto relative">
+                        {isSubmitting && <ProgressLoading progress={progress} />}
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
+                                <i className="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <h2 className="font-bold text-xl ml-3 text-gray-800">ชำระเงินบิล</h2>
                         </div>
-
-                        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
-                            <label className="block text-sm font-extrabold text-gray-800 mb-3"><i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน</label>
-                            <div className="group flex justify-center px-6 py-8 border-2 border-gray-200 border-dashed rounded-3xl hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer relative bg-gray-50 overflow-hidden">
-                                <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                <div className="text-center relative z-0 w-full">
-                                    {!preview ? (
-                                        <>
-                                            <div className="w-16 h-16 bg-white text-[#0066FF] rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100 group-hover:scale-110 transition-transform"><i className="fa-solid fa-cloud-arrow-up text-2xl"></i></div>
-                                            <span className="text-sm font-bold text-gray-500 group-hover:text-[#0066FF]">แตะเพื่ออัปโหลดรูปสลีป</span>
-                                        </>
-                                    ) : (
-                                        <div className="relative inline-block w-full px-4">
-                                            <img src={preview} className="max-h-64 mx-auto object-contain rounded-xl shadow-sm border bg-white" />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div>
-                                        </div>
-                                    )}
+                        <div className="px-5">
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
+                                <div className="mb-5">
+                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 shadow-sm animate-pulse">
+                                        <i className="fa-solid fa-arrow-down mr-1"></i> กรุณาแนบหลักฐานด้านล่าง
+                                    </span>
+                                </div>
+                                <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-blue-100 inline-block shadow-sm relative mb-4">
+                                    <img src={bill.qrCode} className="w-52 h-52 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://via.placeholder.com/200'} />
+                                    <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#0066FF] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-md tracking-wider">SCAN ME</div>
+                                </div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">ยอดที่ต้องชำระ</p>
+                                <p className="text-4xl font-extrabold text-[#0066FF] leading-tight">{formatCurrency(bill.total)}</p>
+                                <p className="text-sm font-bold text-gray-500 mt-2 bg-gray-50 inline-block px-4 py-1.5 rounded-xl border border-gray-100">{bill.item}</p>
+                            </div>
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
+                                <label className="block text-sm font-extrabold text-gray-800 mb-3"><i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน</label>
+                                <div className="group flex justify-center px-6 py-8 border-2 border-gray-200 border-dashed rounded-3xl hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer relative bg-gray-50 overflow-hidden">
+                                    <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                    <div className="text-center relative z-0 w-full">
+                                        {!preview ? (
+                                            <>
+                                                <div className="w-16 h-16 bg-white text-[#0066FF] rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100 group-hover:scale-110 transition-transform"><i className="fa-solid fa-cloud-arrow-up text-2xl"></i></div>
+                                                <span className="text-sm font-bold text-gray-500 group-hover:text-[#0066FF]">แตะเพื่ออัปโหลดรูปสลีป</span>
+                                            </>
+                                        ) : (
+                                            <div className="relative inline-block w-full px-4">
+                                                <img src={preview} className="max-h-64 mx-auto object-contain rounded-xl shadow-sm border bg-white" />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
+                            <button onClick={() => submit(false)} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                ยืนยันการชำระเงิน <i className="fa-solid fa-paper-plane ml-2"></i>
+                            </button>
                         </div>
-
-                        <button onClick={() => submit(false)} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
-                            ยืนยันการชำระเงิน <i className="fa-solid fa-paper-plane ml-2"></i>
-                        </button>
                     </div>
                 </div>
             );
         };
-
         // ==========================================
         // 📱 3. หน้าชำระเงินค่าสินค้า (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
         // ==========================================
@@ -961,16 +837,12 @@
             const submit = async () => {
                 if(!file) return;
                 setIsSubmitting(true); setProgress(0);
-
                 const progressInterval = setInterval(() => { setProgress(old => { if (old >= 90) return 90; return old + Math.floor(Math.random()*15)+1; }); }, 300);
 
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = async () => {
-                    const payload = { 
-                        studentId: user.studentId, productName: order.name, size: order.size, quantity: order.qty, total: order.total, 
-                        fileData: reader.result.split(',')[1], mimeType: file.type 
-                    };
+                    const payload = { studentId: user.studentId, productName: order.name, size: order.size, quantity: order.qty, total: order.total, fileData: reader.result.split(',')[1], mimeType: file.type };
                     try {
                         const res = await runGoogleScript('submitOrderWithSlip', [payload]);
                         clearInterval(progressInterval); setProgress(100);
@@ -984,173 +856,112 @@
             };
 
             return (
-                // ✅ แก้ตรงนี้: ใช้ absolute ปิดทับเนื้อหาด้านล่าง แต่ให้ Header ข้างบนโผล่
-                <div className="absolute top-0 left-0 right-0 bottom-0 bg-[#F0F4F8] z-30 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
-                    {isSubmitting && <ProgressLoading progress={progress} />}
-                    
-                    {/* ปุ่มย้อนกลับ */}
-                    <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
-                        <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
-                            <i className="fa-solid fa-chevron-left"></i>
-                        </button>
-                        <h2 className="font-bold text-xl ml-3 text-gray-800">ชำระเงินค่าสินค้า</h2>
-                    </div>
-
-                    <div className="px-5">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-[2rem] border border-blue-100 flex justify-between items-center shadow-sm mb-6">
-                            <div>
-                                <p className="font-extrabold text-gray-900 text-lg leading-tight">{order.name}</p>
-                                <div className="flex gap-2 mt-1">
-                                    <span className="text-xs bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold shadow-sm border border-gray-100">{order.size}</span>
-                                    <span className="text-xs bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold shadow-sm border border-gray-100">x{order.qty}</span>
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="max-w-2xl mx-auto relative">
+                        {isSubmitting && <ProgressLoading progress={progress} />}
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
+                                <i className="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <h2 className="font-bold text-xl ml-3 text-gray-800">ชำระเงินค่าสินค้า</h2>
+                        </div>
+                        <div className="px-5">
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-[2rem] border border-blue-100 flex justify-between items-center shadow-sm mb-6">
+                                <div>
+                                    <p className="font-extrabold text-gray-900 text-lg leading-tight">{order.name}</p>
+                                    <div className="flex gap-2 mt-1">
+                                        <span className="text-xs bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold shadow-sm border border-gray-100">{order.size}</span>
+                                        <span className="text-xs bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold shadow-sm border border-gray-100">x{order.qty}</span>
+                                    </div>
+                                </div>
+                                <div className="text-3xl font-black text-[#0066FF]">{formatCurrency(order.total)}</div>
+                            </div>
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
+                                <div className="mb-4"><span className="text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 shadow-sm animate-pulse"><i className="fa-solid fa-arrow-down mr-1"></i> กรุณาแนบหลักฐานด้านล่าง</span></div>
+                                <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-gray-200 inline-block shadow-sm">
+                                    <img src={paymentQrCode} className="w-48 h-48 object-contain mx-auto rounded-xl" />
+                                </div>
+                                <div className="mt-4 bg-gray-50 py-2 px-4 rounded-xl inline-block border border-gray-100">
+                                    <p className="text-sm font-bold text-gray-600 tracking-wider"><i className="fa-solid fa-building-columns mr-1 text-[#0066FF]"></i> {gWalletDisplay}</p>
                                 </div>
                             </div>
-                            <div className="text-3xl font-black text-[#0066FF]">{formatCurrency(order.total)}</div>
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
+                                <label className="block text-sm font-extrabold text-gray-800 mb-3"><i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน</label>
+                                <div className="group relative border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center cursor-pointer overflow-hidden py-8">
+                                    <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                    <div className="text-center z-0 w-full">
+                                        {!preview ? (
+                                            <><div className="w-16 h-16 bg-white shadow-sm border border-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:text-[#0066FF] group-hover:scale-110 transition"><i className="fa-solid fa-cloud-arrow-up text-2xl"></i></div><p className="text-sm font-bold text-gray-500 group-hover:text-[#0066FF]">แตะเพื่อเลือกรูป</p></>
+                                        ) : (
+                                            <div className="relative inline-block w-full px-4"><img src={preview} className="max-h-64 w-full object-contain rounded-xl p-1 bg-white shadow-sm border border-gray-100" /><div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl mx-4 backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div></div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={submit} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                ยืนยันการโอน <i className="fa-solid fa-paper-plane ml-2"></i>
+                            </button>
                         </div>
-
-                        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
-                            <div className="mb-4">
-                                <span className="text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 shadow-sm animate-pulse">
-                                    <i className="fa-solid fa-arrow-down mr-1"></i> กรุณาแนบหลักฐานด้านล่าง
-                                </span>
-                            </div>
-                            <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-gray-200 inline-block shadow-sm">
-                                <img src={paymentQrCode} className="w-48 h-48 object-contain mx-auto rounded-xl" />
-                            </div>
-                            <div className="mt-4 bg-gray-50 py-2 px-4 rounded-xl inline-block border border-gray-100">
-                                <p className="text-sm font-bold text-gray-600 tracking-wider"><i className="fa-solid fa-building-columns mr-1 text-[#0066FF]"></i> {gWalletDisplay}</p>
-                            </div>
+                    </div>
+                </div>
+            );
+        };
+        // ==========================================
+        // 📱 4. หน้าย่อยรายละเอียดโครงการการเงิน (ปรับให้ใหม่ขึ้นก่อนเสมอ)
+        // ==========================================
+       const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
+            const [sortOrder, setSortOrder] = useState('desc'); 
+            const sortedTransactions = sortOrder === 'desc' ? [...project.transactions].reverse() : [...project.transactions];
+            return (
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="max-w-2xl mx-auto relative">
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0"><i className="fa-solid fa-chevron-left"></i></button>
+                            <h2 className="font-bold text-lg ml-3 text-gray-800 line-clamp-1">{project.name}</h2>
                         </div>
-
-                        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
-                            <label className="block text-sm font-extrabold text-gray-800 mb-3"><i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน</label>
-                            <div className="group relative border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center cursor-pointer overflow-hidden py-8">
-                                <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                <div className="text-center z-0 w-full">
-                                    {!preview ? (
-                                        <>
-                                            <div className="w-16 h-16 bg-white shadow-sm border border-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:text-[#0066FF] group-hover:scale-110 transition"><i className="fa-solid fa-cloud-arrow-up text-2xl"></i></div>
-                                            <p className="text-sm font-bold text-gray-500 group-hover:text-[#0066FF]">แตะเพื่อเลือกรูป</p>
-                                        </>
-                                    ) : (
-                                        <div className="relative inline-block w-full px-4">
-                                            <img src={preview} className="max-h-64 w-full object-contain rounded-xl p-1 bg-white shadow-sm border border-gray-100" />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl mx-4 backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div>
-                                        </div>
+                        <div className="px-5">
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 text-center">
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">ยอดคงเหลือโครงการ</p>
+                                <h2 className="text-4xl font-black text-[#0066FF] mb-4 leading-none">{formatCurrency(project.income - project.expense)}</h2>
+                                <div className="flex gap-4 pt-4 border-t border-gray-100">
+                                    {project.income > 0 && (
+                                        <div className="flex-1 bg-green-50/50 p-3 rounded-2xl border border-green-100"><p className="text-green-600 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับ</p><p className="font-bold text-green-700 text-sm">{formatCurrency(project.income)}</p></div>
+                                    )}
+                                    {project.expense > 0 && (
+                                        <div className="flex-1 bg-red-50/50 p-3 rounded-2xl border border-red-100"><p className="text-red-500 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่าย</p><p className="font-bold text-red-600 text-sm">{formatCurrency(project.expense)}</p></div>
                                     )}
                                 </div>
                             </div>
-                        </div>
-
-                        <button onClick={submit} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
-                            ยืนยันการโอน <i className="fa-solid fa-paper-plane ml-2"></i>
-                        </button>
-                    </div>
-                </div>
-            );
-        };
-
-// ==========================================
-        // 📱 4. หน้าย่อยรายละเอียดโครงการการเงิน (ปรับให้ใหม่ขึ้นก่อนเสมอ)
-        // ==========================================
-        const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
-            const [sortOrder, setSortOrder] = useState('desc'); // desc = ใหม่ไปเก่า
-
-            // ✅ เริ่มต้นให้กลับด้าน Array เพื่อเอาบรรทัดล่าสุดในชีตขึ้นมาโชว์ก่อน
-            const sortedTransactions = sortOrder === 'desc' 
-                ? [...project.transactions].reverse() 
-                : [...project.transactions];
-
-            return (
-                <div className="absolute inset-0 bg-[#F0F4F8] z-30 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
-                    
-                    {/* ปุ่มย้อนกลับ */}
-                    <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
-                        <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0">
-                            <i className="fa-solid fa-chevron-left"></i>
-                        </button>
-                        <h2 className="font-bold text-lg ml-3 text-gray-800 line-clamp-1">{project.name}</h2>
-                    </div>
-
-                    <div className="px-5">
-                        {/* สรุปยอดของโครงการนี้ */}
-                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 text-center">
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">ยอดคงเหลือโครงการ</p>
-                            <h2 className="text-4xl font-black text-[#0066FF] mb-4 leading-none">{formatCurrency(project.income - project.expense)}</h2>
-                            
-                            <div className="flex gap-4 pt-4 border-t border-gray-100">
-                                {project.income > 0 && (
-                                    <div className="flex-1 bg-green-50/50 p-3 rounded-2xl border border-green-100">
-                                        <p className="text-green-600 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับ</p>
-                                        <p className="font-bold text-green-700 text-sm">{formatCurrency(project.income)}</p>
-                                    </div>
-                                )}
-                                {project.expense > 0 && (
-                                    <div className="flex-1 bg-red-50/50 p-3 rounded-2xl border border-red-100">
-                                        <p className="text-red-500 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่าย</p>
-                                        <p className="font-bold text-red-600 text-sm">{formatCurrency(project.expense)}</p>
-                                    </div>
-                                )}
+                            <div className="flex justify-between items-center mb-4 px-2">
+                                <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-list-check text-[#0066FF] mr-2"></i> รายการเคลื่อนไหว</h3>
+                                <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 active:scale-95 transition">
+                                    <i className={`fa-solid ${sortOrder === 'desc' ? 'fa-arrow-up-short-wide text-orange-500' : 'fa-arrow-down-short-wide text-[#0066FF]'}`}></i>{sortOrder === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
+                                </button>
                             </div>
-                        </div>
-
-                        {/* ✅ ปุ่มสลับการเรียงลำดับ */}
-                        <div className="flex justify-between items-center mb-4 px-2">
-                            <h3 className="font-bold text-gray-800 flex items-center">
-                                <i className="fa-solid fa-list-check text-[#0066FF] mr-2"></i> รายการเคลื่อนไหว
-                            </h3>
-                            <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 active:scale-95 transition">
-                                <i className={`fa-solid ${sortOrder === 'desc' ? 'fa-arrow-up-short-wide text-orange-500' : 'fa-arrow-down-short-wide text-[#0066FF]'}`}></i>
-                                {sortOrder === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
-                            </button>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            {sortedTransactions.length === 0 ? (
-                                <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50">
-                                    <div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ยังไม่มีรายการ
-                                </div>
-                            ) : (
-                                sortedTransactions.map((tx, i) => (
-                                    <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 hover:border-blue-100 transition-colors">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner ${tx.type==='income'?'bg-green-50 text-green-500':'bg-red-50 text-red-500'}`}>
-                                                    <i className={`fa-solid ${tx.type==='income'?'fa-arrow-down-long':'fa-arrow-up-long'}`}></i>
+                            <div className="space-y-3">
+                                {sortedTransactions.length === 0 ? (
+                                    <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ยังไม่มีรายการ</div>
+                                ) : (
+                                    sortedTransactions.map((tx, i) => (
+                                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 hover:border-blue-100 transition-colors">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner ${tx.type==='income'?'bg-green-50 text-green-500':'bg-red-50 text-red-500'}`}><i className={`fa-solid ${tx.type==='income'?'fa-arrow-down-long':'fa-arrow-up-long'}`}></i></div>
+                                                    <div><h4 className="font-bold text-gray-800 text-sm leading-tight mb-1 pr-2">{tx.item}</h4><p className="text-[11px] text-gray-500"><i className="fa-solid fa-user text-gray-300 mr-1"></i> {tx.responsible}</p><p className="text-[10px] font-bold text-gray-400 mt-0.5"><i className="fa-solid fa-calendar text-gray-300 mr-1"></i> {tx.date}</p></div>
                                                 </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-800 text-sm leading-tight mb-1 pr-2">{tx.item}</h4>
-                                                    <p className="text-[11px] text-gray-500"><i className="fa-solid fa-user text-gray-300 mr-1"></i> {tx.responsible}</p>
-                                                    <p className="text-[10px] font-bold text-gray-400 mt-0.5"><i className="fa-solid fa-calendar text-gray-300 mr-1"></i> {tx.date}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right flex flex-col items-end shrink-0 pl-1 w-[90px]">
-                                                <p className={`font-black mb-2 ${tx.type==='income'?'text-green-500':'text-red-500'}`}>
-                                                    {tx.type==='income'?'+':'-'}{formatCurrency(tx.amount)}
-                                                </p>
-                                                
-                                                <div className="flex flex-col gap-1.5 w-full">
-                                                    {tx.receiptUrl && (
-                                                        <button onClick={() => onViewSlip(tx.receiptUrl)} className="text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-blue-100/50">
-                                                            <i className="fa-solid fa-file-invoice mr-1.5"></i> ใบเสร็จ
-                                                        </button>
-                                                    )}
-                                                    {tx.transferSlipUrl && (
-                                                        <button onClick={() => onViewSlip(tx.transferSlipUrl)} className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-indigo-100/50">
-                                                            <i className="fa-solid fa-money-bill-transfer mr-1.5"></i> สลิปจ่ายเงิน
-                                                        </button>
-                                                    )}
-                                                    {(!tx.receiptUrl && !tx.transferSlipUrl) && (
-                                                        <span className="inline-block text-[10px] font-bold bg-gray-50 text-gray-400 py-1.5 rounded-lg border border-gray-100 text-center w-full">
-                                                            ไม่มีหลักฐาน
-                                                        </span>
-                                                    )}
+                                                <div className="text-right flex flex-col items-end shrink-0 pl-1 w-[90px]">
+                                                    <p className={`font-black mb-2 ${tx.type==='income'?'text-green-500':'text-red-500'}`}>{tx.type==='income'?'+':'-'}{formatCurrency(tx.amount)}</p>
+                                                    <div className="flex flex-col gap-1.5 w-full">
+                                                        {tx.receiptUrl && <button onClick={() => onViewSlip(tx.receiptUrl)} className="text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-blue-100/50"><i className="fa-solid fa-file-invoice mr-1.5"></i> ใบเสร็จ</button>}
+                                                        {tx.transferSlipUrl && <button onClick={() => onViewSlip(tx.transferSlipUrl)} className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-indigo-100/50"><i className="fa-solid fa-money-bill-transfer mr-1.5"></i> สลิปจ่ายเงิน</button>}
+                                                        {(!tx.receiptUrl && !tx.transferSlipUrl) && <span className="inline-block text-[10px] font-bold bg-gray-50 text-gray-400 py-1.5 rounded-lg border border-gray-100 text-center w-full">ไม่มีหลักฐาน</span>}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1158,7 +969,7 @@
         };
 
         // ==========================================
-        // 📱 5. หน้าต่างติดตามสถานะการสั่งซื้อ (Order Tracking)
+        // 📱 หน้าต่างติดตามสถานะการสั่งซื้อ (Order Tracking)
         // ==========================================
         const OrderTrackingSubPage = ({ order, onClose }) => {
             const steps = [
@@ -1166,17 +977,18 @@
                 { status: 'ชำระแล้ว', icon: 'fa-money-bill-wave', title: 'ชำระแล้ว', desc: 'ระบบยืนยันยอดเงินเรียบร้อย' },
                 { status: 'อยู่ระหว่างสั่งซื้อ', icon: 'fa-cart-shopping', title: 'กำลังสั่งซื้อ', desc: 'แอดมินกำลังรวบรวมออเดอร์' },
                 { status: 'อยู่ระหว่างผลิต', icon: 'fa-hammer', title: 'กำลังผลิต', desc: 'กำลังดำเนินการผลิตสินค้า' },
-                // ✅ เปลี่ยนชื่อเป็น พร้อมรับสินค้า
                 { status: 'รอรับของ', icon: 'fa-box', title: 'พร้อมรับสินค้า', desc: 'นำ QR Code มารับได้เลย' }, 
                 { status: 'รับแล้ว', icon: 'fa-box-open', title: 'รับสินค้าแล้ว', desc: 'ส่งมอบให้คุณเรียบร้อย' }
             ];
 
             const currentStatus = order.status?.trim() || 'รอตรวจสอบ';
             const isCancelled = currentStatus === 'ยกเลิก';
-            const isReceived = currentStatus === 'รับแล้ว'; // ✅ เช็คสถานะรับของแล้ว
+            const isReceived = currentStatus === 'รับแล้ว'; 
             
             let currentStepIndex = steps.findIndex(s => s.status === currentStatus);
             if (currentStepIndex === -1 && !isCancelled && !isReceived) currentStepIndex = 0; 
+
+            const isReadyForPickup = currentStepIndex >= 4;
 
             const showQR = () => {
                 Swal.fire({
@@ -1199,109 +1011,97 @@
 
             return (
                 <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
-                    <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
-                        <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0">
-                            <i className="fa-solid fa-chevron-left"></i>
-                        </button>
-                        <h2 className="font-bold text-lg ml-3 text-gray-800">ติดตามสถานะสินค้า</h2>
-                    </div>
-
-                    <div className="px-5">
-                        <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
-                            <div className="flex justify-between items-start mb-3 border-b border-gray-100 pb-3">
-                                <div>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">รหัสออเดอร์</p>
-                                    <p className="font-mono font-black text-[#0066FF] text-lg">{order.id}</p>
-                                </div>
-                                {/* ✅ ปุ่ม QR Code แสดงตลอดเวลา ไม่โดนซ่อนแล้ว */}
-                                <button onClick={showQR} className="bg-blue-50 hover:bg-blue-100 text-[#0066FF] w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-blue-100/50 shadow-sm shrink-0">
-                                    <i className="fa-solid fa-qrcode text-xl"></i>
-                                </button>
-                            </div>
-                            <div>
-                                <p className="font-bold text-gray-800 text-sm leading-relaxed mb-2"><i className="fa-solid fa-bag-shopping text-orange-400 mr-2"></i>{order.items}</p>
-                                <div className="flex justify-between items-center mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                    <div><p className="text-[10px] text-gray-400 font-bold mb-0.5">วันที่สั่งซื้อ</p><p className="text-xs text-gray-600 font-medium">{order.date}</p></div>
-                                    <div className="text-right"><p className="text-[10px] text-gray-400 font-bold mb-0.5">ยอดรวม</p><p className="font-black text-base text-gray-800 leading-none">{formatCurrency(order.price)}</p></div>
-                                </div>
-                            </div>
+                    <div className="max-w-2xl mx-auto relative">
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0">
+                                <i className="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <h2 className="font-bold text-lg ml-3 text-gray-800">ติดตามสถานะสินค้า</h2>
                         </div>
 
-                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 overflow-hidden">
-                            <h3 className="font-bold text-gray-800 mb-8 flex items-center"><i className="fa-solid fa-route text-[#0066FF] mr-2"></i> ลำดับสถานะ</h3>
-                            
-                            {/* เช็คสถานะ ยกเลิก หรือ รับของแล้ว */}
-                            {isCancelled ? (
-                                <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center animate-[pop_0.4s_ease-out]">
-                                    <div className="w-16 h-16 bg-white text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-ban"></i></div>
-                                    <h4 className="font-bold text-red-600 text-lg">รายการถูกยกเลิก</h4>
-                                    <p className="text-sm text-red-400 mt-1">คำสั่งซื้อนี้ถูกยกเลิกแล้ว</p>
+                        <div className="px-5">
+                            <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-50 mb-6">
+                                <div className="flex justify-between items-start mb-3 border-b border-gray-100 pb-3">
+                                    <div>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">รหัสออเดอร์</p>
+                                        <p className="font-mono font-black text-[#0066FF] text-lg">{order.id}</p>
+                                    </div>
+                                    <button onClick={showQR} className="bg-blue-50 hover:bg-blue-100 text-[#0066FF] w-12 h-12 rounded-xl flex flex-col items-center justify-center transition active:scale-95 border border-blue-100/50 shadow-sm shrink-0">
+                                        <i className="fa-solid fa-qrcode text-xl"></i>
+                                    </button>
                                 </div>
-                            ) : isReceived ? (
-                                /* ✅ กล่องสำเร็จสีเขียว (โชว์เมื่อรับของแล้ว) */
-                                <div className="bg-green-50 border border-green-100 p-6 rounded-2xl text-center animate-[pop_0.4s_ease-out]">
-                                    <div className="w-16 h-16 bg-white text-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-check-circle"></i></div>
-                                    <h4 className="font-bold text-green-600 text-lg">รับสินค้าเรียบร้อยแล้ว</h4>
-                                    <p className="text-sm text-green-500 mt-1">ขอบคุณที่ใช้บริการ MedTech 67 Payment</p>
+                                <div>
+                                    <p className="font-bold text-gray-800 text-sm leading-relaxed mb-2"><i className="fa-solid fa-bag-shopping text-orange-400 mr-2"></i>{order.items}</p>
+                                    <div className="flex justify-between items-center mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <div><p className="text-[10px] text-gray-400 font-bold mb-0.5">วันที่สั่งซื้อ</p><p className="text-xs text-gray-600 font-medium">{order.date}</p></div>
+                                        <div className="text-right"><p className="text-[10px] text-gray-400 font-bold mb-0.5">ยอดรวม</p><p className="font-black text-base text-gray-800 leading-none">{formatCurrency(order.price)}</p></div>
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="relative pl-4 space-y-8 pb-4">
-                                    <div className="absolute left-[31px] top-4 bottom-10 w-0.5 bg-gray-100"></div>
-                                    
-                                    {steps.map((step, idx) => {
-                                        const isCompleted = idx <= currentStepIndex; 
-                                        const isCurrent = idx === currentStepIndex; 
-                                        const isLastStep = idx === steps.length - 1;
-                                        const isGreenStep = idx >= 4; 
+                            </div>
 
-                                        const themeColorBg = isGreenStep ? 'bg-green-500' : 'bg-[#0066FF]';
-                                        const themeColorText = isGreenStep ? 'text-green-600' : 'text-[#0066FF]';
-                                        const themeRing = isGreenStep ? 'ring-green-100' : 'ring-blue-50';
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 overflow-hidden">
+                                <h3 className="font-bold text-gray-800 mb-8 flex items-center"><i className="fa-solid fa-route text-[#0066FF] mr-2"></i> ลำดับสถานะ</h3>
+                                
+                                {isCancelled ? (
+                                    <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center animate-[pop_0.4s_ease-out]">
+                                        <div className="w-16 h-16 bg-white text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-ban"></i></div>
+                                        <h4 className="font-bold text-red-600 text-lg">รายการถูกยกเลิก</h4>
+                                        <p className="text-sm text-red-400 mt-1">คำสั่งซื้อนี้ถูกยกเลิกแล้ว</p>
+                                    </div>
+                                ) : isReceived ? (
+                                    <div className="bg-green-50 border border-green-100 p-6 rounded-2xl text-center animate-[pop_0.4s_ease-out]">
+                                        <div className="w-16 h-16 bg-white text-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl"><i className="fa-solid fa-check-circle"></i></div>
+                                        <h4 className="font-bold text-green-600 text-lg">รับสินค้าเรียบร้อยแล้ว</h4>
+                                        <p className="text-sm text-green-500 mt-1">ขอบคุณที่ใช้บริการ MedTech 67 Payment</p>
+                                    </div>
+                                ) : (
+                                    <div className="relative pl-4 space-y-8 pb-4">
+                                        <div className="absolute left-[31px] top-4 bottom-10 w-0.5 bg-gray-100"></div>
+                                        {steps.map((step, idx) => {
+                                            const isCompleted = idx <= currentStepIndex; 
+                                            const isCurrent = idx === currentStepIndex; 
+                                            const isLastStep = idx === steps.length - 1;
+                                            const isGreenStep = idx >= 4; 
 
-                                        const iconBg = isCurrent 
-                                            ? `${themeColorBg} ring-4 ${themeRing} shadow-lg transform scale-125` 
-                                            : (isCompleted ? themeColorBg : 'bg-gray-100 border-2 border-white');
-                                        const iconColor = isCompleted ? 'text-white' : 'text-gray-300';
-                                        
-                                        let textColor = isCurrent ? themeColorText : (isCompleted ? 'text-gray-800' : 'text-gray-400');
-                                        if (isCompleted && isGreenStep && !isCurrent) textColor = 'text-green-600'; 
-                                        
-                                        let titleClass = "font-bold transition-all duration-300 transform origin-left";
-                                        if (isCurrent) {
-                                            titleClass += isGreenStep ? " text-xl font-black scale-105" : " text-base font-black scale-105";
-                                        } else if (isGreenStep) {
-                                            titleClass += " text-base font-extrabold";
-                                        } else {
-                                            titleClass += " text-sm";
-                                        }
+                                            const themeColorBg = isGreenStep ? 'bg-green-500' : 'bg-[#0066FF]';
+                                            const themeColorText = isGreenStep ? 'text-green-600' : 'text-[#0066FF]';
+                                            const themeRing = isGreenStep ? 'ring-green-100' : 'ring-blue-50';
 
-                                        const lineFillHeight = isCurrent ? '50%' : (isCompleted && !isLastStep ? '100%' : '0%');
-                                        const lineBgColor = (isCompleted && idx >= 3) ? 'bg-green-500' : 'bg-[#0066FF]'; 
+                                            const iconBg = isCurrent ? `${themeColorBg} ring-4 ${themeRing} shadow-lg transform scale-125` : (isCompleted ? themeColorBg : 'bg-gray-100 border-2 border-white');
+                                            const iconColor = isCompleted ? 'text-white' : 'text-gray-300';
+                                            
+                                            let textColor = isCurrent ? themeColorText : (isCompleted ? 'text-gray-800' : 'text-gray-400');
+                                            if (isCompleted && isGreenStep && !isCurrent) textColor = 'text-green-600'; 
+                                            
+                                            let titleClass = "font-bold transition-all duration-300 transform origin-left";
+                                            if (isCurrent) titleClass += isGreenStep ? " text-xl font-black scale-105" : " text-base font-black scale-105";
+                                            else if (isGreenStep) titleClass += " text-base font-extrabold";
+                                            else titleClass += " text-sm";
 
-                                        return (
-                                            <div key={idx} className="relative flex items-start gap-5 group min-h-[40px]">
-                                                {!isLastStep && <div className={`absolute left-[15px] top-8 w-0.5 transition-all duration-700 ${lineBgColor}`} style={{ height: `calc(${lineFillHeight} + 24px)` }}></div>}
-                                                
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 transition-all duration-500 ${iconBg} ${iconColor} mt-0.5`}>
-                                                    <i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm animate-[bounce_2s_infinite]' : 'text-xs'}`}></i>
+                                            const lineFillHeight = isCurrent ? '50%' : (isCompleted && !isLastStep ? '100%' : '0%');
+                                            const lineBgColor = (isCompleted && idx >= 3) ? 'bg-green-500' : 'bg-[#0066FF]'; 
+
+                                            return (
+                                                <div key={idx} className="relative flex items-start gap-5 group min-h-[40px]">
+                                                    {!isLastStep && <div className={`absolute left-[15px] top-8 w-0.5 transition-all duration-700 ${lineBgColor}`} style={{ height: `calc(${lineFillHeight} + 24px)` }}></div>}
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 transition-all duration-500 ${iconBg} ${iconColor} mt-0.5`}>
+                                                        <i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm animate-[bounce_2s_infinite]' : 'text-xs'}`}></i>
+                                                    </div>
+                                                    <div className={`flex-1 transition-all duration-500 ${isCompleted ? 'opacity-100' : 'opacity-50'} ${isCurrent ? 'pl-2' : ''}`}>
+                                                        <h4 className={`${titleClass} ${textColor}`}>{step.title}</h4>
+                                                        {(isCurrent || isCompleted) && <p className={`text-xs font-medium mt-1 leading-snug ${isGreenStep ? 'text-green-600/80' : 'text-gray-500'}`}>{step.desc}</p>}
+                                                        {isCurrent && step.status === 'รอรับของ' && (
+                                                            <button onClick={showQR} className="mt-3 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 shadow-md shadow-green-200 active:scale-95 transition-all animate-[pop_0.4s_ease-out]">
+                                                                <i className="fa-solid fa-qrcode text-sm"></i> เปิดคิวอาร์โค้ดรับของ
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                
-                                                <div className={`flex-1 transition-all duration-500 ${isCompleted ? 'opacity-100' : 'opacity-50'} ${isCurrent ? 'pl-2' : ''}`}>
-                                                    <h4 className={`${titleClass} ${textColor}`}>{step.title}</h4>
-                                                    {(isCurrent || isCompleted) && <p className={`text-xs font-medium mt-1 leading-snug ${isGreenStep ? 'text-green-600/80' : 'text-gray-500'}`}>{step.desc}</p>}
-                                                    
-                                                    {/* ✅ ปุ่ม QR Code อันเล็ก โชว์เฉพาะตอนถึงสถานะ "พร้อมรับสินค้า" */}
-                                                    {isCurrent && step.status === 'รอรับของ' && (
-                                                        <button onClick={showQR} className="mt-3 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 shadow-md shadow-green-200 active:scale-95 transition-all animate-[pop_0.4s_ease-out]">
-                                                            <i className="fa-solid fa-qrcode text-sm"></i> เปิดคิวอาร์โค้ดรับของ
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1317,12 +1117,11 @@
             const [tab, setTab] = useState('home'); 
             const [showDropdown, setShowDropdown] = useState(false);
             
-            // State ควบคุมหน้าย่อย
             const [selectedBill, setSelectedBill] = useState(null);
             const [selectedProduct, setSelectedProduct] = useState(null);
             const [pendingOrder, setPendingOrder] = useState(null);
             const [selectedProject, setSelectedProject] = useState(null); 
-            const [trackingOrder, setTrackingOrder] = useState(null); // ✅ ตัวแก้หน้าขาว
+            const [trackingOrder, setTrackingOrder] = useState(null);
             const [viewSlipUrl, setViewSlipUrl] = useState(null);
             const [showAnnouncement, setShowAnnouncement] = useState(false); 
             
@@ -1347,11 +1146,8 @@
 
             useEffect(() => { const timer = setInterval(() => fetchData(true), 60000); return () => clearInterval(timer); }, []);
 
-            // ✅ (คงเดิม) เช็คบิล
-            const overdueCount = data?.bills ? data.bills.filter(b => b.daysLate > 0).length : 0;
+            const overdueCount = data?.bills ? data.bills.filter(b => b.daysLate > 0 && b.status !== 'รอตรวจสอบ').length : 0;
             const hasBills = data?.bills && data.bills.length > 0;
-            
-            // ✅ (เพิ่มใหม่) กรองเอาเฉพาะออเดอร์ที่ "ยังไม่ได้รับของ" และ "ยังไม่ถูกยกเลิก"
             const activeOrders = data?.orders ? data.orders.filter(o => o.status?.trim() !== 'รับแล้ว' && o.status?.trim() !== 'ยกเลิก') : [];
             const hasActiveOrders = activeOrders.length > 0;
             
@@ -1419,13 +1215,11 @@
                         statusSubtitle = `มียอดเกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-red-600 bg-red-50 hover:bg-red-100";
                     } else { statusSubtitle = `มียอดชำระ ${data?.bills?.length || 0} รายการ`; }
                 } else if (hasActiveOrders) { 
-                    // ✅ จะเข้าเงื่อนไขนี้ ก็ต่อเมื่อมีออเดอร์ที่ "ยังไม่ได้รับของ" เท่านั้น
                     statusSubtitle = `คำสั่งซื้อล่าสุด: ${activeOrders[0]?.status || ''}`; 
                 }
 
                 return (
                     <div className="space-y-6 animate-pop w-full pb-10 pt-2">
-                        {/* ✅ ซ่อนกล่องกระดิ่งแจ้งเตือน หากไม่มีบิล และ ไม่มีออเดอร์ที่ค้างอยู่ */}
                         {(hasBills || hasActiveOrders) && (
                             <div className={`bg-white p-4 rounded-[1.5rem] shadow-sm flex items-center gap-4 border-l-4 ${statusColorClass} transition-colors duration-300`}>
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center animate-pulse ${statusIconBg} ${statusIconText} shadow-inner`}><i className="fa-solid fa-bell text-xl"></i></div>
@@ -1433,17 +1227,11 @@
                                     <h4 className="font-bold text-gray-800 text-sm">{statusTitle}</h4>
                                     <p className={`text-xs font-bold mt-0.5 ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
                                 </div>
-                                <button onClick={() => {
-                                    if (hasBills) {
-                                        setTab('bills');
-                                    } else if (hasActiveOrders) {
-                                        setTrackingOrder(activeOrders[0]); // ✅ เปิดออเดอร์ที่ค้างอยู่ขึ้นมา
-                                    }
-                                }} className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm ${actionColorClass}`}>ดูเลย</button>
+                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm ${actionColorClass}`}>ดูเลย</button>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                             {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => setTab('bills'), data?.bills?.length || 0)}
                             {hasAccess('orders') && data?.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => setTab('orders'), 0)}
                             {hasAccess('history') && renderMenuCard('ประวัติ', 'รายการย้อนหลัง', 'fa-clock-rotate-left', 'bg-cyan-500', () => setTab('history'), 0)}
@@ -1456,19 +1244,19 @@
                                 <div className="flex justify-between items-center mb-3 px-2">
                                     <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-box-open text-[#0066FF] mr-2"></i> สถานะการสั่งซื้อ</h3>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {data.orders.slice(0, 3).map(order => {
                                         let statusBadgeColor = "bg-gray-100 text-gray-600";
                                         const stat = order.status?.trim();
                                         if (stat === 'รอตรวจสอบ') statusBadgeColor = "bg-yellow-50 text-yellow-600 border border-yellow-100";
-                                        else if (stat === 'รอรับของ') statusBadgeColor = "bg-green-50 text-green-600 border border-green-100 shadow-sm animate-pulse";
+                                        else if (stat === 'รอรับของ' || stat === 'พร้อมรับสินค้า') statusBadgeColor = "bg-green-50 text-green-600 border border-green-100 shadow-sm animate-pulse";
                                         else if (stat === 'รับแล้ว') statusBadgeColor = "bg-emerald-500 text-white border border-emerald-600";
                                         else if (stat === 'ยกเลิก') statusBadgeColor = "bg-red-50 text-red-600 border border-red-100";
                                         else statusBadgeColor = "bg-blue-50 text-[#0066FF] border border-blue-100"; 
 
                                         return (
                                             <div key={order.id} onClick={() => setTrackingOrder(order)} className="bg-white p-4 rounded-[1.5rem] shadow-sm border border-gray-50 active:scale-95 transition-transform cursor-pointer relative overflow-hidden flex items-center justify-between group hover:border-blue-200">
-                                                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0066FF]"></div>
+                                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${stat === 'รับแล้ว' ? 'bg-emerald-500' : 'bg-[#0066FF]'}`}></div>
                                                 <div className="pl-3 pr-2 flex-1">
                                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1"><i className="fa-solid fa-receipt mr-1"></i> {order.id}</p>
                                                     <h4 className="font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-[#0066FF] transition-colors">{order.items}</h4>
@@ -1480,12 +1268,12 @@
                                             </div>
                                         );
                                     })}
-                                    {data.orders.length > 3 && (
-                                        <button onClick={() => setTab('history')} className="w-full py-3 mt-2 text-xs font-bold text-[#0066FF] bg-blue-50 rounded-xl hover:bg-blue-100 transition shadow-sm">
-                                            ดูรายการสั่งซื้อทั้งหมด
-                                        </button>
-                                    )}
                                 </div>
+                                {data.orders.length > 3 && (
+                                    <button onClick={() => setTab('history')} className="w-full py-3 mt-2 text-xs font-bold text-[#0066FF] bg-blue-50 rounded-xl hover:bg-blue-100 transition shadow-sm md:w-auto md:px-6 md:mx-auto md:block">
+                                        ดูรายการสั่งซื้อทั้งหมด
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -1525,9 +1313,9 @@
                                     {financeSort === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
                                 </button>
                             </div>
-                            <div className="space-y-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {sortedProjects.length === 0 ? (
-                                    <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50 shadow-sm"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ไม่มีข้อมูลโครงการ</div>
+                                    <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50 shadow-sm md:col-span-2"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ไม่มีข้อมูลโครงการ</div>
                                 ) : (
                                     sortedProjects.map(proj => (
                                         <div key={proj.id} onClick={() => setSelectedProject(proj)} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-50 active:scale-95 transition-transform cursor-pointer group hover:border-blue-100 relative overflow-hidden">
@@ -1594,7 +1382,7 @@
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><i className="fa-solid fa-lock text-sm"></i></div><span className="text-sm font-bold text-gray-700">เปลี่ยนรหัสผ่าน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
-                            <button onClick={() => Swal.fire('ติดต่อแอดมิน', 'โปรดติดต่อแอดมินเพื่อเชื่อมต่อไลน์', 'info')} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
+                            <button onClick={() => Swal.fire('Coming Soon', 'ฟีเจอร์นี้เตรียมเปิดใช้งานในอนาคต', 'info')} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-[#00B900]/10 flex items-center justify-center text-[#00B900]"><i className="fa-brands fa-line text-xl"></i></div><span className="text-sm font-bold text-gray-700">เชื่อมต่อ LINE แจ้งเตือน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
@@ -1623,232 +1411,187 @@
             };
 
             return (
-                <div className="flex flex-col min-h-screen bg-[#F0F4F8] relative overflow-hidden">
-                    {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
+                <div className="min-h-screen md:bg-[#E2E8F0] md:flex md:items-center md:justify-center md:py-6">
+                    <div className="flex flex-col w-full min-h-screen md:min-h-0 md:h-[95vh] max-w-md md:max-w-3xl lg:max-w-5xl mx-auto bg-[#F0F4F8] relative overflow-hidden md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:border-[6px] border-white/80">
+                        {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
-                    {/* --- Header --- */}
-                    <header className={`sticky top-0 z-40 ${themeColor} text-white pt-safe px-5 shadow-md flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-5 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
-                        <div className="flex justify-between items-center pt-2 relative">
-                            <div className="relative z-50 flex-1 flex items-center">
-                                {tab === 'home' && !isSubPageOpen ? (
-                                    <>
-                                        <div onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition select-none border border-white/10 shadow-sm">
-                                            <span className="text-xs font-bold truncate max-w-[150px]">📍 {user.name}</span>
-                                            <i className={`fa-solid fa-chevron-down text-[10px] opacity-80 transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`}></i>
+                        <header className={`sticky top-0 z-40 ${themeColor} text-white pt-safe px-5 shadow-md flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-5 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
+                            <div className="flex justify-between items-center pt-2 relative">
+                                <div className="relative z-50 flex-1 flex items-center">
+                                    {tab === 'home' && !isSubPageOpen ? (
+                                        <>
+                                            <div onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition select-none border border-white/10 shadow-sm">
+                                                <span className="text-xs font-bold truncate max-w-[150px]">📍 {user.name}</span>
+                                                <i className={`fa-solid fa-chevron-down text-[10px] opacity-80 transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`}></i>
+                                            </div>
+                                            {showDropdown && (
+                                                <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl overflow-hidden animate-[pop_0.2s_ease-out] border border-gray-100 origin-top-left">
+                                                    <button onClick={handleChangePassword} className="w-full text-left px-4 py-3.5 text-sm font-bold text-gray-700 hover:bg-gray-50 border-b border-gray-50 flex items-center gap-3 transition"><i className="fa-solid fa-lock text-[#0066FF] w-5 text-center text-lg"></i> เปลี่ยนรหัสผ่าน</button>
+                                                    <button onClick={() => { setShowDropdown(false); onLogout(); }} className="w-full text-left px-4 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-3 transition"><i className="fa-solid fa-power-off text-red-500 w-5 text-center text-lg"></i> ออกจากระบบ</button>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="flex items-center gap-3 transition-all duration-500">
+                                            <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-8 h-8 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
+                                                <i className="fa-solid fa-chevron-left text-[14px]"></i>
+                                            </button>
+                                            <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1">
+                                                {(!isSubPageOpen && tab === 'bills') && 'รายการบิลของคุณ'}
+                                                {(!isSubPageOpen && tab === 'orders') && 'ร้านค้า'}
+                                                {(!isSubPageOpen && tab === 'history') && 'ประวัติการทำรายการ'}
+                                                {(!isSubPageOpen && tab === 'finance') && 'สรุปการเงินชั้นปี'}
+                                                {(!isSubPageOpen && tab === 'settings') && 'ตั้งค่าบัญชี'}
+                                            </h2>
                                         </div>
-                                        {showDropdown && (
-                                            <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl overflow-hidden animate-[pop_0.2s_ease-out] border border-gray-100 origin-top-left">
-                                                <button onClick={handleChangePassword} className="w-full text-left px-4 py-3.5 text-sm font-bold text-gray-700 hover:bg-gray-50 border-b border-gray-50 flex items-center gap-3 transition"><i className="fa-solid fa-lock text-[#0066FF] w-5 text-center text-lg"></i> เปลี่ยนรหัสผ่าน</button>
-                                                <button onClick={() => { setShowDropdown(false); onLogout(); }} className="w-full text-left px-4 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-3 transition"><i className="fa-solid fa-power-off text-red-500 w-5 text-center text-lg"></i> ออกจากระบบ</button>
+                                    )}
+                                </div>
+                                
+                                <div className="flex gap-3 relative z-40 ml-2 shrink-0">
+                                    <button onClick={() => fetchData(false)} className={`w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition border border-white/10 shadow-sm ${loading ? 'animate-spin':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
+                                </div>
+                            </div>
+
+                            <div className={`transition-all duration-500 ease-in-out overflow-hidden ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
+                                <div className="px-1">
+                                    <h1 className="text-2xl font-bold tracking-tight">MedTech 67 Finance System</h1>
+                                </div>
+                            </div>
+                        </header>
+
+                        <main className="flex-1 w-full relative overflow-hidden">
+                            <div className={`absolute inset-0 px-5 pt-4 pb-36 overflow-y-auto no-scrollbar transition-opacity duration-300 ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                                {tab === 'home' && hasAccess('home') && renderHomeContent()}
+                                {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
+                                
+                                {tab === 'bills' && hasAccess('bills') && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pop pt-2">
+                                        {data?.bills?.length === 0 && !loading && (
+                                            <div className="bg-white p-8 rounded-[2rem] text-center shadow-sm border border-gray-50 md:col-span-2 lg:col-span-3">
+                                                <div className="text-6xl mb-4">🎉</div>
+                                                <h3 className="font-bold text-gray-800 text-lg">ยอดเยี่ยมมาก!</h3>
+                                                <p className="text-gray-500 text-sm mt-1">ไม่มีบิลค้างชำระในขณะนี้</p>
                                             </div>
                                         )}
-                                    </>
-                                ) : (
-                                    <div className="flex items-center gap-3 transition-all duration-500">
-                                        <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-8 h-8 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
-                                            <i className="fa-solid fa-chevron-left text-[14px]"></i>
-                                        </button>
-                                        <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1">
-                                            {(!isSubPageOpen && tab === 'bills') && 'รายการบิลของคุณ'}
-                                            {(!isSubPageOpen && tab === 'orders') && 'ร้านค้า'}
-                                            {(!isSubPageOpen && tab === 'history') && 'ประวัติการทำรายการ'}
-                                            {(!isSubPageOpen && tab === 'finance') && 'สรุปการเงินชั้นปี'}
-                                            {(!isSubPageOpen && tab === 'settings') && 'ตั้งค่าบัญชี'}
-                                        </h2>
-                                    </div>
-                                )}
-                            </div>
-                            
-                            <div className="flex gap-3 relative z-40 ml-2 shrink-0">
-                                <button onClick={() => fetchData(false)} className={`w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition border border-white/10 shadow-sm ${loading ? 'animate-spin':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
-                            </div>
-                        </div>
-
-                        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
-                            <div className="px-1">
-                                <h1 className="text-2xl font-bold tracking-tight">MedTech 67 Finance System</h1>
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* --- Content Area --- */}
-                    <main className="flex-1 w-full max-w-lg mx-auto relative overflow-hidden">
-                        <div className={`absolute inset-0 px-5 pt-4 pb-36 overflow-y-auto no-scrollbar transition-opacity duration-300 ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                            {tab === 'home' && hasAccess('home') && renderHomeContent()}
-                            {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
-                            
-                            {tab === 'bills' && hasAccess('bills') && (
-                                <div className="space-y-4 animate-pop pt-2">
-                                    {data?.bills?.length === 0 && !loading && (
-                                        <div className="bg-white p-8 rounded-[2rem] text-center shadow-sm border border-gray-50">
-                                            <div className="text-6xl mb-4">🎉</div>
-                                            <h3 className="font-bold text-gray-800 text-lg">ยอดเยี่ยมมาก!</h3>
-                                            <p className="text-gray-500 text-sm mt-1">ไม่มีบิลค้างชำระในขณะนี้</p>
-                                        </div>
-                                    )}
-                                    {(data?.bills || []).map(bill => {
-                                        // เช็คเงื่อนไขวันที่
-                                        const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
-                                        
-                                        // ✅ เช็คว่าบิลเกินกำหนดหรือไม่ (และต้องไม่ใช่สถานะรอตรวจสอบ)
-                                        const isOverdue = bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ';
-                                        
-                                        return (
-                                            <div key={bill.billId} className={`bg-white rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden transition-all duration-300 ${isOverdue ? 'border-2 border-red-400 shadow-red-100 ring-4 ring-red-50' : 'border border-gray-100'}`}>
-                                                
-                                                {/* ✅ แถบแจ้งเตือนด้านบนสุดกรณีเกินกำหนด */}
-                                                {isOverdue && (
-                                                    <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4 border border-red-100 flex items-start gap-3 animate-[pop_0.4s_ease-out]">
-                                                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5 animate-pulse">
-                                                            <i className="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h5 className="font-bold text-sm">เกินกำหนดชำระ {bill.daysLate} วัน</h5>
-                                                            <p className="text-[10px] font-medium text-red-500 mt-0.5 leading-snug">กรุณารีบดำเนินการชำระเงินโดยด่วน เพื่อหลีกเลี่ยงค่าปรับเพิ่มเติม</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div className="flex gap-3">
-                                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner shrink-0 ${isOverdue ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#0066FF]'}`}>
-                                                            <i className="fa-solid fa-file-invoice-dollar"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-bold text-gray-800 text-base line-clamp-1 pr-2">{bill.item}</h4>
-                                                            <p className={`text-[11px] font-bold mt-1 px-2 py-0.5 inline-block rounded-md ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
-                                                                ครบกำหนด: {isNoDate ? 'ไม่มีกำหนด' : bill.dueDate}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* ✅ กล่องแจกแจงรายละเอียดเงิน (Breakdown) */}
-                                                <div className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100 space-y-2.5">
-                                                    <div className="flex justify-between items-center text-xs font-medium text-gray-500">
-                                                        <span><i className="fa-solid fa-receipt mr-1.5 opacity-50"></i> ยอดบิลเริ่มต้น</span>
-                                                        <span>{formatCurrency(bill.amount)}</span>
-                                                    </div>
-                                                    
-                                                    {bill.discount > 0 && (
-                                                        <div className="flex justify-between items-center text-xs font-bold text-green-600">
-                                                            <span><i className="fa-solid fa-tags mr-1.5 opacity-70"></i> ส่วนลด / หักยอดโอนแล้ว</span>
-                                                            <span>-{formatCurrency(bill.discount)}</span>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {bill.fine > 0 && (
-                                                        <div className="flex justify-between items-center text-xs font-bold text-red-500">
-                                                            <span><i className="fa-solid fa-scale-unbalanced mr-1.5 opacity-70"></i> ค่าปรับล่าช้า ({bill.daysLate} วัน)</span>
-                                                            <span>+{formatCurrency(bill.fine)}</span>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    <div className="pt-2.5 mt-1 border-t border-gray-200/80 flex justify-between items-center">
-                                                        <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">ยอดชำระสุทธิ</span>
-                                                        <span className={`font-black text-xl ${isOverdue ? 'text-red-600' : 'text-[#0066FF]'}`}>
-                                                            {formatCurrency(bill.total)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-3">
-                                                    {/* โชว์นาฬิกาเฉพาะบิลที่ยังไม่เกินกำหนด และ ไม่ใช่วันที่ 1899 */}
-                                                    {bill.status !== 'รอตรวจสอบ' && !isOverdue && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
-                                                    
-                                                    {bill.status === 'รอตรวจสอบ' ? (
-                                                        <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3.5 rounded-xl text-sm font-bold border border-yellow-100/50 flex justify-center items-center gap-2">
-                                                            รอตรวจสอบ <div className="loader w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-                                                        </button>
-                                                    ) : (
-                                                        <button onClick={() => setSelectedBill(bill)} className={`flex-1 py-3.5 rounded-xl text-white text-sm font-bold shadow-lg active:scale-95 transition-all transform flex justify-center items-center gap-2 ${isOverdue ? 'bg-red-500 shadow-red-200 hover:bg-red-600' : 'bg-[#0066FF] shadow-blue-200 hover:bg-blue-700'}`}>
-                                                            ชำระเงิน <i className="fa-solid fa-arrow-right"></i>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {tab === 'orders' && hasAccess('orders') && (
-                                <div className="animate-pop pt-2">
-                                    {(!data?.products || data.products.filter(p => p.status !== 'OFF').length === 0) ? (
-                                        <div className="bg-white rounded-[2rem] p-10 text-center shadow-sm border border-gray-50 mt-4">
-                                            <div className="text-5xl mb-3 text-gray-300"><i className="fa-solid fa-store-slash"></i></div>
-                                            <h3 className="font-bold text-gray-800 text-lg">ยังไม่มีสินค้า</h3>
-                                            <p className="text-gray-400 text-sm mt-1">ขณะนี้ยังไม่มีรายการสินค้าเปิดจำหน่าย</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {data.products.map(p => {
-                                                if (p.status === 'OFF') return null;
-                                                const isSoldOut = p.status === 'OUT' || p.stock <= 0;
-                                                return (
-                                                    <div key={p.id} onClick={() => !isSoldOut && setSelectedProduct(p)} className={`bg-white rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform border border-gray-50 ${isSoldOut ? 'grayscale opacity-70' : ''}`}>
-                                                        <div className="aspect-square bg-gray-100 relative">
-                                                            <img src={getDirectDriveUrl(p.img)} className="w-full h-full object-cover" />
-                                                            {!isSoldOut && <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center text-[#0066FF] font-bold"><i className="fa-solid fa-plus"></i></div>}
-                                                        </div>
-                                                        <div className="p-3 bg-white">
-                                                            <h4 className="font-bold text-gray-800 text-sm truncate">{p.name}</h4>
-                                                            <div className="flex justify-between items-center mt-1">
-                                                                <span className="text-[#0066FF] font-black">{formatCurrency(p.price)}</span>
-                                                                {isSoldOut && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-md">หมด</span>}
+                                        {(data?.bills || []).map(bill => {
+                                            const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
+                                            const isOverdue = bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ';
+                                            return (
+                                                <div key={bill.billId} className={`bg-white rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden transition-all duration-300 flex flex-col justify-between ${isOverdue ? 'border-2 border-red-400 shadow-red-100 ring-4 ring-red-50' : 'border border-gray-100'}`}>
+                                                    <div>
+                                                        {isOverdue && (
+                                                            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4 border border-red-100 flex items-start gap-3 animate-[pop_0.4s_ease-out]">
+                                                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5 animate-pulse"><i className="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i></div>
+                                                                <div><h5 className="font-bold text-sm">เกินกำหนดชำระ {bill.daysLate} วัน</h5><p className="text-[10px] font-medium text-red-500 mt-0.5 leading-snug">กรุณารีบดำเนินการชำระเงินโดยด่วน เพื่อหลีกเลี่ยงค่าปรับเพิ่มเติม</p></div>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <div className="flex gap-3">
+                                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner shrink-0 ${isOverdue ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#0066FF]'}`}><i className="fa-solid fa-file-invoice-dollar"></i></div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-gray-800 text-base line-clamp-1 pr-2">{bill.item}</h4>
+                                                                    <p className={`text-[11px] font-bold mt-1 px-2 py-0.5 inline-block rounded-md ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>ครบกำหนด: {isNoDate ? 'ไม่มีกำหนด' : bill.dueDate}</p>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                        <div className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100 space-y-2.5">
+                                                            <div className="flex justify-between items-center text-xs font-medium text-gray-500"><span><i className="fa-solid fa-receipt mr-1.5 opacity-50"></i> ยอดบิลเริ่มต้น</span><span>{formatCurrency(bill.amount)}</span></div>
+                                                            {bill.discount > 0 && <div className="flex justify-between items-center text-xs font-bold text-green-600"><span><i className="fa-solid fa-tags mr-1.5 opacity-70"></i> ส่วนลด / หักยอดโอนแล้ว</span><span>-{formatCurrency(bill.discount)}</span></div>}
+                                                            {bill.fine > 0 && <div className="flex justify-between items-center text-xs font-bold text-red-500"><span><i className="fa-solid fa-scale-unbalanced mr-1.5 opacity-70"></i> ค่าปรับล่าช้า ({bill.daysLate} วัน)</span><span>+{formatCurrency(bill.fine)}</span></div>}
+                                                            <div className="pt-2.5 mt-1 border-t border-gray-200/80 flex justify-between items-center"><span className="text-xs font-bold text-gray-800 uppercase tracking-wider">ยอดชำระสุทธิ</span><span className={`font-black text-xl ${isOverdue ? 'text-red-600' : 'text-[#0066FF]'}`}>{formatCurrency(bill.total)}</span></div>
+                                                        </div>
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                                    <div className="flex items-center gap-3 mt-auto">
+                                                        {bill.status !== 'รอตรวจสอบ' && !isOverdue && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
+                                                        {bill.status === 'รอตรวจสอบ' ? (
+                                                            <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3.5 rounded-xl text-sm font-bold border border-yellow-100/50 flex justify-center items-center gap-2">รอตรวจสอบ <div className="loader w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div></button>
+                                                        ) : (
+                                                            <button onClick={() => setSelectedBill(bill)} className={`flex-1 py-3.5 rounded-xl text-white text-sm font-bold shadow-lg active:scale-95 transition-all transform flex justify-center items-center gap-2 ${isOverdue ? 'bg-red-500 shadow-red-200 hover:bg-red-600' : 'bg-[#0066FF] shadow-blue-200 hover:bg-blue-700'}`}>ชำระเงิน <i className="fa-solid fa-arrow-right"></i></button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
-                            {tab === 'history' && hasAccess('history') && (
-                                <div className="space-y-3 animate-pop pt-2">
-                                    {(data?.history || []).map((hist, i) => (
-                                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between border-l-4 border-gray-100 hover:border-[#0066FF] transition-colors">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm ${hist.status==='ชำระแล้ว'?'bg-emerald-500':'bg-yellow-400'}`}><i className={`fa-solid ${hist.status==='ชำระแล้ว'?'fa-check':'fa-clock'}`}></i></div>
-                                                <div><h4 className="font-bold text-gray-800 text-sm line-clamp-1">{hist.item}</h4><p className="text-[10px] font-bold text-gray-400 mt-0.5">{hist.payDate}</p></div>
+                                {tab === 'orders' && hasAccess('orders') && (
+                                    <div className="animate-pop pt-2">
+                                        {(!data?.products || data.products.filter(p => p.status !== 'OFF').length === 0) ? (
+                                            <div className="bg-white rounded-[2rem] p-10 text-center shadow-sm border border-gray-50 mt-4">
+                                                <div className="text-5xl mb-3 text-gray-300"><i className="fa-solid fa-store-slash"></i></div>
+                                                <h3 className="font-bold text-gray-800 text-lg">ยังไม่มีสินค้า</h3>
+                                                <p className="text-gray-400 text-sm mt-1">ขณะนี้ยังไม่มีรายการสินค้าเปิดจำหน่าย</p>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-black text-[#0066FF]">{formatCurrency(hist.total)}</p>
-                                                {hist.slip && <button onClick={() => setViewSlipUrl(hist.slip)} className="text-[10px] font-bold text-gray-400 hover:text-[#0066FF] bg-gray-50 hover:bg-blue-50 px-2 py-1 rounded-md mt-1 transition-colors">ดูสลีป</button>}
+                                        ) : (
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                {data.products.map(p => {
+                                                    if (p.status === 'OFF') return null;
+                                                    const isSoldOut = p.status === 'OUT' || p.stock <= 0;
+                                                    return (
+                                                        <div key={p.id} onClick={() => !isSoldOut && setSelectedProduct(p)} className={`bg-white rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform border border-gray-50 cursor-pointer ${isSoldOut ? 'grayscale opacity-70' : 'hover:border-blue-200 hover:shadow-md'}`}>
+                                                            <div className="aspect-square bg-gray-100 relative">
+                                                                <img src={getDirectDriveUrl(p.img)} className="w-full h-full object-cover" />
+                                                                {!isSoldOut && <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center text-[#0066FF] font-bold"><i className="fa-solid fa-plus"></i></div>}
+                                                            </div>
+                                                            <div className="p-3 bg-white">
+                                                                <h4 className="font-bold text-gray-800 text-sm truncate">{p.name}</h4>
+                                                                <div className="flex justify-between items-center mt-1">
+                                                                    <span className="text-[#0066FF] font-black">{formatCurrency(p.price)}</span>
+                                                                    {isSoldOut && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-md">หมด</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
-                                        </div>
-                                    ))}
-                                    {data?.history?.length === 0 && <div className="text-center text-gray-400 py-10 font-bold bg-white rounded-3xl border border-gray-50"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-clock-rotate-left"></i></div>ไม่มีประวัติทำรายการ</div>}
-                                </div>
-                            )}
-                            
-                            {tab === 'settings' && hasAccess('settings') && renderSettingsContent()}
+                                        )}
+                                    </div>
+                                )}
+
+                                {tab === 'history' && hasAccess('history') && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 animate-pop pt-2">
+                                        {(data?.history || []).map((hist, i) => (
+                                            <div key={i} className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between border-l-4 border-gray-100 hover:border-[#0066FF] transition-colors">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm ${hist.status==='ชำระแล้ว'?'bg-emerald-500':'bg-yellow-400'}`}><i className={`fa-solid ${hist.status==='ชำระแล้ว'?'fa-check':'fa-clock'}`}></i></div>
+                                                    <div><h4 className="font-bold text-gray-800 text-sm line-clamp-1">{hist.item}</h4><p className="text-[10px] font-bold text-gray-400 mt-0.5">{hist.payDate}</p></div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-black text-[#0066FF]">{formatCurrency(hist.total)}</p>
+                                                    {hist.slip && <button onClick={() => setViewSlipUrl(hist.slip)} className="text-[10px] font-bold text-gray-400 hover:text-[#0066FF] bg-gray-50 hover:bg-blue-50 px-2 py-1 rounded-md mt-1 transition-colors">ดูสลีป</button>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {data?.history?.length === 0 && <div className="text-center text-gray-400 py-10 font-bold bg-white rounded-3xl border border-gray-50 md:col-span-2 lg:col-span-3"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-clock-rotate-left"></i></div>ไม่มีประวัติทำรายการ</div>}
+                                    </div>
+                                )}
+                                
+                                {tab === 'settings' && hasAccess('settings') && renderSettingsContent()}
+                            </div>
+
+                            {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null); fetchData();}} />}
+                            {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
+                            {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); fetchData(); }} />}
+                            {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
+                            {trackingOrder && <OrderTrackingSubPage order={trackingOrder} onClose={() => setTrackingOrder(null)} />}
+
+                        </main> 
+
+                        {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
+
+                        {/* --- แถบเมนูด้านล่าง แบบยึดติดกับกรอบหน้าจอ --- */}
+                        <div className={`absolute bottom-4 left-0 right-0 flex justify-center z-40 transition-all duration-500 ease-in-out pointer-events-none px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                            <nav className="pointer-events-auto bg-white rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] px-2 py-1 flex justify-between items-center w-full max-w-md border border-gray-100">
+                                {renderNavItem('home', 'fa-house', 'หน้าแรก', 0)}
+                                {renderNavItem('bills', 'fa-file-invoice-dollar', 'บิล', data?.bills?.length || 0)}
+                                {data?.orderEnabled && renderNavItem('orders', 'fa-bag-shopping', 'ร้านค้า', 0)}
+                                {renderNavItem('history', 'fa-clock-rotate-left', 'ประวัติ', 0)}
+                                {renderNavItem('settings', 'fa-gear', 'ตั้งค่า', 0)}
+                            </nav>
                         </div>
 
-                        {/* พื้นที่หน้าย่อยต่างๆ */}
-                        {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null); fetchData();}} />}
-                        {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
-                        {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); fetchData(); }} />}
-                        {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
-                        
-                        {/* ✅ เพิ่มบรรทัดนี้ เพื่อโชว์สถานะการสั่งซื้อ */}
-                        {trackingOrder && <OrderTrackingSubPage order={trackingOrder} onClose={() => setTrackingOrder(null)} />}
-
-                    </main> 
-
-                    {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
-
-                    <nav className={`fixed left-4 right-4 bg-white rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] px-2 py-1 flex justify-between items-center z-40 max-w-md mx-auto border border-gray-100 transition-all duration-500 ease-in-out ${isSubPageOpen || tab === 'finance' ? 'bottom-[-100px] opacity-0 pointer-events-none' : 'bottom-3 opacity-100'}`}>
-                        {renderNavItem('home', 'fa-house', 'หน้าแรก', 0)}
-                        {renderNavItem('bills', 'fa-file-invoice-dollar', 'บิล', data?.bills?.length || 0)}
-                        {data?.orderEnabled && renderNavItem('orders', 'fa-bag-shopping', 'ร้านค้า', 0)}
-                        {renderNavItem('history', 'fa-clock-rotate-left', 'ประวัติ', 0)}
-                        {renderNavItem('settings', 'fa-gear', 'ตั้งค่า', 0)}
-                    </nav>
-
-                    {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
+                    </div>
                 </div>
             );
         };
