@@ -304,9 +304,10 @@ const { useState, useEffect, useRef } = React;
                         {/* 🖥️ ส่วนซ้ายสำหรับหน้าจอคอม */}
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
-                            <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} className="w-56 h-56 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }} />
-                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight">ระบบชำระเงิน<br/>ชั้นปีที่ 3</h2>
-                            <p className="text-blue-100 z-10 mt-3 font-bold text-lg tracking-wider">MedTech 67 Payment</p>
+                            <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }} />
+                            {/* ✅ ปรับให้อยู่บรรทัดเดียว และเล็กลงนิดหน่อย */}
+                            <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h2>
+                            <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Payment</p>
                             <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
                             <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-black/10 rounded-full blur-3xl"></div>
                         </div>
@@ -318,11 +319,12 @@ const { useState, useEffect, useRef } = React;
                                 <div className="relative inline-block">
                                     <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
                                     <div className="relative w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
-                                        <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} alt="Logo" className="w-XL h-full object-cover rounded-full transform transition-transform scale-150" onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }} />
+                                        <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} alt="Logo" className="w-full h-full object-cover rounded-full transform transition-transform scale-150" onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }} />
                                     </div>
                                 </div>
-                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-3">ระบบชำระเงินชั้นปีที่ 3</h1>
-                                <p className="text-[#0066FF] mt-0.5 font-extrabold text-sm tracking-wide">MedTech 67 Payment System</p>
+                                {/* ✅ ปรับฟอนต์เล็กลงเป็น text-xl และบังคับไม่ให้ตกบรรทัด */}
+                                <h1 className="text-xl font-black text-gray-800 tracking-tight mt-4 whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h1>
+                                <p className="text-[#0066FF] mt-0.5 font-extrabold text-xs tracking-wide">MedTech 67 Payment System</p>
                             </div>
 
                             <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none mt-2">
@@ -348,7 +350,7 @@ const { useState, useEffect, useRef } = React;
                                 </div>
                             </div>
                             <div className="mt-8 md:mt-12 text-center">
-                                <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTech 67. All rights reserved.</p>
+                                <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTechptu 67. All rights reserved.</p>
                                 <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
                             </div>
                         </div>
@@ -408,21 +410,23 @@ const { useState, useEffect, useRef } = React;
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
-                            <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-56 h-56 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
-                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight">สร้างรหัสผ่านใหม่</h2>
-                            <p className="text-blue-100 z-10 mt-3 font-bold text-lg tracking-wider">MedTech 67 Payment</p>
+                            <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
+                            {/* ✅ ปรับให้อยู่บรรทัดเดียว และเล็กลงนิดหน่อย */}
+                            <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">สร้างรหัสผ่านใหม่</h2>
+                            <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Payment</p>
                         </div>
 
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
                             <div className="md:hidden text-center mb-6">
                                 <div className="relative inline-block">
                                     <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                                    <div className="relative w-32 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
+                                    <div className="relative w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
                                         <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-full h-full object-cover rounded-full" />
                                     </div>
                                 </div>
-                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-4">ลืมรหัสผ่าน / สร้างรหัสผ่าน</h1>
-                                <p className="text-[#0066FF] mt-1 font-extrabold text-sm tracking-wide">MedTech 67 Payment System</p>
+                                {/* ✅ ปรับฟอนต์เล็กลงเป็น text-xl และบังคับไม่ให้ตกบรรทัด */}
+                                <h1 className="text-xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">ลืมรหัสผ่าน / สร้างรหัสผ่าน</h1>
+                                <p className="text-[#0066FF] mt-1 font-extrabold text-xs tracking-wide">MedTech 67 Payment System</p>
                             </div>
 
                             <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2.5rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none">
@@ -432,7 +436,7 @@ const { useState, useEffect, useRef } = React;
                                             <label className="text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">ตรวจสอบรหัสนักศึกษา</label>
                                             <div className="relative group">
                                                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-id-card"></i></span>
-                                                <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 shadow-sm" placeholder="67XXXXXXXX" />
+                                                <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 shadow-sm text-sm" placeholder="67XXXXXXXX" />
                                             </div>
                                         </div>
                                         <button onClick={handleVerify} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-[0.98] mt-4 flex justify-center items-center text-lg">{loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'ตรวจสอบข้อมูล'}</button>
@@ -476,7 +480,7 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
-
+        
         // ==========================================
         // Widgets: BillTimer
         // ==========================================
@@ -1590,6 +1594,9 @@ const { useState, useEffect, useRef } = React;
                                 {renderNavItem('settings', 'fa-gear', 'ตั้งค่า', 0)}
                             </nav>
                         </div>
+
+                        {/* ✅ เพิ่มบรรทัดนี้กลับเข้าไปครับ (ตัวเรียกหน้าต่างดูสลีป) */}
+                        {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
 
                     </div>
                 </div>
