@@ -102,9 +102,6 @@
         const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        // 🌐 Firebase Connection
-        // ==========================================
-        // ==========================================
 // 🌐 Firebase Connection (เวอร์ชันที่เข้ากับ React ของคุณ)
 // ==========================================
 const firebaseConfig = {
@@ -123,12 +120,9 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-const db = firebase.firestore();
-const storage = firebase.storage();
-
-// ✅ สำคัญมาก: ถ้าคุณยังใช้ห้องชื่อ shogun33 ต้องใส่บรรทัดนี้
-db.settings({ databaseId: "shogun33" });
-
+        const db = firebase.app().firestore("shogun33"); 
+        const storage = firebase.storage();
+        
         // เก็บ API_URL เผื่อใช้เรียก Line Notify ในอนาคต
         const API_URL = "https://script.google.com/macros/s/AKfycbzEXjfZSgs3riQmjc22AZu45dn50etSm_lMqkior3UmHa8M84mwW_7qoqXCl2N3XX--sw/exec";
         const runGoogleScript = async (funcName, args = []) => {
