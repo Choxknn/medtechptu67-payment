@@ -104,25 +104,30 @@
         // ==========================================
         // 🌐 Firebase Connection
         // ==========================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyCl12dWCOkpRbdr-TFtZjNQhRKvdmj4g6k",
-            authDomain: "medtechptu67-payment.firebaseapp.com",
-            databaseURL: "https://medtechptu67-payment-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "medtechptu67-payment",
-            storageBucket: "medtechptu67-payment.firebasestorage.app",
-            messagingSenderId: "452330902364",
-            appId: "1:452330902364:web:f92236a62500144531a799",
-            measurementId: "G-7WQWLGFSC0"
-        };
+        // ==========================================
+// 🌐 Firebase Connection (เวอร์ชันที่เข้ากับ React ของคุณ)
+// ==========================================
+const firebaseConfig = {
+    apiKey: "AIzaSyCI12dWCOkpRbdr-TFtZjNQhRKvdmj4g6k", // ✅ อัปเดตตามที่คุณส่งมาล่าสุด
+    authDomain: "medtechptu67-payment.firebaseapp.com",
+    databaseURL: "https://medtechptu67-payment-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "medtechptu67-payment",
+    storageBucket: "medtechptu67-payment.firebasestorage.app",
+    messagingSenderId: "452330902364",
+    appId: "1:452330902364:web:f92236a62500144531a799",
+    measurementId: "G-7WQWLGFSC0"
+};
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.firestore();
-        const storage = firebase.storage();
-        
-        // ⚠️ ต้องใส่บรรทัดนี้ไว้ เพื่อบอกให้มันวิ่งไปห้อง shogun33
-        db.settings({ databaseId: "shogun33" });
+// ตรวจสอบการ Initialize
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// ✅ สำคัญมาก: ถ้าคุณยังใช้ห้องชื่อ shogun33 ต้องใส่บรรทัดนี้
+db.settings({ databaseId: "shogun33" });
 
         // เก็บ API_URL เผื่อใช้เรียก Line Notify ในอนาคต
         const API_URL = "https://script.google.com/macros/s/AKfycbzEXjfZSgs3riQmjc22AZu45dn50etSm_lMqkior3UmHa8M84mwW_7qoqXCl2N3XX--sw/exec";
