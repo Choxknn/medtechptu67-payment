@@ -18,6 +18,10 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
     <style>
         body { 
             font-family: 'Sarabun', sans-serif; 
@@ -26,14 +30,12 @@
             -webkit-tap-highlight-color: transparent; 
         }
 
-        /* ใส่ในแท็บ <style> เดิมของคุณ */
         @media screen and (max-width: 768px) {
             input, select, textarea {
-            font-size: 16px !important; /* บังคับให้เป็น 16px เฉพาะในมือถือ */
+            font-size: 16px !important; 
           }
         }
 
-        /* 📱 iOS Slide In Animation */
         @keyframes slideInRight {
             0% { transform: translateX(100%); opacity: 0.5; }
             100% { transform: translateX(0); opacity: 1; }
@@ -42,7 +44,6 @@
             animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards; 
         }
 
-        /* Animations */
         @keyframes blink-border {
             0%, 100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
             50% { border-color: #fee2e2; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2); }
@@ -55,12 +56,10 @@
         .loader { border: 4px solid #e0f2fe; border-top: 4px solid #2563eb; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         html { scroll-behavior: smooth; }
 
-        /* Animation Timer */
         @keyframes border-flow {
             0% { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
             50% { border-color: #2563eb; box-shadow: 0 0 25px rgba(37, 99, 235, 0.8); }
@@ -68,11 +67,9 @@
         }
         .popup-timer-border { border: 3px solid transparent; animation: border-flow 1.5s infinite; border-radius: 1.5rem !important; }
 
-        /* Loading Text */
         .loading-text:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' ..'; } 60% { content: ' ...'; } 80%, 100% { content: ''; } }
 
-        /* Background Decoration */
         @keyframes fall {
             0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) translateX(20px) rotate(360deg); opacity: 0; }
@@ -82,15 +79,12 @@
             animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite;
         }
 
-        /* New App Animations */
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes pop { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* iOS Bottom Safe Area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1.25rem); }
         .pt-safe { padding-top: env(safe-area-inset-top, 0.5rem); }
 
-        /* 📱 Drawer Animation (แจ้งเตือนลิ้นชัก) */
         @keyframes slideDownDrawer {
             0% { transform: translateY(-50%); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
@@ -105,28 +99,117 @@
     <div id="root"></div>
 
     <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        // 🌐 API Connection
+        // 🌐 Firebase Connection
         // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCl12dWCOkpRbdr-TFtZjNQhRKvdmj4g6k",
+            authDomain: "medtechptu67-payment.firebaseapp.com",
+            databaseURL: "https://medtechptu67-payment-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "medtechptu67-payment",
+            storageBucket: "medtechptu67-payment.firebasestorage.app",
+            messagingSenderId: "452330902364",
+            appId: "1:452330902364:web:f92236a62500144531a799",
+            measurementId: "G-7WQWLGFSC0"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        
+        // ชี้เป้าไปที่ห้อง shogun33
+        db.settings({ databaseId: "shogun33" });
+
+        // เก็บ API_URL เผื่อใช้เรียก Line Notify ในอนาคต
         const API_URL = "https://script.google.com/macros/s/AKfycbzEXjfZSgs3riQmjc22AZu45dn50etSm_lMqkior3UmHa8M84mwW_7qoqXCl2N3XX--sw/exec";
-
         const runGoogleScript = async (funcName, args = []) => {
             try {
                 const formData = new URLSearchParams();
                 formData.append('data', JSON.stringify({ action: funcName, args: args }));
-
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-                
+                const response = await fetch(API_URL, { method: 'POST', body: formData });
                 const result = await response.json();
                 if (result.error) throw new Error(result.error);
                 return result;
+            } catch (error) { console.error(`[API Error] ${funcName}:`, error); throw error; }
+        };
+
+        // ==========================================
+        // 🔄 ฟังก์ชันกวาดข้อมูลจาก Firebase (ทำหน้าที่แทน Apps Script)
+        // ==========================================
+        const fetchDashboardDataFromFirebase = async (studentId) => {
+            try {
+                let dashboardData = { bills: [], orders: [], products: [], history: [], finance: { balance: 0, income: 0, expense: 0, projects: [] }, announcement: "", orderEnabled: true };
+
+                // 1. ดึงตั้งค่าระบบ
+                const configDoc = await db.collection("config").doc("system").get();
+                if (configDoc.exists) {
+                    const cfg = configDoc.data();
+                    dashboardData.announcement = cfg.announcement || "";
+                    dashboardData.orderEnabled = cfg.orderEnabled !== false;
+                }
+
+                // 2. ดึงบิล
+                const billsSnapshot = await db.collection("bills").where("studentId", "==", studentId).get();
+                const now = new Date();
+                dashboardData.bills = billsSnapshot.docs.map(doc => {
+                    const b = doc.data();
+                    let daysLate = 0;
+                    if (b.dueDate && b.status !== 'รอตรวจสอบ' && b.status !== 'ชำระแล้ว' && b.dueDate !== 'ไม่มีกำหนด') {
+                        const parts = b.dueDate.split('/');
+                        if (parts.length === 3) {
+                            const due = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T23:59:59`);
+                            if (now > due) daysLate = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+                        }
+                    }
+                    let fine = 0;
+                    if (daysLate > 0 && b.dailyFine > 0) {
+                        fine = daysLate * b.dailyFine;
+                        if (b.maxFine > 0 && fine > b.maxFine) fine = b.maxFine;
+                    }
+                    return { ...b, id: doc.id, daysLate, fine, total: ((Number(b.amount)||0) - (Number(b.discount)||0) + fine) };
+                }).filter(b => b.status !== 'ชำระแล้ว'); 
+
+                // 3. ดึงสินค้า
+                const productsSnapshot = await db.collection("products").where("status", "!=", "OFF").get();
+                dashboardData.products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // 4. ดึงคำสั่งซื้อ
+                const ordersSnapshot = await db.collection("orders").where("studentId", "==", studentId).get();
+                dashboardData.orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // 5. ดึงประวัติ
+                const historySnapshot = await db.collection("history").where("studentId", "==", studentId).get();
+                dashboardData.history = historySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // 6. ดึง QR Codes
+                const qrDoc = await db.collection("config").doc("qrMap").get();
+                if (qrDoc.exists) dashboardData.qrMap = qrDoc.data();
+
+                // 7. ดึงการเงินชั้นปี
+                const financeSnapshot = await db.collection("finance").get();
+                let totalIncome = 0, totalExpense = 0;
+                let projectsMap = {};
+                financeSnapshot.docs.forEach(doc => {
+                    const f = doc.data();
+                    if (f.type === 'income') totalIncome += (Number(f.amount)||0);
+                    else totalExpense += (Number(f.amount)||0);
+                    
+                    if (f.project) {
+                        if (!projectsMap[f.project]) projectsMap[f.project] = { id: f.project, name: f.project, income: 0, expense: 0, transactions: [] };
+                        if (f.type === 'income') projectsMap[f.project].income += (Number(f.amount)||0);
+                        else projectsMap[f.project].expense += (Number(f.amount)||0);
+                        projectsMap[f.project].transactions.push(f);
+                    }
+                });
+                dashboardData.finance = { balance: totalIncome - totalExpense, income: totalIncome, expense: totalExpense, projects: Object.values(projectsMap) };
+
+                return dashboardData;
             } catch (error) {
-                console.error(`[API Error] ${funcName}:`, error);
+                console.error("Error fetching data:", error);
                 throw error;
             }
         };
@@ -135,12 +218,13 @@ const { useState, useEffect, useRef } = React;
         
         const getDirectDriveUrl = (url) => {
             if (!url) return "https://via.placeholder.com/400x300?text=No+Image";
+            if (url.indexOf("firebasestorage.googleapis.com") !== -1) return url; // ถ้าเป็นลิงก์ Firebase Storage ให้ใช้เลย
             if (url.indexOf("lh3.googleusercontent.com") !== -1 || url.indexOf("googleusercontent.com/profile") !== -1) return url;
             try {
                 var id = "";
                 if (url.indexOf("file/d/") !== -1) id = url.split("file/d/")[1].split("/")[0];
                 else if (url.indexOf("id=") !== -1) id = url.split("id=")[1].split("&")[0];
-                if (id) return "https://lh3.googleusercontent.com/d/" + id;
+                if (id) return "https://googleusercontent.com/profile/picture/0" + id;
                 return url; 
             } catch (e) {
                 return "https://via.placeholder.com/400x300?text=Error";
@@ -151,19 +235,11 @@ const { useState, useEffect, useRef } = React;
         // Helper UI Components
         // ==========================================
         const fireAutoCloseAlert = (title, text) => {
-            return Swal.fire({
-                title: title, html: `<p class="text-gray-600 text-lg">${text}</p>`, icon: 'success',
-                showConfirmButton: true, confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', allowOutsideClick: false,
-                customClass: { popup: 'rounded-3xl pb-8 pt-6', title: 'text-2xl font-bold text-gray-800', confirmButton: 'rounded-xl px-10 py-3 font-bold shadow-lg text-base hover:scale-105 transition-transform' }
-            });
+            return Swal.fire({ title: title, html: `<p class="text-gray-600 text-lg">${text}</p>`, icon: 'success', showConfirmButton: true, confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', allowOutsideClick: false, customClass: { popup: 'rounded-3xl pb-8 pt-6', title: 'text-2xl font-bold text-gray-800', confirmButton: 'rounded-xl px-10 py-3 font-bold shadow-lg text-base hover:scale-105 transition-transform' } });
         };
 
         const fireErrorAlert = (title, text) => {
-            return Swal.fire({
-                title: title, html: `<div class="px-2"><p class="text-gray-600">${text}</p></div>`, icon: 'error',
-                showConfirmButton: true, confirmButtonText: 'ปิด', confirmButtonColor: '#EF4444',
-                customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-red-600', confirmButton: 'rounded-xl px-8 py-2.5 font-bold shadow-md text-sm' }
-            });
+            return Swal.fire({ title: title, html: `<div class="px-2"><p class="text-gray-600">${text}</p></div>`, icon: 'error', showConfirmButton: true, confirmButtonText: 'ปิด', confirmButtonColor: '#EF4444', customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-red-600', confirmButton: 'rounded-xl px-8 py-2.5 font-bold shadow-md text-sm' } });
         };
 
         const fireOrderSuccessAlert = (orderId) => {
@@ -206,8 +282,8 @@ const { useState, useEffect, useRef } = React;
                         </svg>
                         <span className="absolute text-2xl font-bold text-[#0066FF]">{progress}%</span>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1 loading-text">กำลังตรวจสอบสลีป</h3>
-                    <p className="text-xs text-gray-500">ผ่านระบบ SlipOK อัตโนมัติ</p>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1 loading-text">กำลังบันทึกสลิปเข้าระบบ</h3>
+                    <p className="text-xs text-gray-500">กรุณารอสักครู่...</p>
                 </div>
             </div>, document.body
         );
@@ -256,45 +332,7 @@ const { useState, useEffect, useRef } = React;
         };
 
         // ==========================================
-        // Auth Themes & Components
-        // ==========================================
-        const useFestivalTheme = () => {
-            const date = new Date();
-            const month = date.getMonth() + 1; 
-            const day = date.getDate();
-            const isRange = (m1, d1, m2, d2) => {
-                const cur = month * 100 + day;
-                return cur >= (m1 * 100 + d1) && cur <= (m2 * 100 + d2);
-            };
-
-            let theme = {
-                name: 'default',
-                bgGradient: 'from-blue-50 to-indigo-100', headerGradient: 'from-blue-600 to-indigo-600',
-                buttonColor: 'bg-blue-600 hover:bg-blue-700', accentColor: 'text-blue-600',
-                mascot: 'https://img5.pic.in.th/file/secure-sv1/-8f8bd3b6672e701d.png', decoration: null 
-            };
-
-            if (isRange(1, 1, 1, 9)) theme = { name: 'newyear', bgGradient: 'from-yellow-50 to-orange-100', headerGradient: 'from-orange-500 to-yellow-500', buttonColor: 'bg-orange-500 hover:bg-orange-600', accentColor: 'text-orange-600', mascot: 'https://cdn-icons-png.flaticon.com/512/13373/13373572.png', decoration: ['🎉', '🎆', '2026', '✨'] };
-            else if (isRange(2, 15, 2, 17)) theme = { name: 'cny', bgGradient: 'from-red-50 to-yellow-100', headerGradient: 'from-red-600 to-red-500', buttonColor: 'bg-red-600 hover:bg-red-700', accentColor: 'text-red-700', mascot: 'https://cdn-icons-png.flaticon.com/512/14231/14231241.png', decoration: ['🧧', '🏮', '💰', '🐉'] };
-            else if (isRange(2, 10, 2, 14)) theme = { name: 'valentine', bgGradient: 'from-pink-50 to-rose-100', headerGradient: 'from-pink-500 to-rose-500', buttonColor: 'bg-pink-500 hover:bg-pink-600', accentColor: 'text-pink-600', mascot: 'https://cdn-icons-png.flaticon.com/512/14122/14122588.png', decoration: ['❤️', '💖', '💌', '🌹','LOVE'] };
-            else if (isRange(4, 10, 4, 16)) theme = { name: 'songkran', bgGradient: 'from-cyan-50 to-blue-200', headerGradient: 'from-cyan-500 to-blue-500', buttonColor: 'bg-cyan-600 hover:bg-cyan-700', accentColor: 'text-cyan-600', mascot: 'https://cdn-icons-png.flaticon.com/512/4524/4524490.png', decoration: ['💦', '🔫', '🌺', '💧'] };
-            else if (isRange(10, 20, 10, 31)) theme = { name: 'halloween', bgGradient: 'from-purple-100 to-orange-200', headerGradient: 'from-purple-800 to-orange-600', buttonColor: 'bg-purple-800 hover:bg-purple-900', accentColor: 'text-purple-800', mascot: 'https://cdn-icons-png.flaticon.com/512/5833/5833493.png', decoration: ['🎃', '👻', '🦇', '🕸️'] };
-            else if (isRange(11, 20, 11, 25)) theme = { name: 'loykrathong', bgGradient: 'from-indigo-100 to-yellow-50', headerGradient: 'from-indigo-600 to-blue-700', buttonColor: 'bg-indigo-600 hover:bg-indigo-700', accentColor: 'text-indigo-700', mascot: 'https://cdn-icons-png.flaticon.com/512/8716/8716920.png', decoration: ['🪷', '🌕', '🕯️', '🎆'] };
-            else if (isRange(12, 10, 12, 31)) theme = { name: 'christmas', bgGradient: 'from-green-50 to-red-100', headerGradient: 'from-green-600 to-red-600', buttonColor: 'bg-green-700 hover:bg-green-800', accentColor: 'text-green-700', mascot: 'https://cdn-icons-png.flaticon.com/512/6240/6240060.png', decoration: ['🎄', '🎅', '❄️', '🎁'] };
-            return theme;
-        };
-
-        const BackgroundDecoration = ({ items }) => {
-            if (!items) return null;
-            const flakes = Array.from({ length: 15 }).map((_, i) => {
-                const style = { left: `${Math.random() * 100}vw`, animationDuration: `${Math.random() * 5 + 5}s`, animationDelay: `${Math.random() * 5}s`, fontSize: `${Math.random() * 20 + 20}px` };
-                return <div key={i} className="falling-item" style={style}>{items[i % items.length]}</div>
-            });
-            return <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">{flakes}</div>;
-        };
-
-       // ==========================================
-        // 📱 Login Component (รองรับคอมพิวเตอร์ Split Screen)
+        // 📱 Login Component
         // ==========================================
         const Login = ({ onLogin, onRegister }) => {
             const [id, setId] = useState('');
@@ -304,20 +342,16 @@ const { useState, useEffect, useRef } = React;
                 <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
                         
-                        {/* 🖥️ ส่วนซ้ายสำหรับหน้าจอคอม */}
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
                             <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }} />
-                            {/* ✅ ปรับให้อยู่บรรทัดเดียว และเล็กลงนิดหน่อย */}
                             <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h2>
                             <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Payment</p>
                             <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
                             <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-black/10 rounded-full blur-3xl"></div>
                         </div>
 
-                        {/* 📱 ส่วนขวา (ฟอร์ม) สำหรับทุกหน้าจอ */}
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
-                            {/* บนมือถือโชว์โลโก้ */}
                             <div className="md:hidden text-center mb-2">
                                 <div className="relative inline-block">
                                     <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
@@ -325,7 +359,6 @@ const { useState, useEffect, useRef } = React;
                                         <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} alt="Logo" className="w-full h-full object-cover rounded-full transform transition-transform scale-150" onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }} />
                                     </div>
                                 </div>
-                                {/* ✅ ปรับฟอนต์เล็กลงเป็น text-xl และบังคับไม่ให้ตกบรรทัด */}
                                 <h1 className="text-xl font-black text-gray-800 tracking-tight mt-4 whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h1>
                                 <p className="text-[#0066FF] mt-0.5 font-extrabold text-xs tracking-wide">MedTech 67 Payment System</p>
                             </div>
@@ -363,7 +396,7 @@ const { useState, useEffect, useRef } = React;
         };
         
         // ==========================================
-        // 📝 Register Component (รองรับคอมพิวเตอร์)
+        // 📝 Register Component (แก้ไขเชื่อมต่อ Firebase)
         // ==========================================
         const Register = ({ onBack, onRegisterSuccess }) => {
             const [step, setStep] = useState(1);
@@ -377,9 +410,13 @@ const { useState, useEffect, useRef } = React;
                 if (!studentId) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสนักศึกษา', 'warning');
                 setLoading(true);
                 try {
-                    const res = await runGoogleScript('verifyStudentId', [studentId]);
-                    if (res.found) { setStudentInfo(res); setStep(2); } 
-                    else { Swal.fire('ข้อผิดพลาด', res.message || 'ไม่พบข้อมูลในระบบ', 'error'); }
+                    const docSnap = await db.collection("students").doc(studentId).get();
+                    if (docSnap.exists) { 
+                        setStudentInfo({ name: docSnap.data().name, hasPassword: !!docSnap.data().password }); 
+                        setStep(2); 
+                    } else { 
+                        Swal.fire('ข้อผิดพลาด', 'ไม่พบข้อมูลในระบบ', 'error'); 
+                    }
                 } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
                 setLoading(false);
             };
@@ -390,21 +427,14 @@ const { useState, useEffect, useRef } = React;
                 if (newPass !== confirmPass) return Swal.fire('แจ้งเตือน', 'รหัสผ่านไม่ตรงกัน', 'warning');
                 setLoading(true);
                 try {
-                    const res = await runGoogleScript('setNewPassword', [studentId, newPass]);
-                    if (res.success) { Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'สร้างรหัสผ่านเรียบร้อยแล้ว', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => onRegisterSuccess()); } 
-                    else { Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: res.message, customClass: { popup: 'rounded-3xl' } }); }
+                    await db.collection("students").doc(studentId).update({ password: newPass });
+                    Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'สร้างรหัสผ่านเรียบร้อยแล้ว', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => onRegisterSuccess());
                 } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
                 setLoading(false);
             };
 
             const handleRecovery = async () => {
-                setLoading(true);
-                try {
-                    const res = await runGoogleScript('sendRecoveryMessage', [studentId]);
-                    if (res.success) { Swal.fire({ icon: 'success', title: 'สำเร็จ', text: res.message, confirmButtonColor: '#00B900', customClass: { popup: 'rounded-3xl' } }).then(() => onBack()); } 
-                    else { Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: res.message, customClass: { popup: 'rounded-3xl' } }); }
-                } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
-                setLoading(false);
+                Swal.fire('แจ้งเตือน', 'ฟังก์ชันนี้กำลังอัปเกรดเพื่อเชื่อมต่อกับ Firebase กรุณาติดต่อแอดมินโดยตรงเพื่อขอรหัสผ่านใหม่ครับ', 'info');
             };
 
             return (
@@ -414,7 +444,6 @@ const { useState, useEffect, useRef } = React;
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
                             <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
-                            {/* ✅ ปรับให้อยู่บรรทัดเดียว และเล็กลงนิดหน่อย */}
                             <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">สร้างรหัสผ่านใหม่</h2>
                             <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Payment</p>
                         </div>
@@ -427,7 +456,6 @@ const { useState, useEffect, useRef } = React;
                                         <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-full h-full object-cover rounded-full" />
                                     </div>
                                 </div>
-                                {/* ✅ ปรับฟอนต์เล็กลงเป็น text-xl และบังคับไม่ให้ตกบรรทัด */}
                                 <h1 className="text-xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">ลืมรหัสผ่าน / สร้างรหัสผ่าน</h1>
                                 <p className="text-[#0066FF] mt-1 font-extrabold text-xs tracking-wide">MedTech 67 Payment System</p>
                             </div>
@@ -493,8 +521,9 @@ const { useState, useEffect, useRef } = React;
 
             useEffect(() => {
                 const calculateTime = () => {
-                    if (!dueDate) return;
+                    if (!dueDate || dueDate === 'ไม่มีกำหนด') return;
                     const parts = dueDate.split('/');
+                    if(parts.length < 3) return;
                     const target = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`); 
                     target.setHours(23, 59, 59); 
                     const now = new Date();
@@ -553,7 +582,7 @@ const { useState, useEffect, useRef } = React;
         };
 
         // ==========================================
-        // 📱 หน้าต่างย่อย: OrderProductModal, PaymentModal ฯลฯ
+        // 📱 หน้าต่างย่อย: OrderProductModal, PaymentModal
         // ==========================================
         const OrderProductModal = ({ product, onClose, onConfirm }) => {
             const [selections, setSelections] = useState({});
@@ -710,8 +739,9 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
+        
         // ==========================================
-        // 📱 2. หน้าชำระเงินบิลค่าเทอม (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
+        // 📱 2. หน้าชำระเงินบิลค่าเทอม (Firebase Upload)
         // ==========================================
         const PaymentModal = ({ bill, user, onClose, onSuccess }) => {
             const [file, setFile] = useState(null);
@@ -725,49 +755,52 @@ const { useState, useEffect, useRef } = React;
                 else { fireErrorAlert('ไฟล์ขนาดใหญ่เกินไป', 'กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 5MB'); }
             };
 
-            const submit = async (force = false) => {
+            const submit = async () => {
                 if(!file) return;
                 setIsSubmitting(true); setProgress(0);
 
                 const progressInterval = setInterval(() => {
                     setProgress(old => { if (old >= 90) return 90; return old + Math.floor(Math.random() * 10) + 1; });
                 }, 400);
+                
+                try {
+                    // 1. อัปโหลดรูปสลิปขึ้น Firebase Storage
+                    const fileExt = file.name.split('.').pop() || 'jpg';
+                    const fileName = `slips/bills/${bill.billId}_${user.studentId}_${Date.now()}.${fileExt}`;
+                    const storageRef = storage.ref().child(fileName);
+                    await storageRef.put(file);
+                    const slipUrl = await storageRef.getDownloadURL();
 
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = async () => {
-                    const payload = { 
-                        billId: bill.billId, rowIndex: bill.row, 
-                        studentId: user.studentId, studentName: user.name, studentLineId: user.userId, 
-                        item: bill.item, amount: bill.amount, total: bill.total, 
-                        fileData: reader.result.split(',')[1], mimeType: file.type, forceSubmit: force 
-                    };
-                    
-                    try {
-                        const res = await runGoogleScript('submitPayment', [payload]);
-                        clearInterval(progressInterval); setProgress(100);
-                        setTimeout(() => {
-                            setIsSubmitting(false);
-                            if(res.requireConfirmation) {
-                                Swal.fire({ 
-                                    title: 'สลีปไม่ผ่านเงื่อนไข', html: `ระบบพบปัญหา: <span class="text-red-500 font-bold">${res.reason}</span><br>ต้องการส่งเรื่องให้เจ้าหน้าที่ตรวจสอบหรือไม่?`, 
-                                    icon: 'warning', showCancelButton: true, confirmButtonText: 'ส่งตรวจสอบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#F59E0B', customClass: { popup: 'rounded-3xl' } 
-                                }).then((r) => { if(r.isConfirmed) submit(true); }); 
-                                return;
-                            }
-                            if(res.success) {
-                                onClose();
-                                if (res.status === 'ยอดไม่ครบ') {
-                                    Swal.fire({ icon: 'warning', title: '⚠️ ยอดชำระไม่ครบ', html: `<div class="text-left bg-orange-50 p-4 rounded-xl border border-orange-100"><p class="text-orange-800 font-bold mb-1">ระบบได้รับยอดเงินบางส่วน</p><p class="text-sm text-gray-600">${res.message}</p><div class="mt-2 text-xs text-gray-500">* ระบบได้บันทึกยอดที่โอนมาเป็นส่วนลดแล้ว</div></div>`, confirmButtonText: 'รับทราบ', confirmButtonColor: '#F59E0B', customClass: { popup: 'rounded-3xl' } }).then(() => { onSuccess(); });
-                                } else if (res.status === 'รอตรวจสอบ') {
-                                    Swal.fire({ icon: 'warning', title: 'บันทึกข้อมูลแล้ว', html: `<div style="color:#F59E0B; font-weight:bold; font-size:1.2em; margin-bottom: 8px;">สถานะ: รอตรวจสอบ</div><div style="color:#555;">${res.message || 'ระบบได้รับข้อมูลแล้ว แอดมินจะตรวจสอบเร็วๆ นี้'}</div>`, confirmButtonText: 'ตกลง', confirmButtonColor: '#F59E0B', customClass: { popup: 'rounded-3xl' } }).then(() => { onSuccess(); });
-                                } else { 
-                                    fireAutoCloseAlert('ชำระเงินสำเร็จ!', 'ขอบคุณที่ชำระเงิน').then(() => { onSuccess(); });
-                                }
-                            } else { fireErrorAlert('เกิดข้อผิดพลาด', res.error || res.message); }
-                        }, 500);
-                    } catch(err) { clearInterval(progressInterval); setIsSubmitting(false); fireErrorAlert('System Error', err.toString()); }
-                };
+                    // 2. อัปเดตสถานะบิลใน Firestore ให้เป็น รอตรวจสอบ
+                    await db.collection("bills").doc(`${bill.billId}-${user.studentId}`).update({
+                        status: 'รอตรวจสอบ',
+                        slipUrl: slipUrl,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    // 3. เพิ่มประวัติลงใน History
+                    const txId = `HIST-${Date.now()}`;
+                    await db.collection("history").doc(txId).set({
+                        billId: bill.billId,
+                        studentId: user.studentId,
+                        name: user.name,
+                        item: bill.item,
+                        amount: bill.amount,
+                        totalPaid: bill.total,
+                        status: 'รอตรวจสอบ',
+                        payDate: new Date().toLocaleDateString('th-TH'),
+                        slipUrl: slipUrl
+                    });
+
+                    clearInterval(progressInterval); setProgress(100);
+                    setTimeout(() => {
+                        setIsSubmitting(false);
+                        Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลแล้ว', html: `<div style="color:#0066FF; font-weight:bold; font-size:1.2em; margin-bottom: 8px;">สถานะ: รอตรวจสอบ</div><div style="color:#555;">อัปโหลดสลิปเรียบร้อย แอดมินจะตรวจสอบเร็วๆ นี้ครับ</div>`, confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => { onClose(); onSuccess(); });
+                    }, 500);
+
+                } catch(err) { 
+                    clearInterval(progressInterval); setIsSubmitting(false); fireErrorAlert('System Error', err.toString()); 
+                }
             };
 
             return (
@@ -788,7 +821,7 @@ const { useState, useEffect, useRef } = React;
                                     </span>
                                 </div>
                                 <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-blue-100 inline-block shadow-sm relative mb-4">
-                                    <img src={bill.qrCode} className="w-52 h-52 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://via.placeholder.com/200'} />
+                                    <img src={getDirectDriveUrl(bill.qrCode || bill.slipUrl)} className="w-52 h-52 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://via.placeholder.com/200?text=QR+Code'} />
                                     <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#0066FF] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-md tracking-wider">SCAN ME</div>
                                 </div>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">ยอดที่ต้องชำระ</p>
@@ -814,7 +847,7 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => submit(false)} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
+                            <button onClick={submit} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
                                 ยืนยันการชำระเงิน <i className="fa-solid fa-paper-plane ml-2"></i>
                             </button>
                         </div>
@@ -822,8 +855,9 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
+        
         // ==========================================
-        // 📱 3. หน้าชำระเงินค่าสินค้า (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
+        // 📱 3. หน้าชำระเงินค่าสินค้า (Firebase Upload)
         // ==========================================
         const OrderPaymentModal = ({ order, user, onClose, onSuccess, qrMap, defaultQr }) => {
             const [file, setFile] = useState(null);
@@ -833,7 +867,7 @@ const { useState, useEffect, useRef } = React;
             const gWalletDisplay = "006-66000147-4178"; 
             
             const safeQrMap = qrMap || {};
-            const paymentQrCode = safeQrMap[order.total] || defaultQr || "https://via.placeholder.com/200?text=No+QR+Found";
+            const paymentQrCode = getDirectDriveUrl(safeQrMap[order.total] || defaultQr || "https://via.placeholder.com/200?text=No+QR+Found");
 
             const handleFile = (e) => { 
                 const f = e.target.files[0]; 
@@ -846,20 +880,36 @@ const { useState, useEffect, useRef } = React;
                 setIsSubmitting(true); setProgress(0);
                 const progressInterval = setInterval(() => { setProgress(old => { if (old >= 90) return 90; return old + Math.floor(Math.random()*15)+1; }); }, 300);
 
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = async () => {
-                    const payload = { studentId: user.studentId, productName: order.name, size: order.size, quantity: order.qty, total: order.total, fileData: reader.result.split(',')[1], mimeType: file.type };
-                    try {
-                        const res = await runGoogleScript('submitOrderWithSlip', [payload]);
-                        clearInterval(progressInterval); setProgress(100);
-                        setTimeout(() => {
-                            setIsSubmitting(false);
-                            if(res.success) { onClose(); fireOrderSuccessAlert(res.orderId).then(() => { onSuccess(); }); } 
-                            else { fireErrorAlert('เกิดข้อผิดพลาด', res.message); }
-                        }, 500);
-                    } catch(err) { clearInterval(progressInterval); setIsSubmitting(false); fireErrorAlert('System Error', err.toString()); }
-                };
+                try {
+                    // 1. Upload
+                    const fileExt = file.name.split('.').pop() || 'jpg';
+                    const fileName = `slips/orders/${user.studentId}_${Date.now()}.${fileExt}`;
+                    const storageRef = storage.ref().child(fileName);
+                    await storageRef.put(file);
+                    const slipUrl = await storageRef.getDownloadURL();
+
+                    const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+
+                    // 2. Save Order
+                    await db.collection("orders").doc(orderId).set({
+                        orderId: orderId,
+                        studentId: user.studentId,
+                        name: user.name,
+                        date: new Date().toLocaleDateString('th-TH'),
+                        items: `${order.name} (${order.size}) x${order.qty}`,
+                        price: order.total,
+                        status: 'รอตรวจสอบ',
+                        slipUrl: slipUrl
+                    });
+
+                    clearInterval(progressInterval); setProgress(100);
+                    setTimeout(() => {
+                        setIsSubmitting(false);
+                        onClose(); fireOrderSuccessAlert(orderId).then(() => { onSuccess(); });
+                    }, 500);
+                } catch(err) { 
+                    clearInterval(progressInterval); setIsSubmitting(false); fireErrorAlert('System Error', err.toString()); 
+                }
             };
 
             return (
@@ -913,8 +963,9 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
+        
         // ==========================================
-        // 📱 4. หน้าย่อยรายละเอียดโครงการการเงิน (ปรับให้ใหม่ขึ้นก่อนเสมอ)
+        // 📱 4. หน้าย่อยรายละเอียดโครงการการเงิน
         // ==========================================
        const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
             const [sortOrder, setSortOrder] = useState('desc'); 
@@ -960,7 +1011,7 @@ const { useState, useEffect, useRef } = React;
                                                     <p className={`font-black mb-2 ${tx.type==='income'?'text-green-500':'text-red-500'}`}>{tx.type==='income'?'+':'-'}{formatCurrency(tx.amount)}</p>
                                                     <div className="flex flex-col gap-1.5 w-full">
                                                         {tx.receiptUrl && <button onClick={() => onViewSlip(tx.receiptUrl)} className="text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-blue-100/50"><i className="fa-solid fa-file-invoice mr-1.5"></i> ใบเสร็จ</button>}
-                                                        {tx.transferSlipUrl && <button onClick={() => onViewSlip(tx.transferSlipUrl)} className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-indigo-100/50"><i className="fa-solid fa-money-bill-transfer mr-1.5"></i> สลิปจ่ายเงิน</button>}
+                                                        {tx.transferSlipUrl && <button onClick={() => onViewSlip(tx.transferSlipUrl)} className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-indigo-100/50"><i className="fa-solid fa-money-bill-transfer mr-1.5"></i> สลิปจ่าย</button>}
                                                         {(!tx.receiptUrl && !tx.transferSlipUrl) && <span className="inline-block text-[10px] font-bold bg-gray-50 text-gray-400 py-1.5 rounded-lg border border-gray-100 text-center w-full">ไม่มีหลักฐาน</span>}
                                                     </div>
                                                 </div>
@@ -1145,7 +1196,7 @@ const { useState, useEffect, useRef } = React;
             const fetchData = async (silent = false) => {
                 if(!silent) setLoading(true);
                 try { 
-                    const res = await runGoogleScript('getDashboardData', [user.studentId]); 
+                    const res = await fetchDashboardDataFromFirebase(user.studentId); 
                     if(res) setData(res); 
                 } catch(e) { console.error(e); }
                 if(!silent) setLoading(false);
@@ -1180,8 +1231,17 @@ const { useState, useEffect, useRef } = React;
                         const setError = (inputEl, errorMsg) => { inputEl.classList.remove('border-gray-200', 'bg-gray-50'); inputEl.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200'); Swal.showValidationMessage(errorMsg); return false; };
                         if (!oldP) return setError(oldInput, 'กรุณากรอกรหัสผ่านเดิม'); if (!newP) return setError(newInput, 'กรุณากรอกรหัสผ่านใหม่'); if (!cNewP) return setError(confirmInput, 'กรุณายืนยันรหัสผ่านใหม่');
                         if (newP.length < 6) return setError(newInput, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'); if (newP !== cNewP) return setError(confirmInput, 'ยืนยันรหัสผ่านไม่ตรงกัน');
-                        try { const res = await runGoogleScript('changePassword', [user.studentId, oldP, newP]); if (!res.success) return setError(oldInput, res.message || 'รหัสผ่านเดิมไม่ถูกต้อง'); return true; } 
-                        catch(e) { Swal.showValidationMessage('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์'); return false; }
+                        
+                        try {
+                            const docRef = db.collection('students').doc(user.studentId);
+                            const docSnap = await docRef.get();
+                            if (docSnap.exists && docSnap.data().password === oldP) {
+                                await docRef.update({ password: newP });
+                                return true;
+                            } else {
+                                return setError(oldInput, 'รหัสผ่านเดิมไม่ถูกต้อง');
+                            }
+                        } catch(e) { Swal.showValidationMessage('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์'); return false; }
                     }
                 }).then((result) => { if (result.isConfirmed) Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }); });
             };
@@ -1231,7 +1291,6 @@ const { useState, useEffect, useRef } = React;
 
                 return (
                     <div className="w-full pb-10 relative">
-                        {/* ✅ แจ้งเตือนแบบลิ้นชัก (Drawer) ดีไซน์ใหม่ เล็กกะทัดรัดและพรีเมียมขึ้น */}
                         {(hasBills || hasActiveOrders) && (
                             <div className={`bg-white/95 backdrop-blur-md px-4 pb-3 pt-6 -mt-5 mx-1 mb-5 rounded-b-[1.5rem] shadow-[0_4px_15px_-3px_rgba(0,0,0,0.05)] flex items-center gap-3 border-b-[3px] ${statusColorClass} animate-drawer relative z-10`}>
                                 <div className={`w-9 h-9 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
@@ -1282,7 +1341,7 @@ const { useState, useEffect, useRef } = React;
                                                 </div>
                                                 <div className="text-right shrink-0 ml-2 flex flex-col items-end">
                                                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${statusBadgeColor}`}>{order.status}</span>
-                                                    <p className="text-[10px] text-gray-400 mt-1">กดเพื่อดู &gt;</p>
+                                                    <p className="text-[10px] text-gray-400 mt-1">กดเพื่อดู ></p>
                                                 </div>
                                             </div>
                                         );
@@ -1391,7 +1450,7 @@ const { useState, useEffect, useRef } = React;
                             <p className="text-gray-400 text-sm font-medium mt-1">{user.studentId}</p>
                             <div className="mt-4 flex justify-center gap-2">
                                 <span className="bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">นักศึกษา</span>
-                                <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">{user.userId || 'Verified'}</span>
+                                <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">{user.lineId || 'Verified'}</span>
                             </div>
                         </div>
 
@@ -1401,7 +1460,7 @@ const { useState, useEffect, useRef } = React;
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><i className="fa-solid fa-lock text-sm"></i></div><span className="text-sm font-bold text-gray-700">เปลี่ยนรหัสผ่าน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
-                            <button onClick={() => Swal.fire('Coming Soon', 'ฟีเจอร์นี้เตรียมเปิดใช้งานในอนาคต', 'info')} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
+                            <button onClick={() => Swal.fire('Coming Soon', 'ฟังก์ชันนี้กำลังอัปเกรดเพื่อเชื่อมต่อกับ Firebase ครับ', 'info')} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-[#00B900]/10 flex items-center justify-center text-[#00B900]"><i className="fa-brands fa-line text-xl"></i></div><span className="text-sm font-bold text-gray-700">เชื่อมต่อ LINE แจ้งเตือน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
@@ -1424,7 +1483,7 @@ const { useState, useEffect, useRef } = React;
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100"><i className="fa-solid fa-power-off text-sm"></i></div><span className="text-sm font-bold text-red-500">ออกจากระบบ</span></div>
                             </button>
                         </div>
-                        <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v2.0</p><p>🖥️ Develop by CHOKUN</p></div>
+                        <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v3.0 (Powered by Firebase)</p><p>🖥️ Develop by CHOKUN</p></div>
                     </div>
                 );
             };
@@ -1436,7 +1495,6 @@ const { useState, useEffect, useRef } = React;
 
                         <header className={`sticky top-0 z-40 ${themeColor} text-white pt-safe px-5 shadow-md flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-5 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
                             <div className="flex justify-between items-center pt-2 relative min-h-[40px]">
-                                {/* 🟢 ปุ่มซ้าย (โปรไฟล์ หรือ ปุ่มบ้าน) */}
                                 <div className="relative z-50 flex items-center">
                                     {tab === 'home' && !isSubPageOpen ? (
                                         <>
@@ -1458,7 +1516,6 @@ const { useState, useEffect, useRef } = React;
                                     )}
                                 </div>
                                 
-                                {/* 🟢 ชื่อหน้า ตรงกลางเป๊ะๆ */}
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
                                     {tab !== 'home' || isSubPageOpen ? (
                                         <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1 pointer-events-auto">
@@ -1471,7 +1528,6 @@ const { useState, useEffect, useRef } = React;
                                     ) : null}
                                 </div>
                                 
-                                {/* 🟢 ปุ่มขวา (รีเฟรช) */}
                                 <div className="flex gap-3 relative z-50 shrink-0">
                                     <button onClick={() => fetchData(false)} className={`w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition border border-white/10 shadow-sm ${loading ? 'animate-spin':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
                                 </div>
@@ -1499,7 +1555,7 @@ const { useState, useEffect, useRef } = React;
                                             </div>
                                         )}
                                         {(data?.bills || []).map(bill => {
-                                            const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
+                                            const isNoDate = !bill.dueDate || bill.dueDate === 'ไม่มีกำหนด';
                                             const isOverdue = bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ';
                                             return (
                                                 <div key={bill.billId} className={`bg-white rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden transition-all duration-300 flex flex-col justify-between ${isOverdue ? 'border-2 border-red-400 shadow-red-100 ring-4 ring-red-50' : 'border border-gray-100'}`}>
@@ -1556,7 +1612,7 @@ const { useState, useEffect, useRef } = React;
                                                     return (
                                                         <div key={p.id} onClick={() => !isSoldOut && setSelectedProduct(p)} className={`bg-white rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform border border-gray-50 cursor-pointer ${isSoldOut ? 'grayscale opacity-70' : 'hover:border-blue-200 hover:shadow-md'}`}>
                                                             <div className="aspect-square bg-gray-100 relative">
-                                                                <img src={getDirectDriveUrl(p.img)} className="w-full h-full object-cover" />
+                                                                <img src={getDirectDriveUrl(p.img || (p.images ? p.images.split(',')[0] : ''))} className="w-full h-full object-cover" />
                                                                 {!isSoldOut && <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center text-[#0066FF] font-bold"><i className="fa-solid fa-plus"></i></div>}
                                                             </div>
                                                             <div className="p-3 bg-white">
@@ -1583,8 +1639,8 @@ const { useState, useEffect, useRef } = React;
                                                     <div><h4 className="font-bold text-gray-800 text-sm line-clamp-1">{hist.item}</h4><p className="text-[10px] font-bold text-gray-400 mt-0.5">{hist.payDate}</p></div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-black text-[#0066FF]">{formatCurrency(hist.total)}</p>
-                                                    {hist.slip && <button onClick={() => setViewSlipUrl(hist.slip)} className="text-[10px] font-bold text-gray-400 hover:text-[#0066FF] bg-gray-50 hover:bg-blue-50 px-2 py-1 rounded-md mt-1 transition-colors">ดูสลีป</button>}
+                                                    <p className="font-black text-[#0066FF]">{formatCurrency(hist.totalPaid || hist.amount)}</p>
+                                                    {hist.slipUrl && <button onClick={() => setViewSlipUrl(hist.slipUrl)} className="text-[10px] font-bold text-gray-400 hover:text-[#0066FF] bg-gray-50 hover:bg-blue-50 px-2 py-1 rounded-md mt-1 transition-colors">ดูสลีป</button>}
                                                 </div>
                                             </div>
                                         ))}
@@ -1605,7 +1661,6 @@ const { useState, useEffect, useRef } = React;
 
                         {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                        {/* --- แถบเมนูด้านล่าง แบบยึดติดกับกรอบหน้าจอ --- */}
                         <div className={`absolute bottom-4 left-0 right-0 flex justify-center z-40 transition-all duration-500 ease-in-out pointer-events-none px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
                             <nav className="pointer-events-auto bg-white rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] px-2 py-1 flex justify-between items-center w-full max-w-md border border-gray-100">
                                 {renderNavItem('home', 'fa-house', 'หน้าแรก', 0)}
@@ -1616,7 +1671,6 @@ const { useState, useEffect, useRef } = React;
                             </nav>
                         </div>
 
-                        {/* ✅ เพิ่มบรรทัดนี้กลับเข้าไปครับ (ตัวเรียกหน้าต่างดูสลีป) */}
                         {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
 
                     </div>
@@ -1672,25 +1726,23 @@ const { useState, useEffect, useRef } = React;
         // 📱 Main App Component 
         // ==========================================
         const App = () => {
-            // ✅ ตั้งหน้าเริ่มต้นเป็น loading เพื่อรอถามหลังบ้านก่อน
             const [page, setPage] = useState('loading'); 
             const [user, setUser] = useState(null);
             const [dashboardData, setDashboardData] = useState(null);
             const [loading, setLoading] = useState(false);
 
-            // ✅ สั่งให้เช็คสถานะการปิดปรับปรุง ทันทีที่เปิดเว็บ
             useEffect(() => {
                 const checkSystemStatus = async () => {
                     try {
-                        const res = await runGoogleScript('checkStatus');
-                        if (res && res.maintenance) {
-                            setPage('maintenance'); // ถ้าระบบตอบว่าปิด ให้ไปหน้าปิดปรับปรุง
+                        const configDoc = await db.collection("config").doc("system").get();
+                        if (configDoc.exists && configDoc.data().maintenanceMode) {
+                            setPage('maintenance');
                         } else {
-                            setPage('login'); // ถ้าเปิดอยู่ ให้ไปหน้า Login ตามปกติ
+                            setPage('login'); 
                         }
                     } catch (e) {
                         console.error("Check status failed", e);
-                        setPage('login'); // ถ้าเช็คไม่สำเร็จ ปล่อยให้ไปหน้า Login ไว้ก่อน
+                        setPage('login');
                     }
                 };
                 checkSystemStatus();
@@ -1700,28 +1752,37 @@ const { useState, useEffect, useRef } = React;
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 setLoading(true);
                 try {
-                    const res = await runGoogleScript('loginUser', [u, p]);
-                    if(res.success) {
-                        let dashData = res.dashboardData;
-                        if (!dashData) { dashData = await runGoogleScript('getDashboardData', [res.studentId, true]); }
+                    // ตรวจสอบข้อมูลจาก Firebase Firestore
+                    const studentDoc = await db.collection("students").doc(String(u)).get();
+                    
+                    if (studentDoc.exists) {
+                        const studentData = studentDoc.data();
                         
-                        setUser(res); 
-                        setDashboardData(dashData); 
-                        setPage('dashboard');
+                        // ถ้ารหัสผ่านตรงกัน
+                        if (studentData.password === String(p)) {
+                            // ดึงข้อมูล Dashboard ทั้งหมดมารอเลย
+                            const dashData = await fetchDashboardDataFromFirebase(String(u));
+                            
+                            setUser(studentData); 
+                            setDashboardData(dashData); 
+                            setPage('dashboard');
 
-                        if (dashData.announcement) {
-                            Swal.fire({
-                                html: `<div class="flex flex-col w-full"><div class="w-full bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-white relative overflow-hidden flex flex-col items-center justify-center"><div class="absolute top-0 left-0 w-full h-full bg-white/10 skew-y-6"></div><div class="relative z-10 flex flex-col items-center"><div class="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-3 backdrop-blur-md shadow-lg"><i class="fa-solid fa-bullhorn text-3xl"></i></div><h3 class="text-2xl font-bold tracking-wide">ประกาศสำคัญ</h3></div></div><div class="w-full p-6 text-gray-700 text-lg font-medium leading-relaxed text-center bg-white whitespace-pre-wrap">${dashData.announcement}</div></div>`,
-                                confirmButtonText: '<i class="fa-regular fa-circle-check mr-2"></i> รับทราบ',
-                                confirmButtonColor: '#2563EB', buttonsStyling: true, padding: 0, width: '32rem',
-                                customClass: { popup: 'rounded-2xl overflow-hidden', htmlContainer: '!m-0 !p-0 w-full', confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold py-3 px-10 rounded-full shadow-lg mb-6 w-auto transition-transform hover:scale-105 active:scale-95' }
-                            });
-                        } else { 
-                            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-                            Toast.fire({ icon: 'success', title: `ยินดีต้อนรับ คุณ${res.name}` });
+                            if (dashData.announcement) {
+                                Swal.fire({
+                                    html: `<div class="flex flex-col w-full"><div class="w-full bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-white relative overflow-hidden flex flex-col items-center justify-center"><div class="absolute top-0 left-0 w-full h-full bg-white/10 skew-y-6"></div><div class="relative z-10 flex flex-col items-center"><div class="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-3 backdrop-blur-md shadow-lg"><i class="fa-solid fa-bullhorn text-3xl"></i></div><h3 class="text-2xl font-bold tracking-wide">ประกาศสำคัญ</h3></div></div><div class="w-full p-6 text-gray-700 text-lg font-medium leading-relaxed text-center bg-white whitespace-pre-wrap">${dashData.announcement}</div></div>`,
+                                    confirmButtonText: '<i class="fa-regular fa-circle-check mr-2"></i> รับทราบ',
+                                    confirmButtonColor: '#2563EB', buttonsStyling: true, padding: 0, width: '32rem',
+                                    customClass: { popup: 'rounded-2xl overflow-hidden', htmlContainer: '!m-0 !p-0 w-full', confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold py-3 px-10 rounded-full shadow-lg mb-6 w-auto transition-transform hover:scale-105 active:scale-95' }
+                                });
+                            } else { 
+                                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                                Toast.fire({ icon: 'success', title: `ยินดีต้อนรับ คุณ${studentData.name}` });
+                            }
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: 'รหัสผ่านไม่ถูกต้อง', customClass: { popup: 'rounded-2xl' } });
                         }
                     } else { 
-                        Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: res.message, customClass: { popup: 'rounded-2xl' } }); 
+                        Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: 'ไม่พบรหัสนักศึกษานี้ในระบบ', customClass: { popup: 'rounded-2xl' } }); 
                     }
                 } catch(e) { 
                     Swal.fire('Error', e.toString(), 'error'); 
@@ -1740,7 +1801,7 @@ const { useState, useEffect, useRef } = React;
             return (
                 <div>
                     {page === 'loading' && <Loading />} 
-                    {page === 'maintenance' && <MaintenanceMode />} {/* ✅ โชว์หน้านี้ถ้าปิดปรับปรุง */}
+                    {page === 'maintenance' && <MaintenanceMode />}
                     {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && <Dashboard user={user} initialData={dashboardData} onLogout={handleLogout} />}
