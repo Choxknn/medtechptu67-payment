@@ -89,6 +89,15 @@
         /* iOS Bottom Safe Area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1.25rem); }
         .pt-safe { padding-top: env(safe-area-inset-top, 0.5rem); }
+
+        /* 📱 Drawer Animation (แจ้งเตือนลิ้นชัก) */
+        @keyframes slideDownDrawer {
+            0% { transform: translateY(-50%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .animate-drawer { 
+            animation: slideDownDrawer 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; 
+        }
     </style>
 </head>
 <body>
@@ -208,22 +217,16 @@ const { useState, useEffect, useRef } = React;
             useEffect(() => { setImgSrc(getDirectDriveUrl(url)); }, [url]);
             
             return ReactDOM.createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
-                    <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-[pop_0.3s_ease-out] relative" onClick={e => e.stopPropagation()}>
-                        <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 bg-black/10 hover:bg-black/20 rounded-full flex items-center justify-center transition active:scale-90 z-10"><i className="fa-solid fa-xmark text-gray-600 text-xl"></i></button>
-                        <div className="p-5 border-b border-gray-50 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-receipt text-lg"></i></div>
-                            <div><h3 className="font-bold text-gray-800 leading-none">หลักฐาน</h3><p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Evidence</p></div>
-                        </div>
-                        <div className="p-4 bg-gray-50">
-                            <div className="bg-white rounded-2xl overflow-hidden shadow-inner border border-gray-100 flex items-center justify-center min-h-[250px] max-h-[60vh]">
-                                <img src={imgSrc} className="w-full h-full object-contain" alt="Slip" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x500?text=Image+Load+Error'; }} />
-                            </div>
-                        </div>
-                        <div className="p-4 bg-white">
-                            <a href={url} target="_blank" className="w-full bg-blue-50 hover:bg-blue-100 text-[#0066FF] font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm"><i className="fa-solid fa-up-right-from-square text-xs"></i> เปิดดูรูปภาพต้นฉบับ</a>
-                        </div>
+                <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
+                    <button onClick={onClose} className="absolute top-6 right-6 text-white bg-white/20 hover:bg-white/40 rounded-full w-12 h-12 flex items-center justify-center backdrop-blur-md transition active:scale-90 z-50">
+                        <i className="fa-solid fa-xmark text-2xl"></i>
+                    </button>
+                    <div className="relative w-full max-w-md max-h-[75vh] flex items-center justify-center">
+                        <img src={imgSrc} className="max-w-full max-h-full object-contain rounded-lg animate-[pop_0.3s_ease-out] drop-shadow-2xl" alt="Slip" onClick={e => e.stopPropagation()} onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x500?text=Image+Load+Error'; }} />
                     </div>
+                    <a href={url} target="_blank" onClick={e => e.stopPropagation()} className="mt-8 bg-white/20 hover:bg-white/30 text-white font-bold py-3.5 px-8 rounded-full backdrop-blur-md transition flex items-center justify-center gap-2 text-sm shadow-lg border border-white/20 active:scale-95 animate-[slideDownDrawer_0.4s_ease-out]">
+                        <i className="fa-solid fa-up-right-from-square"></i> เปิดดูรูปภาพต้นฉบับ
+                    </a>
                 </div>, document.body
             );
         };
@@ -1223,19 +1226,20 @@ const { useState, useEffect, useRef } = React;
                 }
 
                 return (
-                    <div className="space-y-6 animate-pop w-full pb-10 pt-2">
+                    <div className="w-full pb-10 relative">
+                        {/* ✅ แจ้งเตือนแบบลิ้นชัก (Drawer) เลื่อนลงมาจากขอบบน */}
                         {(hasBills || hasActiveOrders) && (
-                            <div className={`bg-white p-4 rounded-[1.5rem] shadow-sm flex items-center gap-4 border-l-4 ${statusColorClass} transition-colors duration-300`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center animate-pulse ${statusIconBg} ${statusIconText} shadow-inner`}><i className="fa-solid fa-bell text-xl"></i></div>
+                            <div className={`bg-white px-5 pb-5 pt-8 -mt-5 -mx-1 mb-6 rounded-b-[2rem] shadow-md flex items-center gap-4 border-b-4 ${statusColorClass} animate-drawer relative z-10`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center animate-pulse ${statusIconBg} ${statusIconText} shadow-inner shrink-0`}><i className="fa-solid fa-bell text-xl"></i></div>
                                 <div className="flex-grow">
                                     <h4 className="font-bold text-gray-800 text-sm">{statusTitle}</h4>
                                     <p className={`text-xs font-bold mt-0.5 ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
                                 </div>
-                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-sm ${actionColorClass}`}>ดูเลย</button>
+                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm shrink-0 ${actionColorClass}`}>ดูเลย</button>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 animate-pop pt-3 relative z-20">
                             {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => setTab('bills'), data?.bills?.length || 0)}
                             {hasAccess('orders') && data?.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => setTab('orders'), 0)}
                             {hasAccess('history') && renderMenuCard('ประวัติ', 'รายการย้อนหลัง', 'fa-clock-rotate-left', 'bg-cyan-500', () => setTab('history'), 0)}
@@ -1244,7 +1248,7 @@ const { useState, useEffect, useRef } = React;
                         </div>
 
                         {hasAccess('orders') && data?.orders && data.orders.length > 0 && (
-                            <div className="mt-6">
+                            <div className="mt-6 animate-pop">
                                 <div className="flex justify-between items-center mb-3 px-2">
                                     <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-box-open text-[#0066FF] mr-2"></i> สถานะการสั่งซื้อ</h3>
                                 </div>
@@ -1282,7 +1286,7 @@ const { useState, useEffect, useRef } = React;
                         )}
 
                         {data?.announcement && (
-                            <div className="mt-4 bg-gradient-to-r from-[#0066FF] to-[#004ECC] rounded-[1.5rem] p-5 text-white shadow-lg relative overflow-hidden">
+                            <div className="mt-4 bg-gradient-to-r from-[#0066FF] to-[#004ECC] rounded-[1.5rem] p-5 text-white shadow-lg relative overflow-hidden animate-pop">
                                 <div className="absolute top-0 right-0 opacity-20 transform translate-x-4 -translate-y-4 pointer-events-none"><i className="fa-solid fa-bullhorn text-7xl"></i></div>
                                 <h3 className="font-bold text-lg mb-2 relative z-10 flex items-center gap-2"><i className="fa-solid fa-circle-info text-sm"></i> ประกาศ</h3>
                                 <p className="text-sm opacity-95 relative z-10 whitespace-pre-wrap break-words leading-relaxed">{data.announcement}</p>
@@ -1420,8 +1424,9 @@ const { useState, useEffect, useRef } = React;
                         {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
                         <header className={`sticky top-0 z-40 ${themeColor} text-white pt-safe px-5 shadow-md flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-5 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
-                            <div className="flex justify-between items-center pt-2 relative">
-                                <div className="relative z-50 flex-1 flex items-center">
+                            <div className="flex justify-between items-center pt-2 relative min-h-[40px]">
+                                {/* 🟢 ปุ่มซ้าย (โปรไฟล์ หรือ ปุ่มบ้าน) */}
+                                <div className="relative z-50 flex items-center">
                                     {tab === 'home' && !isSubPageOpen ? (
                                         <>
                                             <div onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition select-none border border-white/10 shadow-sm">
@@ -1436,28 +1441,33 @@ const { useState, useEffect, useRef } = React;
                                             )}
                                         </>
                                     ) : (
-                                        <div className="flex items-center gap-3 transition-all duration-500">
-                                            <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-8 h-8 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
-                                                <i className="fa-solid fa-chevron-left text-[14px]"></i>
-                                            </button>
-                                            <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1">
-                                                {(!isSubPageOpen && tab === 'bills') && 'รายการบิลของคุณ'}
-                                                {(!isSubPageOpen && tab === 'orders') && 'ร้านค้า'}
-                                                {(!isSubPageOpen && tab === 'history') && 'ประวัติการทำรายการ'}
-                                                {(!isSubPageOpen && tab === 'finance') && 'สรุปการเงินชั้นปี'}
-                                                {(!isSubPageOpen && tab === 'settings') && 'ตั้งค่าบัญชี'}
-                                            </h2>
-                                        </div>
+                                        <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-9 h-9 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
+                                            <i className="fa-solid fa-house text-sm"></i>
+                                        </button>
                                     )}
                                 </div>
                                 
-                                <div className="flex gap-3 relative z-40 ml-2 shrink-0">
-                                    <button onClick={() => fetchData(false)} className={`w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition border border-white/10 shadow-sm ${loading ? 'animate-spin':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
+                                {/* 🟢 ชื่อหน้า ตรงกลางเป๊ะๆ */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+                                    {tab !== 'home' || isSubPageOpen ? (
+                                        <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1 pointer-events-auto">
+                                            {(!isSubPageOpen && tab === 'bills') && 'รายการบิลของคุณ'}
+                                            {(!isSubPageOpen && tab === 'orders') && 'ร้านค้า'}
+                                            {(!isSubPageOpen && tab === 'history') && 'ประวัติการทำรายการ'}
+                                            {(!isSubPageOpen && tab === 'finance') && 'สรุปการเงินชั้นปี'}
+                                            {(!isSubPageOpen && tab === 'settings') && 'ตั้งค่าบัญชี'}
+                                        </h2>
+                                    ) : null}
+                                </div>
+                                
+                                {/* 🟢 ปุ่มขวา (รีเฟรช) */}
+                                <div className="flex gap-3 relative z-50 shrink-0">
+                                    <button onClick={() => fetchData(false)} className={`w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition border border-white/10 shadow-sm ${loading ? 'animate-spin':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
                                 </div>
                             </div>
 
                             <div className={`transition-all duration-500 ease-in-out overflow-hidden ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
-                                <div className="px-1">
+                                <div className="px-1 text-center">
                                     <h1 className="text-2xl font-bold tracking-tight">MedTech 67 Finance System</h1>
                                 </div>
                             </div>
