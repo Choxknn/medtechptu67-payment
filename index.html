@@ -1211,35 +1211,46 @@ const { useState, useEffect, useRef } = React;
                 );
             };
 
-            const renderHomeContent = () => {
-                let statusColorClass = "border-[#0066FF]"; let statusIconBg = "bg-blue-100"; let statusIconText = "text-[#0066FF]";
-                let statusTitle = "สถานะปัจจุบัน"; let statusSubtitle = ""; let actionColorClass = "text-[#0066FF] bg-blue-50 hover:bg-blue-100";
+           const renderHomeContent = () => {
+                let statusColorClass = "border-blue-400"; 
+                let statusIconBg = "bg-blue-50"; 
+                let statusIconText = "text-blue-600";
+                let statusTitle = "สถานะปัจจุบัน"; 
+                let statusSubtitle = ""; 
+                let actionColorClass = "text-white bg-[#0066FF] hover:bg-blue-700";
 
                 if (hasBills) {
                     statusTitle = "มีบิลค้างชำระ";
                     if (overdueCount > 0) {
-                        statusColorClass = "border-red-500"; statusIconBg = "bg-red-100"; statusIconText = "text-red-600";
-                        statusSubtitle = `มียอดเกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-red-600 bg-red-50 hover:bg-red-100";
-                    } else { statusSubtitle = `มียอดชำระ ${data?.bills?.length || 0} รายการ`; }
+                        statusColorClass = "border-red-500"; statusIconBg = "bg-red-50"; statusIconText = "text-red-500";
+                        statusSubtitle = `เกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-white bg-red-500 hover:bg-red-600";
+                    } else { statusSubtitle = `รอชำระ ${data?.bills?.length || 0} รายการ`; }
                 } else if (hasActiveOrders) { 
-                    statusSubtitle = `คำสั่งซื้อล่าสุด: ${activeOrders[0]?.status || ''}`; 
+                    statusSubtitle = `ล่าสุด: ${activeOrders[0]?.status || ''}`; 
                 }
 
                 return (
                     <div className="w-full pb-10 relative">
-                        {/* ✅ แจ้งเตือนแบบลิ้นชัก (Drawer) เลื่อนลงมาจากขอบบน */}
+                        {/* ✅ แจ้งเตือนแบบลิ้นชัก (Drawer) ดีไซน์ใหม่ เล็กกะทัดรัดและพรีเมียมขึ้น */}
                         {(hasBills || hasActiveOrders) && (
-                            <div className={`bg-white px-5 pb-5 pt-8 -mt-5 -mx-1 mb-6 rounded-b-[2rem] shadow-md flex items-center gap-4 border-b-4 ${statusColorClass} animate-drawer relative z-10`}>
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center animate-pulse ${statusIconBg} ${statusIconText} shadow-inner shrink-0`}><i className="fa-solid fa-bell text-xl"></i></div>
-                                <div className="flex-grow">
-                                    <h4 className="font-bold text-gray-800 text-sm">{statusTitle}</h4>
-                                    <p className={`text-xs font-bold mt-0.5 ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
+                            <div className={`bg-white/95 backdrop-blur-md px-4 pb-3 pt-6 -mt-5 mx-1 mb-5 rounded-b-[1.5rem] shadow-[0_4px_15px_-3px_rgba(0,0,0,0.05)] flex items-center gap-3 border-b-[3px] ${statusColorClass} animate-drawer relative z-10`}>
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
+                                    <i className="fa-solid fa-bell text-sm animate-[ring_2s_ease-in-out_infinite]"></i>
                                 </div>
-                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm shrink-0 ${actionColorClass}`}>ดูเลย</button>
+                                <div className="flex-grow">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-extrabold text-gray-800 text-[13px] leading-none">{statusTitle}</h4>
+                                        {overdueCount > 0 && <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
+                                    </div>
+                                    <p className={`text-[11px] font-bold mt-1.5 leading-none ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
+                                </div>
+                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
+                                    ดูเลย <i className="fa-solid fa-chevron-right text-[8px] mt-[1px]"></i>
+                                </button>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 animate-pop pt-3 relative z-20">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 animate-pop pt-2 relative z-20">
                             {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => setTab('bills'), data?.bills?.length || 0)}
                             {hasAccess('orders') && data?.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => setTab('orders'), 0)}
                             {hasAccess('history') && renderMenuCard('ประวัติ', 'รายการย้อนหลัง', 'fa-clock-rotate-left', 'bg-cyan-500', () => setTab('history'), 0)}
@@ -1295,7 +1306,7 @@ const { useState, useEffect, useRef } = React;
                     </div>
                 );
             };
-
+            
             const renderFinanceContent = () => {
                 const fin = data?.finance || { balance: 0, income: 0, expense: 0, projects: [] };
                 const safeProjects = fin.projects || [];
