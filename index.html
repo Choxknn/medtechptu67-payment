@@ -21,14 +21,6 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        html, body, #root {
-            width: 100%;
-            height: 100dvh; /* ล็อคความสูงให้พอดีจอมือถือเป๊ะๆ */
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* ล็อคไม่ให้เลื่อนทั้งหน้าจอใหญ่ */
-            overscroll-behavior-y: none; /* กันหน้าจอยางยืด (Rubber-banding) ใน iOS/LINE */
-        }
         body { 
             font-family: 'Sarabun', sans-serif; 
             background-color: #F0F4F8;
@@ -283,8 +275,8 @@ const { useState, useEffect, useRef } = React;
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
 
-           return (
-                <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
+            return (
+                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
@@ -326,36 +318,36 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                     <button onClick={() => onLogin(id, pass)} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 md:py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-4 text-base">เข้าสู่ระบบด้วยรหัสผ่าน</button>
                                     
-                                    <div className="flex flex-col items-center justify-center px-1 pt-5 gap-3">
-                                        
-                                        <div className="flex items-center gap-2 w-full justify-center opacity-40 mb-1">
-                                            <div className="h-px bg-gray-400 w-full"></div>
-                                            <span className="text-[10px] uppercase font-bold tracking-widest text-gray-600 whitespace-nowrap">หรือ</span>
-                                            <div className="h-px bg-gray-400 w-full"></div>
-                                        </div>
-                                        
-                                        {/* ✅ ปุ่มล็อกอินด้วย LINE ดึง LIFF มาใช้ */}
-                                        <button onClick={() => window.location.href = "https://liff.line.me/2009556969-8SWGBXPW"} 
-                                        className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[#00B900]/20 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-sm">
-                                            <i className="fa-brands fa-line text-xl"></i> เข้าสู่ระบบผ่าน LINE
-                                        </button>
+                                <div className="flex flex-col items-center justify-center px-1 pt-5 gap-3">
                                     
-                                        {/* ✅ ย้ายปุ่มติดต่อแอดมินมาไว้คู่กับปุ่มลืมรหัส */}
-                                        <div className="flex justify-between w-full px-2 mt-2">
-                                            <button onClick={onRegister} className="text-xs font-bold text-gray-500 hover:text-[#0066FF] transition-colors">
-                                                <i className="fa-solid fa-key mr-1"></i> ลืมรหัส / สร้างรหัส
-                                            </button>
-                                            
-                                            <button onClick={() => Swal.fire({
-                                                title:'ขอความช่วยเหลือ', 
-                                                html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold shadow-sm shadow-[#00B900]/20 active:scale-95 transition-transform no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
-                                                showConfirmButton:false, showCloseButton:true, 
-                                                customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold text-gray-800 pt-2', closeButton: 'focus:outline-none hover:text-red-500 transition-colors'}
-                                            })} className="text-xs font-bold text-gray-500 hover:text-orange-500 transition-colors">
-                                                <i className="fa-solid fa-headset mr-1"></i> ติดต่อแอดมิน
-                                            </button>
-                                        </div>
+                                    <div className="flex items-center gap-2 w-full justify-center opacity-40 mb-1">
+                                        <div className="h-px bg-gray-400 w-full"></div>
+                                        <span className="text-[10px] uppercase font-bold tracking-widest text-gray-600 whitespace-nowrap">หรือ</span>
+                                        <div className="h-px bg-gray-400 w-full"></div>
                                     </div>
+                                    
+                                    {/* ✅ ปุ่มล็อกอินด้วย LINE ดึง LIFF มาใช้ */}
+                                    <button onClick={() => window.location.href = "https://liff.line.me/2009556969-8SWGBXPW"} 
+                                    className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[#00B900]/20 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-sm">
+                                        <i className="fa-brands fa-line text-xl"></i> เข้าสู่ระบบผ่าน LINE
+                                    </button>
+                                
+                                    {/* ✅ ย้ายปุ่มติดต่อแอดมินมาไว้คู่กับปุ่มลืมรหัส */}
+                                    <div className="flex justify-between w-full px-2 mt-2">
+                                        <button onClick={onRegister} className="text-xs font-bold text-gray-500 hover:text-[#0066FF] transition-colors">
+                                            <i className="fa-solid fa-key mr-1"></i> ลืมรหัส / สร้างรหัส
+                                        </button>
+                                        
+                                        <button onClick={() => Swal.fire({
+                                            title:'ขอความช่วยเหลือ', 
+                                            html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold shadow-sm shadow-[#00B900]/20 active:scale-95 transition-transform no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
+                                            showConfirmButton:false, showCloseButton:true, 
+                                            customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold text-gray-800 pt-2', closeButton: 'focus:outline-none hover:text-red-500 transition-colors'}
+                                        })} className="text-xs font-bold text-gray-500 hover:text-orange-500 transition-colors">
+                                            <i className="fa-solid fa-headset mr-1"></i> ติดต่อแอดมิน
+                                        </button>
+                                    </div>
+                                </div>
                                 </div>
                             </div>
                             <div className="mt-8 md:mt-12 text-center">
@@ -414,7 +406,7 @@ const { useState, useEffect, useRef } = React;
             };
 
             return (
-                <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
+                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
@@ -1429,9 +1421,9 @@ const { useState, useEffect, useRef } = React;
                 );
             };
 
-                return (
-                <div className="h-full w-full md:bg-[#E2E8F0] md:flex md:items-center md:justify-center md:py-6">
-                    <div className="flex flex-col w-full h-full md:h-[95vh] max-w-md md:max-w-3xl lg:max-w-5xl mx-auto bg-[#F0F4F8] relative overflow-hidden md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:border-[6px] border-white/80">
+           return (
+                <div className="h-[100dvh] w-full md:bg-[#E2E8F0] md:flex md:items-center md:justify-center md:py-6">
+                    <div className="flex flex-col w-full h-[100dvh] md:h-[95vh] max-w-md md:max-w-3xl lg:max-w-5xl mx-auto bg-[#F0F4F8] relative overflow-hidden md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:border-[6px] border-white/80">
                         {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
                         <header className={`sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100 text-gray-800 pt-safe px-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-4 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
