@@ -1065,11 +1065,12 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                 ) : (
                                     <div className="relative pl-4 space-y-8 pb-4">
-                                        <div className="absolute left-[31px] top-4 bottom-10 w-0.5 bg-gray-100"></div>
-                                        {steps.map((step, idx) => {
+                                        {/* ✅ ลบเส้นทึบยาวๆ พื้นหลังออก แล้วใช้ slice ตัด array ให้โชว์แค่สถานะต่อไป */}
+                                        {steps.slice(0, currentStepIndex + 2).map((step, idx) => {
                                             const isCompleted = idx <= currentStepIndex; 
                                             const isCurrent = idx === currentStepIndex; 
-                                            const isLastStep = idx === steps.length - 1;
+                                            // เช็คว่าเป็นสเตปสุดท้ายที่นำมาแสดงบนจอตอนนี้ไหม
+                                            const isLastRenderedStep = idx === Math.min(currentStepIndex + 1, steps.length - 1);
                                             const isGreenStep = idx >= 4; 
 
                                             const themeColorBg = isGreenStep ? 'bg-green-500' : 'bg-[#0066FF]';
@@ -1087,18 +1088,33 @@ const { useState, useEffect, useRef } = React;
                                             else if (isGreenStep) titleClass += " text-base font-extrabold";
                                             else titleClass += " text-sm";
 
-                                            const lineFillHeight = isCurrent ? '50%' : (isCompleted && !isLastStep ? '100%' : '0%');
                                             const lineBgColor = (isCompleted && idx >= 3) ? 'bg-green-500' : 'bg-[#0066FF]'; 
 
                                             return (
-                                                <div key={idx} className="relative flex items-start gap-5 group min-h-[40px]">
-                                                    {!isLastStep && <div className={`absolute left-[15px] top-8 w-0.5 transition-all duration-700 ${lineBgColor}`} style={{ height: `calc(${lineFillHeight} + 24px)` }}></div>}
+                                                <div key={idx} className="relative flex items-start gap-5 group min-h-[40px] animate-[pop_0.3s_ease-out]">
+                                                    {/* ✅ เส้นเชื่อมสถานะ (จะถูกสร้างทีละข้อต่อ) */}
+                                                    {!isLastRenderedStep && (
+                                                        isCurrent ? (
+                                                            /* เส้นปะ ชี้ไปสถานะอนาคต */
+                                                            <div className="absolute left-[15px] top-8 bottom-[-32px] border-l-2 border-dashed border-gray-300 z-0"></div>
+                                                        ) : (
+                                                            /* เส้นทึบ สำหรับสถานะที่ผ่านไปแล้ว */
+                                                            <div className={`absolute left-[15px] top-8 bottom-[-32px] w-0.5 ${lineBgColor} z-0`}></div>
+                                                        )
+                                                    )}
+                                                    
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 relative z-10 transition-all duration-500 ${iconBg} ${iconColor} mt-0.5`}>
                                                         <i className={`fa-solid ${step.icon} ${isCurrent ? 'text-sm animate-[bounce_2s_infinite]' : 'text-xs'}`}></i>
                                                     </div>
                                                     <div className={`flex-1 transition-all duration-500 ${isCompleted ? 'opacity-100' : 'opacity-50'} ${isCurrent ? 'pl-2' : ''}`}>
                                                         <h4 className={`${titleClass} ${textColor}`}>{step.title}</h4>
+                                                        
+                                                        {/* ข้อความอธิบาย โชว์แค่สถานะปัจจุบันและอดีต */}
                                                         {(isCurrent || isCompleted) && <p className={`text-xs font-medium mt-1 leading-snug ${isGreenStep ? 'text-green-600/80' : 'text-gray-500'}`}>{step.desc}</p>}
+                                                        
+                                                        {/* สถานะอนาคต เปลี่ยนข้อความให้อ่านง่ายๆ */}
+                                                        {!isCompleted && <p className="text-[10px] font-bold mt-1 text-gray-400 tracking-wider">สถานะถัดไป</p>}
+                                                        
                                                         {isCurrent && step.status === 'รอรับของ' && (
                                                             <button onClick={showQR} className="mt-3 bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-2 px-4 rounded-full flex items-center gap-2 shadow-md shadow-green-200 active:scale-95 transition-all animate-[pop_0.4s_ease-out]">
                                                                 <i className="fa-solid fa-qrcode text-sm"></i> เปิดคิวอาร์โค้ดรับของ
@@ -1135,6 +1151,24 @@ const { useState, useEffect, useRef } = React;
             const [showAnnouncement, setShowAnnouncement] = useState(false); 
             
             const [financeSort, setFinanceSort] = useState('desc');
+
+            const handleLogoutConfirm = () => {
+                Swal.fire({
+                    title: 'ออกจากระบบ?',
+                    text: "คุณต้องการออกจากระบบใช่หรือไม่?",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#EF4444',
+                    cancelButtonColor: '#E5E7EB',
+                    confirmButtonText: 'ออกจากระบบ',
+                    cancelButtonText: '<span class="text-gray-700">ยกเลิก</span>',
+                    customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl px-6 py-2.5 font-bold shadow-md', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        onLogout();
+                    }
+                });
+            };
 
             const themeText = "text-[#0066FF]";
 
@@ -1244,10 +1278,12 @@ const { useState, useEffect, useRef } = React;
                                 </div>
                                 <div className="flex-grow flex flex-col justify-center">
                                     <div className="flex items-center gap-1.5">
-                                        <h4 className="font-extrabold text-gray-800 text-[12px] leading-none">{statusTitle}</h4>
+                                        {/* ✅ เปลี่ยน leading-none เป็น leading-tight ให้ตัวหนังสือไม่เบียดขอบเกินไป */}
+                                        <h4 className="font-extrabold text-gray-800 text-[12px] leading-tight">{statusTitle}</h4>
                                         {overdueCount > 0 && <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>}
                                     </div>
-                                    <p className={`text-[10px] font-bold mt-0.5 leading-none ${overdueCount > 0 ? 'text-red-500' : 'text-gray-400'}`}>{statusSubtitle}</p>
+                                    {/* ✅ ปรับ mt-0.5 เป็น mt-1.5 เพื่อถ่างช่องไฟระหว่างบรรทัดบน-ล่างให้ห่างกันขึ้น */}
+                                    <p className={`text-[10px] font-bold mt-1.5 leading-tight ${overdueCount > 0 ? 'text-red-500' : 'text-gray-400'}`}>{statusSubtitle}</p>
                                 </div>
                                 <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[9px] font-bold px-3 py-1 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
                                     ดูเลย <i className="fa-solid fa-chevron-right text-[7px] mt-[1px]"></i>
@@ -1368,15 +1404,16 @@ const { useState, useEffect, useRef } = React;
                 );
             };
                 const renderSettingsContent = () => {
-            // ✅ ตรวจสอบว่าเคยผูก LINE ไว้หรือยัง (มีตัวอักษรมากกว่า 5 ตัวถือว่าผูกแล้ว)
+                // ✅ ตรวจสอบว่าเคยผูก LINE ไว้หรือยัง
                 const isLineConnected = user.userId && user.userId.length > 5;
 
-                // ✅ ฟังก์ชันจัดการการกดปุ่มเชื่อมต่อ / ยกเลิก
+                // ✅ ฟังก์ชันจัดการการกดปุ่มเชื่อมต่อ / ยกเลิก (อัปเกรดใหม่ ดึงข้อมูลอัตโนมัติ)
                 const handleLineConnectToggle = async () => {
                     if (isLineConnected) {
+                        // --- กรณียกเลิกการเชื่อมต่อ ---
                         Swal.fire({
                             title: 'ยกเลิกเชื่อมต่อ LINE?',
-                            html: '<p class="text-sm text-gray-500">หากยกเลิก คุณจะไม่ได้รับการแจ้งเตือนบิล<br>และสถานะสินค้าผ่าน LINE อีกต่อไป</p>',
+                            html: '<p class="text-sm text-gray-500">หากยกเลิก คุณจะไม่ได้รับการแจ้งเตือนบิล/สถานะสินค้า<br><span class="text-red-500 font-bold mt-2 inline-block">และจะไม่สามารถเข้าสู่ระบบด้วยปุ่ม LINE ได้</span><br>จนกว่าคุณจะเชื่อมต่อใหม่อีกครั้ง</p>',
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonColor: '#EF4444',
@@ -1391,6 +1428,7 @@ const { useState, useEffect, useRef } = React;
                                     const res = await runGoogleScript('unbindLineUser', [user.studentId]);
                                     if (res.success) {
                                         user.userId = ''; // เคลียร์ค่าในระบบทันที
+                                        setData({...data}); // รีเฟรชหน้าต่างเพื่อให้ปุ่มเปลี่ยนสถานะ
                                         Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
                                     } else {
                                         Swal.fire('ผิดพลาด', res.message, 'error');
@@ -1400,8 +1438,59 @@ const { useState, useEffect, useRef } = React;
                             }
                         });
                     } else {
-                        // ถ้ายังไม่เชื่อมต่อ ให้พาไปเปิดลิงก์ LIFF เพื่อผูกบัญชี
-                        window.location.href = "https://liff.line.me/2009556969-8SWGBXPW";
+                        // --- กรณีขอเชื่อมต่อใหม่ ---
+                        if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
+                            // 🌟 ถ้าเปิดในแอป LINE อยู่แล้ว ดึงข้อมูลได้เลย ไม่ต้องเด้งออก!
+                            try {
+                                const profile = await liff.getProfile();
+                                const lineId = profile.userId;
+                                
+                                Swal.fire({
+                                    title: 'ยืนยันการเชื่อมต่อ LINE',
+                                    html: '<p class="text-sm text-gray-500 mb-4">ระบบตรวจพบ LINE ของคุณแล้ว<br>กรุณากรอก <b>"รหัสผ่านเข้าสู่ระบบ"</b> เพื่อยืนยันตัวตน</p>',
+                                    input: 'password',
+                                    inputPlaceholder: 'รหัสผ่าน 6 หลักขึ้นไป',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'ยืนยันการเชื่อมต่อ',
+                                    cancelButtonText: 'ยกเลิก',
+                                    confirmButtonColor: '#00B900',
+                                    customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold', confirmButton: 'rounded-xl font-bold shadow-md px-6', cancelButton: 'rounded-xl font-bold px-6' }
+                                }).then(async (result) => {
+                                    if (result.isConfirmed && result.value) {
+                                        setLoading(true);
+                                        try {
+                                            const res = await runGoogleScript('bindLineUser', [user.studentId, result.value, lineId]);
+                                            if(res.success) {
+                                                user.userId = lineId;
+                                                setData({...data}); // รีเฟรชปุ่ม
+                                                Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', text: 'คุณสามารถเข้าสู่ระบบด้วย LINE ได้ทันทีในครั้งถัดไป', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
+                                            } else {
+                                                Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ถูกต้อง', text: res.message || 'กรุณาลองใหม่อีกครั้ง', customClass: { popup: 'rounded-3xl' }});
+                                            }
+                                        } catch(e) {
+                                            Swal.fire('Error', e.toString(), 'error');
+                                        }
+                                        setLoading(false);
+                                    }
+                                });
+                            } catch (e) { console.error(e); }
+                        } else {
+                            // กรณีเข้าผ่าน Safari / Chrome ปกติ
+                            Swal.fire({
+                                title: 'เข้าสู่ระบบ LINE',
+                                text: 'ระบบจะพาคุณไปยังหน้าเข้าสู่ระบบของแอป LINE เพื่อดึงข้อมูลการเชื่อมต่อ',
+                                icon: 'info',
+                                showCancelButton: true,
+                                confirmButtonText: 'ดำเนินการต่อ',
+                                cancelButtonText: 'ยกเลิก',
+                                confirmButtonColor: '#00B900',
+                                customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold', cancelButton: 'rounded-xl font-bold' }
+                            }).then((res) => {
+                                if(res.isConfirmed) {
+                                    liff.login();
+                                }
+                            });
+                        }
                     }
                 };
             
@@ -1445,14 +1534,13 @@ const { useState, useEffect, useRef } = React;
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-lock text-sm"></i></div><span className="text-sm font-bold text-gray-700">เปลี่ยนรหัสผ่าน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
-                            {/* ✅ อัปเดตปุ่มเชื่อมต่อ LINE ให้ใช้งานฟังก์ชันจริง และเปลี่ยนสีตามสถานะ */}
                             <button onClick={handleLineConnectToggle} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isLineConnected ? 'bg-[#00B900] text-white shadow-md shadow-[#00B900]/30' : 'bg-gray-100 text-gray-400'}`}>
                                         <i className="fa-brands fa-line text-xl"></i>
                                     </div>
                                     <div className="text-left">
-                                        <span className="text-sm font-bold text-gray-700 block leading-tight">เชื่อมต่อ LINE แจ้งเตือน</span>
+                                        <span className="text-sm font-bold text-gray-700 block leading-tight">เชื่อมต่อ LINE</span>
                                         <span className={`text-[10px] font-bold ${isLineConnected ? 'text-[#00B900]' : 'text-red-400'}`}>{isLineConnected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</span>
                                     </div>
                                 </div>
@@ -1473,7 +1561,7 @@ const { useState, useEffect, useRef } = React;
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500"><i className="fa-solid fa-rotate text-sm"></i></div><span className="text-sm font-bold text-gray-700">รีเฟรชข้อมูลล่าสุด</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
-                            <button onClick={onLogout} className="w-full p-4 px-5 flex items-center justify-between hover:bg-red-50 transition group active:bg-red-100">
+                            <button onClick={handleLogoutConfirm} className="w-full p-4 px-5 flex items-center justify-between hover:bg-red-50 transition group active:bg-red-100">
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100"><i className="fa-solid fa-power-off text-sm"></i></div><span className="text-sm font-bold text-red-500">ออกจากระบบ</span></div>
                             </button>
                         </div>
@@ -1500,8 +1588,7 @@ const { useState, useEffect, useRef } = React;
                                             {showDropdown && (
                                                 <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl overflow-hidden animate-[pop_0.2s_ease-out] border border-gray-100 origin-top-left">
                                                     <button onClick={handleChangePassword} className="w-full text-left px-4 py-3.5 text-sm font-bold text-gray-700 hover:bg-gray-50 border-b border-gray-50 flex items-center gap-3 transition"><i className="fa-solid fa-lock text-[#0066FF] w-5 text-center text-lg"></i> เปลี่ยนรหัสผ่าน</button>
-                                                    <button onClick={() => { setShowDropdown(false); onLogout(); }} className="w-full text-left px-4 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-3 transition"><i className="fa-solid fa-power-off text-red-500 w-5 text-center text-lg"></i> ออกจากระบบ</button>
-                                                </div>
+                                                   <button onClick={() => { setShowDropdown(false); handleLogoutConfirm(); }} className="w-full text-left px-4 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-3 transition"><i className="fa-solid fa-power-off text-red-500 w-5 text-center text-lg"></i> ออกจากระบบ</button>
                                             )}
                                         </>
                                     ) : (
@@ -1735,12 +1822,23 @@ const { useState, useEffect, useRef } = React;
             
             // ✅ ตัวแปรเก็บ LINE User ID เผื่อกรณีเข้าผ่านไลน์แต่ยังไม่เคยผูกบัญชี
             const [liffUserId, setLiffUserId] = useState(null); 
-            // ✅ เพิ่มฟังก์ชันนี้เข้าไป
+            // ✅ ฟังก์ชันจัดการปุ่ม "เข้าสู่ระบบผ่าน LINE" หน้า Login
             const handleLineLogin = () => {
                 if (typeof liff !== 'undefined') {
                     if (!liff.isLoggedIn()) {
-                        // คำสั่งนี้จะพาวิ่งไปเปิดแอป LINE เพื่อดึงข้อมูล แล้วเด้งกลับมาหน้าเดิมอัตโนมัติ!
+                        // กรณีที่ 1: เปิดเบราว์เซอร์นอก LINE (Chrome/Safari) จะพาไปหน้ากรอกรหัสผ่าน LINE
                         liff.login(); 
+                    } else {
+                        // กรณีที่ 2: เปิดใน LINE อยู่แล้ว (หรือล็อกอินแล้ว) แต่ยังไม่เคยผูกบัญชี
+                        // ให้แจ้งเตือนบอกนักศึกษาว่าต้องเข้าด้วยรหัสผ่านก่อนในครั้งแรก
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'ยังไม่ได้ผูกบัญชี LINE',
+                            html: '<p class="text-sm text-gray-500 mt-2">กรุณาเข้าสู่ระบบด้วย <b>รหัสนักศึกษา</b> และ <b>รหัสผ่าน</b> ของคุณในครั้งแรก เพื่อให้ระบบทำการผูกบัญชีให้อัตโนมัติครับ</p>',
+                            confirmButtonText: 'ตกลง',
+                            confirmButtonColor: '#0066FF',
+                            customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800 pt-2', confirmButton: 'rounded-xl px-8 py-2.5 font-bold shadow-md' }
+                        });
                     }
                 }
             };
