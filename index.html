@@ -1581,9 +1581,9 @@
                             </div>
                         </header>
 
-                        <main className="flex-1 w-full relative overflow-hidden">
-                            {/* ✅ สั่งให้ระยะห่างด้านบน (Padding Top) หดอัตโนมัติเมื่อเปลี่ยนหน้า และขยับแบบสมูท */}
-                            <div className={`absolute inset-0 px-5 pb-36 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'pt-32' : 'pt-20'}`}>
+                       <main className="flex-1 w-full relative overflow-hidden">
+                            {/* ✅ คำนวณระยะห่างให้พอดีกับแถบด้านบนของ LINE อัตโนมัติ */}
+                            <div className={`absolute inset-0 px-5 pb-36 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'pt-[calc(env(safe-area-inset-top)+140px)]' : 'pt-[calc(env(safe-area-inset-top)+75px)]'}`}>
                                 {tab === 'home' && hasAccess('home') && renderHomeContent()}
                                 {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
                                 
