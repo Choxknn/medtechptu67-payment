@@ -280,7 +280,7 @@
             const [pass, setPass] = useState('');
 
             return (
-                <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
+                <div className="min-h-[100dvh] w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px] my-auto">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
@@ -402,7 +402,7 @@
             };
 
             return (
-                <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
+                <div className="min-h-[100dvh] w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px] my-auto">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
@@ -1758,7 +1758,7 @@
 
                         if (typeof liff !== 'undefined') {
                             try {
-                                await liff.init({ liffId: "2009556969-8SWGBXPW" });
+                                await liff.init({ liffId: "2009557327-JGumcWj2" });
                                 
                                 if (liff.isLoggedIn()) {
                                     const profile = await liff.getProfile();
