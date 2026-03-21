@@ -26,6 +26,7 @@
             background-color: #F0F4F8;
             color: #1F2937;
             -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: none; /* กันหน้าจอยางยืด (Rubber-banding) ใน iOS/LINE */
         }
 
         @media screen and (max-width: 768px) {
@@ -98,7 +99,7 @@
             100% { transform: rotate(0); }
         }
         .animate-ring {
-            animation: ring 1s ease-in-out infinite;
+            animation: ring 2s ease-in-out infinite;
             transform-origin: top center; /* ให้จุดหมุนอยู่ด้านบนเหมือนแขวนกระดิ่งไว้ */
         }
     </style>
@@ -291,7 +292,7 @@ const { useState, useEffect, useRef } = React;
             const [pass, setPass] = useState('');
 
             return (
-                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
+                <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
@@ -363,15 +364,15 @@ const { useState, useEffect, useRef } = React;
                                         </button>
                                     </div>
                                 </div>
-                                </div>
                             </div>
-                            <div className="mt-8 md:mt-12 text-center">
-                                <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTechptu 67. All rights reserved.</p>
-                                <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
-                            </div>
+                        </div>
+                        <div className="mt-8 md:mt-12 text-center">
+                            <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTechptu 67. All rights reserved.</p>
+                            <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
                         </div>
                     </div>
                 </div>
+            </div>
             );
         };
         
@@ -421,7 +422,7 @@ const { useState, useEffect, useRef } = React;
             };
 
             return (
-                <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
+                <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
@@ -921,7 +922,7 @@ const { useState, useEffect, useRef } = React;
             );
         };
         
-       const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
+        const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
             const [sortOrder, setSortOrder] = useState('desc'); 
             const sortedTransactions = sortOrder === 'desc' ? [...project.transactions].reverse() : [...project.transactions];
             return (
@@ -1152,6 +1153,7 @@ const { useState, useEffect, useRef } = React;
             
             const [financeSort, setFinanceSort] = useState('desc');
 
+            // ✅ ฟังก์ชันกดยืนยันก่อนออกจากระบบ
             const handleLogoutConfirm = () => {
                 Swal.fire({
                     title: 'ออกจากระบบ?',
@@ -1272,7 +1274,7 @@ const { useState, useEffect, useRef } = React;
                     <div className="w-full pb-10 relative">
                        {(hasBills || hasActiveOrders) && (
                             /* ✅ ดึงซ้ายขวาให้กว้างเท่ากรอบเมนู (w-full) และลดช่องว่างบน-ล่างให้ชิดกัน (mb-2) */
-                            <div className={`bg-white/95 backdrop-blur-md py-2 px-4 w-full mb-1 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-200 animate-[pop_0.3s_ease-out] relative z-10`}>
+                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mb-1 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-200 animate-[pop_0.3s_ease-out] relative z-10`}>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
                                    <i className="fa-solid fa-bell text-[12px] animate-ring"></i>
                                 </div>
@@ -1403,7 +1405,8 @@ const { useState, useEffect, useRef } = React;
                     </div>
                 );
             };
-                const renderSettingsContent = () => {
+
+            const renderSettingsContent = () => {
                 // ✅ ตรวจสอบว่าเคยผูก LINE ไว้หรือยัง
                 const isLineConnected = user.userId && user.userId.length > 5;
 
@@ -1491,8 +1494,9 @@ const { useState, useEffect, useRef } = React;
                                 }
                             });
                         }
+                    }
                 };
-            
+
                 const handleContactAdmin = () => {
                     const qrImgUrl = getDirectDriveUrl('https://drive.google.com/file/d/1oYL1NI9kbsYpa4pOM0KLoBhR91FRNVuH/view?usp=drivesdk');
                     Swal.fire({
@@ -1569,13 +1573,13 @@ const { useState, useEffect, useRef } = React;
                 );
             };
 
-           return (
+            return (
                 <div className="h-[100dvh] w-full md:bg-[#E2E8F0] md:flex md:items-center md:justify-center md:py-6">
                     <div className="flex flex-col w-full h-[100dvh] md:h-[95vh] max-w-md md:max-w-3xl lg:max-w-5xl mx-auto bg-[#F0F4F8] relative overflow-hidden md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:border-[6px] border-white/80">
                         {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
-                        <header className={`sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100 text-gray-800 pt-safe px-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-4 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
-                            <div className="flex justify-between items-center pt-2 relative min-h-[40px]">
+                        <header className={`absolute top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100 text-gray-800 pt-safe px-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] transition-all duration-500 ease-in-out pointer-events-none ${tab === 'home' && !isSubPageOpen ? 'pb-4 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
+                            <div className="flex justify-between items-center pt-2 relative min-h-[40px] pointer-events-auto">
                                 {/* 🟢 ปุ่มซ้าย (โปรไฟล์ หรือ ปุ่มบ้าน) */}
                                 <div className="relative z-50 flex items-center">
                                     {tab === 'home' && !isSubPageOpen ? (
@@ -1588,6 +1592,7 @@ const { useState, useEffect, useRef } = React;
                                                 <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl overflow-hidden animate-[pop_0.2s_ease-out] border border-gray-100 origin-top-left">
                                                     <button onClick={handleChangePassword} className="w-full text-left px-4 py-3.5 text-sm font-bold text-gray-700 hover:bg-gray-50 border-b border-gray-50 flex items-center gap-3 transition"><i className="fa-solid fa-lock text-[#0066FF] w-5 text-center text-lg"></i> เปลี่ยนรหัสผ่าน</button>
                                                    <button onClick={() => { setShowDropdown(false); handleLogoutConfirm(); }} className="w-full text-left px-4 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-3 transition"><i className="fa-solid fa-power-off text-red-500 w-5 text-center text-lg"></i> ออกจากระบบ</button>
+                                                </div>
                                             )}
                                         </>
                                     ) : (
@@ -1616,7 +1621,7 @@ const { useState, useEffect, useRef } = React;
                                 </div>
                             </div>
 
-                            <div className={`transition-all duration-500 ease-in-out overflow-hidden flex justify-center ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
+                            <div className={`transition-all duration-500 ease-in-out overflow-hidden flex justify-center pointer-events-auto ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
                                 <div className="px-1 text-center flex flex-col items-center">
                                     <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#0066FF] to-indigo-600">MedTech 67</h1>
                                     <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-0.5">Finance System</p>
@@ -1625,7 +1630,7 @@ const { useState, useEffect, useRef } = React;
                         </header>
 
                         <main className="flex-1 w-full relative overflow-hidden">
-                            <div className={`absolute inset-0 px-5 pt-4 pb-36 overflow-y-auto no-scrollbar transition-opacity duration-300 ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                            <div className={`absolute inset-0 px-5 pt-32 pb-36 overflow-y-auto no-scrollbar transition-opacity duration-300 ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                                 {tab === 'home' && hasAccess('home') && renderHomeContent()}
                                 {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
                                 
@@ -1762,200 +1767,6 @@ const { useState, useEffect, useRef } = React;
                         {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
 
                     </div>
-                </div>
-            );
-        };
-        
-        // ==========================================
-        // 🚧 หน้าจอตอนปิดปรับปรุงระบบ
-        // ==========================================
-        const MaintenanceMode = () => {
-            return (
-                <div className="bg-gray-50 flex items-center justify-center min-h-screen overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
-                        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '2s'}}></div>
-                        <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{animationDelay: '4s'}}></div>
-                    </div>
-
-                    <div className="relative z-10 text-center p-8 max-w-lg mx-auto animate-[pop_0.4s_ease-out]">
-                        <div className="mb-8 relative inline-block">
-                            <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl mx-auto relative z-10 animate-bounce">
-                                <i className="fa-solid fa-screwdriver-wrench text-6xl text-blue-500"></i>
-                            </div>
-                            <div className="absolute inset-0 bg-blue-400 rounded-full blur-xl opacity-20 animate-pulse"></div>
-                        </div>
-                        
-                        <h1 className="text-4xl font-bold text-gray-800 mb-4 tracking-tight">ปิดปรับปรุงระบบ</h1>
-                        <p className="text-gray-500 text-lg mb-8 leading-relaxed">
-                            ขออภัยในความไม่สะดวก<br/>เรากำลังพัฒนาระบบให้ดียิ่งขึ้นสำหรับคุณ
-                        </p>
-                        
-                        <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-center justify-center space-x-3 text-sm text-gray-600 font-bold">
-                                <span className="flex h-3 w-3 relative">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-                                </span>
-                                <span>กำลังดำเนินการ...</span>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2">โปรดลองใหม่อีกครั้งในภายหลัง</p>
-                        </div>
-
-                        <div className="mt-8 text-gray-400 text-xs font-bold tracking-wider uppercase">
-                            MedTech 67 Payment System
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-        
-        // ==========================================
-        // 📱 Main App Component 
-        // ==========================================
-        const App = () => {
-            const [page, setPage] = useState('loading'); 
-            const [user, setUser] = useState(null);
-            const [dashboardData, setDashboardData] = useState(null);
-            const [loading, setLoading] = useState(false);
-            
-            // ✅ ตัวแปรเก็บ LINE User ID เผื่อกรณีเข้าผ่านไลน์แต่ยังไม่เคยผูกบัญชี
-            const [liffUserId, setLiffUserId] = useState(null); 
-            // ✅ ฟังก์ชันจัดการปุ่ม "เข้าสู่ระบบผ่าน LINE" หน้า Login
-            const handleLineLogin = () => {
-                if (typeof liff !== 'undefined') {
-                    if (!liff.isLoggedIn()) {
-                        // กรณีที่ 1: เปิดเบราว์เซอร์นอก LINE (Chrome/Safari) จะพาไปหน้ากรอกรหัสผ่าน LINE
-                        liff.login(); 
-                    } else {
-                        // กรณีที่ 2: เปิดใน LINE อยู่แล้ว (หรือล็อกอินแล้ว) แต่ยังไม่เคยผูกบัญชี
-                        // ให้แจ้งเตือนบอกนักศึกษาว่าต้องเข้าด้วยรหัสผ่านก่อนในครั้งแรก
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'ยังไม่ได้ผูกบัญชี LINE',
-                            html: '<p class="text-sm text-gray-500 mt-2">กรุณาเข้าสู่ระบบด้วย <b>รหัสนักศึกษา</b> และ <b>รหัสผ่าน</b> ของคุณในครั้งแรก เพื่อให้ระบบทำการผูกบัญชีให้อัตโนมัติครับ</p>',
-                            confirmButtonText: 'ตกลง',
-                            confirmButtonColor: '#0066FF',
-                            customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800 pt-2', confirmButton: 'rounded-xl px-8 py-2.5 font-bold shadow-md' }
-                        });
-                    }
-                }
-            };
-
-            useEffect(() => {
-                const initializeApp = async () => {
-                    try {
-                        const resStatus = await runGoogleScript('checkStatus');
-                        if (resStatus && resStatus.maintenance) {
-                            setPage('maintenance');
-                            return;
-                        }
-
-                        // ✅ ตรวจสอบว่ามี LIFF SDK โหลดมาหรือไม่
-                        if (typeof liff !== 'undefined') {
-                            try {
-                                await liff.init({ liffId: "2009556969-8SWGBXPW" });
-                                
-                                if (liff.isLoggedIn()) {
-                                    const profile = await liff.getProfile();
-                                    const lineId = profile.userId;
-                                    setLiffUserId(lineId); // เก็บไว้ผูกบัญชี
-                                    
-                                    // โชว์โหลดตอนกำลังเช็คข้อมูล
-                                    setPage('loading');
-
-                                    const loginRes = await runGoogleScript('loginWithLine', [lineId]);
-                                    
-                                    if (loginRes.success) {
-                                        let dashData = await runGoogleScript('getDashboardData', [loginRes.studentId, true]);
-                                        setUser(loginRes);
-                                        setDashboardData(dashData);
-                                        setPage('dashboard');
-                                        
-                                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-                                        Toast.fire({ icon: 'success', title: `เข้าสู่ระบบผ่าน LINE สำเร็จ` });
-                                        return; 
-                                    }
-                                }
-                            } catch (liffError) {
-                                console.error("LIFF Init failed", liffError);
-                            }
-                        }
-
-                        setPage('login');
-                    } catch (e) {
-                        console.error("Check status failed", e);
-                        setPage('login'); 
-                    }
-                };
-                initializeApp();
-            }, []);
-
-            const handleLogin = async (u, p) => {
-                if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
-                setLoading(true);
-                try {
-                    let res;
-                    
-                    // ✅ ถ้าเปิดผ่าน LINE และยังไม่เคยผูกบัญชี ให้ส่งไปผูกบัญชีเลย
-                    if (liffUserId) {
-                        res = await runGoogleScript('bindLineUser', [u, p, liffUserId]);
-                        if(res.success && res.studentId) {
-                            // ถ้าผูกสำเร็จ เปลี่ยนตัวแปร u ให้เป็นค่าใหม่ เพื่อใช้ดึงข้อมูล Dashboard
-                            u = res.studentId; 
-                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'เชื่อมต่อบัญชี LINE สำเร็จ', showConfirmButton: false, timer: 3000 });
-                        }
-                    } else {
-                        res = await runGoogleScript('loginUser', [u, p]);
-                    }
-
-                    if(res.success) {
-                        let dashData = res.dashboardData;
-                        if (!dashData) { dashData = await runGoogleScript('getDashboardData', [u, true]); }
-                        
-                        // เผื่อตอนผูกบัญชี ข้อมูลบางส่วนยังไม่มี ให้ใช้ข้อมูลเดิมเสริมไป
-                        if(!res.permissions) res.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings']; // ค่าเริ่มต้น
-                        if(!res.studentId) res.studentId = u;
-
-                        setUser(res); 
-                        setDashboardData(dashData); 
-                        setPage('dashboard');
-
-                        if (!dashData.announcement && !liffUserId) {
-                            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-                            Toast.fire({ icon: 'success', title: `ยินดีต้อนรับ คุณ${res.name || u}` });
-                        }
-                    } else { 
-                        Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: res.message, customClass: { popup: 'rounded-2xl' } }); 
-                    }
-                } catch(e) { 
-                    Swal.fire('Error', e.toString(), 'error'); 
-                }
-                setLoading(false);
-            };
-
-            const handleRegisterSuccess = (u) => { setPage('login'); };
-
-            const handleLogout = () => {
-                setUser(null); 
-                setDashboardData(null);
-                
-                // หากต้องการให้ออกจากระบบ LINE ไปด้วย สามารถใช้ liff.logout() ได้
-                // if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
-                //     liff.logout();
-                // }
-                
-                setPage('login'); 
-            };
-
-            return (
-                <div>
-                    {page === 'loading' && <Loading />} 
-                    {page === 'maintenance' && <MaintenanceMode />} 
-                    {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} onLineLogin={handleLineLogin} />}
-                    {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
-                    {page === 'dashboard' && user && <Dashboard user={user} initialData={dashboardData} onLogout={handleLogout} />}
-                    {loading && <Loading />}
                 </div>
             );
         };
