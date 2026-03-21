@@ -1236,9 +1236,8 @@
                 return (
                     <div className="w-full pb-10 relative">
                        {(hasBills || hasActiveOrders) && (
-                            {(hasBills || hasActiveOrders) && (
                             /* ✅ เพิ่ม mt-3 เพื่อดันให้ห่างจากขอบบนนิดนึง และใช้ mb-1 เพื่อให้ชิดกับเมนูด้านล่าง */
-                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mt-1 mb-1 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-200 animate-[pop_0.3s_ease-out] relative z-10`}>
+                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mt-0.5 mb-1 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-200 animate-[pop_0.3s_ease-out] relative z-10`}>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
                                    <i className="fa-solid fa-bell text-[12px] animate-ring"></i>
                                 </div>
