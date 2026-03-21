@@ -1222,20 +1222,20 @@ const { useState, useEffect, useRef } = React;
                 return (
                     <div className="w-full pb-10 relative">
                         {(hasBills || hasActiveOrders) && (
-                            /* ✅ ปรับเป็นแคปซูลโค้งมน (rounded-full) เล็กลงและลดช่องไฟ */
-                            <div className={`bg-white/95 backdrop-blur-md p-2.5 mx-4 mt-3 mb-5 rounded-full shadow-sm flex items-center gap-2 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
-                                    <i className="fa-solid fa-bell text-xs animate-[ring_2s_ease-in-out_infinite]"></i>
+                            /* ✅ ปรับให้แคบลง กระชับขึ้น ลดช่องไฟรอบๆ ลงทั้งหมด */
+                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-3 mx-4 mt-2 mb-2 rounded-full shadow-sm flex items-center gap-2 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
+                                    <i className="fa-solid fa-bell text-[10px] animate-[ring_2s_ease-in-out_infinite]"></i>
                                 </div>
-                                <div className="flex-grow flex flex-col justify-center">
+                                <div className="flex-grow flex flex-col justify-center ml-1">
                                     <div className="flex items-center gap-1.5">
                                         <h4 className="font-extrabold text-gray-800 text-[12px] leading-none">{statusTitle}</h4>
                                         {overdueCount > 0 && <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>}
                                     </div>
-                                    <p className={`text-[10px] font-bold mt-0.5 leading-none ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
+                                    <p className={`text-[10px] font-bold mt-0.5 leading-none ${overdueCount > 0 ? 'text-red-500' : 'text-gray-400'}`}>{statusSubtitle}</p>
                                 </div>
-                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
-                                    ดูเลย <i className="fa-solid fa-chevron-right text-[8px] mt-[1px]"></i>
+                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[9px] font-bold px-3 py-1 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
+                                    ดูเลย <i className="fa-solid fa-chevron-right text-[7px] mt-[1px]"></i>
                                 </button>
                             </div>
                         )}
