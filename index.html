@@ -86,6 +86,21 @@
             100% { transform: translateY(0); opacity: 1; }
         }
         .animate-drawer { animation: slideDownDrawer 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+
+        /* ✅ โค้ดสำหรับทำกระดิ่งสั่น */
+        @keyframes ring {
+            0% { transform: rotate(0); }
+            5% { transform: rotate(15deg); }
+            10% { transform: rotate(-10deg); }
+            15% { transform: rotate(5deg); }
+            20% { transform: rotate(-5deg); }
+            25% { transform: rotate(0); }
+            100% { transform: rotate(0); }
+        }
+        .animate-ring {
+            animation: ring 2s ease-in-out infinite;
+            transform-origin: top center; /* ให้จุดหมุนอยู่ด้านบนเหมือนแขวนกระดิ่งไว้ */
+        }
     </style>
 </head>
 <body>
@@ -1221,13 +1236,13 @@ const { useState, useEffect, useRef } = React;
 
                 return (
                     <div className="w-full pb-10 relative">
-                        {(hasBills || hasActiveOrders) && (
-                            /* ✅ ปรับให้แคบลง กระชับขึ้น ลดช่องไฟรอบๆ ลงทั้งหมด */
-                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-3 mx-4 mt-2 mb-2 rounded-full shadow-sm flex items-center gap-2 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
+                       {(hasBills || hasActiveOrders) && (
+                            /* ✅ ดึงซ้ายขวาให้กว้างเท่ากรอบเมนู (w-full) และลดช่องว่างบน-ล่างให้ชิดกัน (mb-2) */
+                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mb-2 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
-                                    <i className="fa-solid fa-bell text-[10px] animate-[ring_2s_ease-in-out_infinite]"></i>
+                                   <i className="fa-solid fa-bell text-[12px] animate-ring"></i>
                                 </div>
-                                <div className="flex-grow flex flex-col justify-center ml-1">
+                                <div className="flex-grow flex flex-col justify-center">
                                     <div className="flex items-center gap-1.5">
                                         <h4 className="font-extrabold text-gray-800 text-[12px] leading-none">{statusTitle}</h4>
                                         {overdueCount > 0 && <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>}
