@@ -403,7 +403,7 @@ const { useState, useEffect, useRef } = React;
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
                             <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
-                            <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">ตรวจสอบรหัสนักศึกษา</h2>
+                            <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">ตรวจสอบข้อมูล</h2>
                             <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Finance System</p>
                         </div>
 
@@ -415,7 +415,7 @@ const { useState, useEffect, useRef } = React;
                                         <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-full h-full object-cover rounded-full" />
                                     </div>
                                 </div>
-                                <h1 className="text-xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">สร้างรหัสผ่าน</h1>
+                                <h1 className="text-xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">ตรวจสอบข้อมูล</h1>
                                 <p className="text-[#0066FF] mt-1 font-extrabold text-xs tracking-wide">MedTech 67 Finance System</p>
                             </div>
 
@@ -423,7 +423,7 @@ const { useState, useEffect, useRef } = React;
                                 {step === 1 && (
                                     <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
                                         <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">ตรวจสอบรหัสนักศึกษา</label>
+                                            <label className="text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">ตรวจสอบข้อมูล</label>
                                             <div className="relative group">
                                                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-id-card"></i></span>
                                                 <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 shadow-sm text-sm" placeholder="67XXXXXXXX" />
@@ -442,7 +442,7 @@ const { useState, useEffect, useRef } = React;
                                         {studentInfo.hasPassword ? (
                                             <div className="text-center space-y-4">
                                                 <div className="bg-yellow-50 text-yellow-700 p-4 rounded-xl text-sm font-bold border border-yellow-100"><i className="fa-solid fa-circle-exclamation mr-2"></i>คุณมีรหัสผ่านในระบบแล้ว</div>
-                                                <p className="text-sm text-gray-500 font-medium px-2">หากจำไม่ได้ สามารถให้ระบบส่งรหัสผ่านเดิมไปที่แอป LINE ของคุณได้</p>
+                                                <p className="text-sm text-gray-500 font-medium px-2">หากจำไม่ได้ สามารถให้ระบบส่งรหัสผ่านเดิมไปที่แอป LINE ของคุณได้ และสามารถเปลี่ยนได้ในตั้งค่าหรือติดต่อแอดมมิน</p>
                                                 <button onClick={handleRecovery} disabled={loading} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
                                                     {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><i className="fa-brands fa-line text-xl"></i> ส่งรหัสผ่านไปที่ LINE</>}
                                                 </button>
