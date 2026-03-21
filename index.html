@@ -21,12 +21,19 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
+        html, body, #root {
+            width: 100%;
+            height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior-y: none;
+        }
         body { 
             font-family: 'Sarabun', sans-serif; 
             background-color: #F0F4F8;
             color: #1F2937;
             -webkit-tap-highlight-color: transparent; 
-            overscroll-behavior-y: none; /* กันหน้าจอยางยืด (Rubber-banding) ใน iOS/LINE */
         }
 
         @media screen and (max-width: 768px) {
@@ -88,7 +95,6 @@
         }
         .animate-drawer { animation: slideDownDrawer 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
 
-        /* ✅ โค้ดสำหรับทำกระดิ่งสั่น */
         @keyframes ring {
             0% { transform: rotate(0); }
             5% { transform: rotate(15deg); }
@@ -100,7 +106,7 @@
         }
         .animate-ring {
             animation: ring 2s ease-in-out infinite;
-            transform-origin: top center; /* ให้จุดหมุนอยู่ด้านบนเหมือนแขวนกระดิ่งไว้ */
+            transform-origin: top center;
         }
     </style>
 </head>
@@ -109,11 +115,8 @@
     <div id="root"></div>
 
     <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // ==========================================
-        // 🌐 API Connection
-        // ==========================================
         const API_URL = "https://script.google.com/macros/s/AKfycbzEXjfZSgs3riQmjc22AZu45dn50etSm_lMqkior3UmHa8M84mwW_7qoqXCl2N3XX--sw/exec";
 
         const runGoogleScript = async (funcName, args = []) => {
@@ -121,11 +124,7 @@ const { useState, useEffect, useRef } = React;
                 const formData = new URLSearchParams();
                 formData.append('data', JSON.stringify({ action: funcName, args: args }));
 
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-                
+                const response = await fetch(API_URL, { method: 'POST', body: formData });
                 const result = await response.json();
                 if (result.error) throw new Error(result.error);
                 return result;
@@ -151,9 +150,6 @@ const { useState, useEffect, useRef } = React;
             }
         };
 
-        // ==========================================
-        // Helper UI Components
-        // ==========================================
         const fireAutoCloseAlert = (title, text) => {
             return Swal.fire({
                 title: title, html: `<p class="text-gray-600 text-lg">${text}</p>`, icon: 'success',
@@ -219,7 +215,6 @@ const { useState, useEffect, useRef } = React;
         const SlipModal = ({ url, onClose }) => {
             const [imgSrc, setImgSrc] = useState(null);
             useEffect(() => { setImgSrc(getDirectDriveUrl(url)); }, [url]);
-            
             return ReactDOM.createPortal(
                 <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
                     <button onClick={onClose} className="absolute top-6 right-6 text-white bg-white/20 hover:bg-white/40 rounded-full w-12 h-12 flex items-center justify-center backdrop-blur-md transition active:scale-90 z-50">
@@ -241,7 +236,6 @@ const { useState, useEffect, useRef } = React;
                 const cleanStr = string.trim().toLowerCase();
                 return cleanStr.startsWith('http') && !cleanStr.includes(' ');
             };
-
             const textIsUrl = isUrl(text);
 
             if (textIsUrl) {
@@ -261,21 +255,18 @@ const { useState, useEffect, useRef } = React;
                 <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-5 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
                     <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-[pop_0.3s_ease-out] border border-gray-100 p-6 relative" onClick={e => e.stopPropagation()}>
                         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/60 rounded-bl-full -z-10"></div>
-                        
                         <div className="flex items-center gap-4 mb-5">
                             <div className="w-14 h-14 bg-blue-50 text-[#0066FF] rounded-2xl flex items-center justify-center shadow-inner shrink-0">
-                                <i className="fa-solid fa-bell text-2xl animate-[ring_2s_ease-in-out_infinite]"></i>
+                                <i className="fa-solid fa-bell text-2xl animate-ring"></i>
                             </div>
                             <div>
                                 <h2 className="text-xl font-extrabold text-gray-800 tracking-tight leading-tight">ประกาศแจ้งเตือน</h2>
                                 <p className="text-[10px] text-[#0066FF] font-bold uppercase tracking-wider mt-0.5">Announcement</p>
                             </div>
                         </div>
-                        
                         <div className="max-h-[50vh] overflow-y-auto no-scrollbar mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50">
                             <p className="text-gray-600 leading-relaxed whitespace-pre-wrap font-medium text-sm">{text}</p>
                         </div>
-                        
                         <button onClick={onClose} className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-3.5 rounded-xl transition-transform active:scale-95 text-base flex justify-center items-center gap-2 border border-gray-200 shadow-sm">
                             รับทราบ <i className="fa-solid fa-check text-green-500 ml-1"></i>
                         </button>
@@ -284,16 +275,13 @@ const { useState, useEffect, useRef } = React;
             );
         };
 
-        // ==========================================
-        // 📱 Login Component
-        // ==========================================
         const Login = ({ onLogin, onRegister, onLineLogin }) => {
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
 
             return (
                 <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
-                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
+                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px] my-auto">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
@@ -334,51 +322,43 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                     <button onClick={() => onLogin(id, pass)} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 md:py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-4 text-base">เข้าสู่ระบบด้วยรหัสผ่าน</button>
                                     
-                                <div className="flex flex-col items-center justify-center px-1 pt-5 gap-3">
-                                    
-                                    <div className="flex items-center gap-2 w-full justify-center opacity-40 mb-1">
-                                        <div className="h-px bg-gray-400 w-full"></div>
-                                        <span className="text-[10px] uppercase font-bold tracking-widest text-gray-600 whitespace-nowrap">หรือ</span>
-                                        <div className="h-px bg-gray-400 w-full"></div>
-                                    </div>
-                                    
-                                    {/* ✅ ปุ่มล็อกอินด้วย LINE ดึง LIFF มาใช้ */}
-                                    <button onClick={onLineLogin} 
-                                    className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[#00B900]/20 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-sm">
-                                        <i className="fa-brands fa-line text-xl"></i> เข้าสู่ระบบผ่าน LINE
-                                    </button>
-                                
-                                    {/* ✅ ย้ายปุ่มติดต่อแอดมินมาไว้คู่กับปุ่มลืมรหัส */}
-                                    <div className="flex justify-between w-full px-2 mt-2">
-                                        <button onClick={onRegister} className="text-xs font-bold text-gray-500 hover:text-[#0066FF] transition-colors">
-                                            <i className="fa-solid fa-key mr-1"></i> ลืมรหัส / สร้างรหัส
-                                        </button>
+                                    <div className="flex flex-col items-center justify-center px-1 pt-5 gap-3">
+                                        <div className="flex items-center gap-2 w-full justify-center opacity-40 mb-1">
+                                            <div className="h-px bg-gray-400 w-full"></div>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-gray-600 whitespace-nowrap">หรือ</span>
+                                            <div className="h-px bg-gray-400 w-full"></div>
+                                        </div>
                                         
-                                        <button onClick={() => Swal.fire({
-                                            title:'ขอความช่วยเหลือ', 
-                                            html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold shadow-sm shadow-[#00B900]/20 active:scale-95 transition-transform no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
-                                            showConfirmButton:false, showCloseButton:true, 
-                                            customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold text-gray-800 pt-2', closeButton: 'focus:outline-none hover:text-red-500 transition-colors'}
-                                        })} className="text-xs font-bold text-gray-500 hover:text-orange-500 transition-colors">
-                                            <i className="fa-solid fa-headset mr-1"></i> ติดต่อแอดมิน
+                                        <button onClick={onLineLogin} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[#00B900]/20 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-sm">
+                                            <i className="fa-brands fa-line text-xl"></i> เข้าสู่ระบบผ่าน LINE
                                         </button>
+                                    
+                                        <div className="flex justify-between w-full px-2 mt-2">
+                                            <button onClick={onRegister} className="text-xs font-bold text-gray-500 hover:text-[#0066FF] transition-colors">
+                                                <i className="fa-solid fa-key mr-1"></i> ลืมรหัส / สร้างรหัส
+                                            </button>
+                                            <button onClick={() => Swal.fire({
+                                                title:'ขอความช่วยเหลือ', 
+                                                html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold shadow-sm shadow-[#00B900]/20 active:scale-95 transition-transform no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
+                                                showConfirmButton:false, showCloseButton:true, 
+                                                customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold text-gray-800 pt-2', closeButton: 'focus:outline-none hover:text-red-500 transition-colors'}
+                                            })} className="text-xs font-bold text-gray-500 hover:text-orange-500 transition-colors">
+                                                <i className="fa-solid fa-headset mr-1"></i> ติดต่อแอดมิน
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="mt-8 md:mt-12 text-center">
-                            <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTechptu 67. All rights reserved.</p>
-                            <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
+                            <div className="mt-8 md:mt-12 text-center pb-4">
+                                <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTechptu 67. All rights reserved.</p>
+                                <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             );
         };
-        
-        // ==========================================
-        // 📝 Register Component
-        // ==========================================
+
         const Register = ({ onBack, onRegisterSuccess }) => {
             const [step, setStep] = useState(1);
             const [studentId, setStudentId] = useState('');
@@ -423,7 +403,7 @@ const { useState, useEffect, useRef } = React;
 
             return (
                 <div className="h-full w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
-                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
+                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px] my-auto">
                         
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
@@ -485,7 +465,7 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                 )}
                             </div>
-                            <div className="mt-8 text-center">
+                            <div className="mt-8 text-center pb-4">
                                 <button onClick={onBack} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors flex items-center justify-center mx-auto gap-2 bg-white/50 md:bg-gray-50 px-4 py-2 rounded-full border border-white md:border-gray-200 hover:bg-white shadow-sm">
                                     <i className="fa-solid fa-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ
                                 </button>
@@ -495,10 +475,7 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
-        
-        // ==========================================
-        // Widgets: BillTimer
-        // ==========================================
+
         const BillTimer = ({ dueDate }) => {
             const [timeLeft, setTimeLeft] = useState(null);
             const [progressPercent, setProgressPercent] = useState(100);
@@ -564,9 +541,6 @@ const { useState, useEffect, useRef } = React;
             );
         };
 
-        // ==========================================
-        // 📱 หน้าต่างย่อย (Modal ต่างๆ เหมือนเดิม)
-        // ==========================================
         const OrderProductModal = ({ product, onClose, onConfirm }) => {
             const [selections, setSelections] = useState({});
             const [errors, setErrors] = useState({});
@@ -1066,11 +1040,9 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                 ) : (
                                     <div className="relative pl-4 space-y-8 pb-4">
-                                        {/* ✅ ลบเส้นทึบยาวๆ พื้นหลังออก แล้วใช้ slice ตัด array ให้โชว์แค่สถานะต่อไป */}
                                         {steps.slice(0, currentStepIndex + 2).map((step, idx) => {
                                             const isCompleted = idx <= currentStepIndex; 
                                             const isCurrent = idx === currentStepIndex; 
-                                            // เช็คว่าเป็นสเตปสุดท้ายที่นำมาแสดงบนจอตอนนี้ไหม
                                             const isLastRenderedStep = idx === Math.min(currentStepIndex + 1, steps.length - 1);
                                             const isGreenStep = idx >= 4; 
 
@@ -1093,13 +1065,10 @@ const { useState, useEffect, useRef } = React;
 
                                             return (
                                                 <div key={idx} className="relative flex items-start gap-5 group min-h-[40px] animate-[pop_0.3s_ease-out]">
-                                                    {/* ✅ เส้นเชื่อมสถานะ (จะถูกสร้างทีละข้อต่อ) */}
                                                     {!isLastRenderedStep && (
                                                         isCurrent ? (
-                                                            /* เส้นปะ ชี้ไปสถานะอนาคต */
                                                             <div className="absolute left-[15px] top-8 bottom-[-32px] border-l-2 border-dashed border-gray-300 z-0"></div>
                                                         ) : (
-                                                            /* เส้นทึบ สำหรับสถานะที่ผ่านไปแล้ว */
                                                             <div className={`absolute left-[15px] top-8 bottom-[-32px] w-0.5 ${lineBgColor} z-0`}></div>
                                                         )
                                                     )}
@@ -1110,10 +1079,8 @@ const { useState, useEffect, useRef } = React;
                                                     <div className={`flex-1 transition-all duration-500 ${isCompleted ? 'opacity-100' : 'opacity-50'} ${isCurrent ? 'pl-2' : ''}`}>
                                                         <h4 className={`${titleClass} ${textColor}`}>{step.title}</h4>
                                                         
-                                                        {/* ข้อความอธิบาย โชว์แค่สถานะปัจจุบันและอดีต */}
                                                         {(isCurrent || isCompleted) && <p className={`text-xs font-medium mt-1 leading-snug ${isGreenStep ? 'text-green-600/80' : 'text-gray-500'}`}>{step.desc}</p>}
                                                         
-                                                        {/* สถานะอนาคต เปลี่ยนข้อความให้อ่านง่ายๆ */}
                                                         {!isCompleted && <p className="text-[10px] font-bold mt-1 text-gray-400 tracking-wider">สถานะถัดไป</p>}
                                                         
                                                         {isCurrent && step.status === 'รอรับของ' && (
@@ -1134,9 +1101,6 @@ const { useState, useEffect, useRef } = React;
             );
         };
 
-        // ==========================================
-        // 📱 Dashboard Main Component
-        // ==========================================
         const Dashboard = ({ user, initialData, onLogout }) => {
             const [data, setData] = useState(initialData || {});
             const [loading, setLoading] = useState(false);
@@ -1153,7 +1117,6 @@ const { useState, useEffect, useRef } = React;
             
             const [financeSort, setFinanceSort] = useState('desc');
 
-            // ✅ ฟังก์ชันกดยืนยันก่อนออกจากระบบ
             const handleLogoutConfirm = () => {
                 Swal.fire({
                     title: 'ออกจากระบบ?',
@@ -1273,18 +1236,15 @@ const { useState, useEffect, useRef } = React;
                 return (
                     <div className="w-full pb-10 relative">
                        {(hasBills || hasActiveOrders) && (
-                            /* ✅ ดึงซ้ายขวาให้กว้างเท่ากรอบเมนู (w-full) และลดช่องว่างบน-ล่างให้ชิดกัน (mb-2) */
-                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mb-1 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-200 animate-[pop_0.3s_ease-out] relative z-10`}>
+                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mb-2 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
                                    <i className="fa-solid fa-bell text-[12px] animate-ring"></i>
                                 </div>
                                 <div className="flex-grow flex flex-col justify-center">
                                     <div className="flex items-center gap-1.5">
-                                        {/* ✅ เปลี่ยน leading-none เป็น leading-tight ให้ตัวหนังสือไม่เบียดขอบเกินไป */}
                                         <h4 className="font-extrabold text-gray-800 text-[12px] leading-tight">{statusTitle}</h4>
                                         {overdueCount > 0 && <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>}
                                     </div>
-                                    {/* ✅ ปรับ mt-0.5 เป็น mt-1.5 เพื่อถ่างช่องไฟระหว่างบรรทัดบน-ล่างให้ห่างกันขึ้น */}
                                     <p className={`text-[10px] font-bold mt-1.5 leading-tight ${overdueCount > 0 ? 'text-red-500' : 'text-gray-400'}`}>{statusSubtitle}</p>
                                 </div>
                                 <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[9px] font-bold px-3 py-1 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
@@ -1407,13 +1367,10 @@ const { useState, useEffect, useRef } = React;
             };
 
             const renderSettingsContent = () => {
-                // ✅ ตรวจสอบว่าเคยผูก LINE ไว้หรือยัง
                 const isLineConnected = user.userId && user.userId.length > 5;
 
-                // ✅ ฟังก์ชันจัดการการกดปุ่มเชื่อมต่อ / ยกเลิก (อัปเกรดใหม่ ดึงข้อมูลอัตโนมัติ)
                 const handleLineConnectToggle = async () => {
                     if (isLineConnected) {
-                        // --- กรณียกเลิกการเชื่อมต่อ ---
                         Swal.fire({
                             title: 'ยกเลิกเชื่อมต่อ LINE?',
                             html: '<p class="text-sm text-gray-500">หากยกเลิก คุณจะไม่ได้รับการแจ้งเตือนบิล/สถานะสินค้า<br><span class="text-red-500 font-bold mt-2 inline-block">และจะไม่สามารถเข้าสู่ระบบด้วยปุ่ม LINE ได้</span><br>จนกว่าคุณจะเชื่อมต่อใหม่อีกครั้ง</p>',
@@ -1430,8 +1387,8 @@ const { useState, useEffect, useRef } = React;
                                 try {
                                     const res = await runGoogleScript('unbindLineUser', [user.studentId]);
                                     if (res.success) {
-                                        user.userId = ''; // เคลียร์ค่าในระบบทันที
-                                        setData({...data}); // รีเฟรชหน้าต่างเพื่อให้ปุ่มเปลี่ยนสถานะ
+                                        user.userId = ''; 
+                                        setData({...data}); 
                                         Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
                                     } else {
                                         Swal.fire('ผิดพลาด', res.message, 'error');
@@ -1441,9 +1398,7 @@ const { useState, useEffect, useRef } = React;
                             }
                         });
                     } else {
-                        // --- กรณีขอเชื่อมต่อใหม่ ---
                         if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
-                            // 🌟 ถ้าเปิดในแอป LINE อยู่แล้ว ดึงข้อมูลได้เลย ไม่ต้องเด้งออก!
                             try {
                                 const profile = await liff.getProfile();
                                 const lineId = profile.userId;
@@ -1465,7 +1420,7 @@ const { useState, useEffect, useRef } = React;
                                             const res = await runGoogleScript('bindLineUser', [user.studentId, result.value, lineId]);
                                             if(res.success) {
                                                 user.userId = lineId;
-                                                setData({...data}); // รีเฟรชปุ่ม
+                                                setData({...data}); 
                                                 Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', text: 'คุณสามารถเข้าสู่ระบบด้วย LINE ได้ทันทีในครั้งถัดไป', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
                                             } else {
                                                 Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ถูกต้อง', text: res.message || 'กรุณาลองใหม่อีกครั้ง', customClass: { popup: 'rounded-3xl' }});
@@ -1478,7 +1433,6 @@ const { useState, useEffect, useRef } = React;
                                 });
                             } catch (e) { console.error(e); }
                         } else {
-                            // กรณีเข้าผ่าน Safari / Chrome ปกติ
                             Swal.fire({
                                 title: 'เข้าสู่ระบบ LINE',
                                 text: 'ระบบจะพาคุณไปยังหน้าเข้าสู่ระบบของแอป LINE เพื่อดึงข้อมูลการเชื่อมต่อ',
@@ -1580,7 +1534,6 @@ const { useState, useEffect, useRef } = React;
 
                         <header className={`absolute top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100 text-gray-800 pt-safe px-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] transition-all duration-500 ease-in-out pointer-events-none ${tab === 'home' && !isSubPageOpen ? 'pb-4 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
                             <div className="flex justify-between items-center pt-2 relative min-h-[40px] pointer-events-auto">
-                                {/* 🟢 ปุ่มซ้าย (โปรไฟล์ หรือ ปุ่มบ้าน) */}
                                 <div className="relative z-50 flex items-center">
                                     {tab === 'home' && !isSubPageOpen ? (
                                         <>
@@ -1602,7 +1555,6 @@ const { useState, useEffect, useRef } = React;
                                     )}
                                 </div>
                                 
-                                {/* 🟢 ชื่อหน้า ตรงกลางเป๊ะๆ */}
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
                                     {tab !== 'home' || isSubPageOpen ? (
                                         <h2 className="font-extrabold text-lg text-gray-800 tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1 pointer-events-auto">
@@ -1615,7 +1567,6 @@ const { useState, useEffect, useRef } = React;
                                     ) : null}
                                 </div>
                                 
-                                {/* 🟢 ปุ่มขวา (รีเฟรช) */}
                                 <div className="flex gap-3 relative z-50 shrink-0">
                                     <button onClick={() => fetchData(false)} className={`w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center active:scale-90 transition border border-gray-200 shadow-sm text-gray-600 hover:bg-gray-100 ${loading ? 'animate-spin text-[#0066FF]':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
                                 </div>
@@ -1750,7 +1701,6 @@ const { useState, useEffect, useRef } = React;
 
                         {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                        {/* ✅ อัปเดตแถบเมนูด้านล่าง มีเบลอ Gradient บล็อกการกดพื้นหลัง */}
                         <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-safe pt-12 px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
                             
                             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F0F4F8] via-[#F0F4F8]/90 to-transparent pointer-events-auto"></div>
@@ -1767,6 +1717,137 @@ const { useState, useEffect, useRef } = React;
                         {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
 
                     </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [page, setPage] = useState('loading'); 
+            const [user, setUser] = useState(null);
+            const [dashboardData, setDashboardData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [liffUserId, setLiffUserId] = useState(null); 
+
+            const handleLineLogin = () => {
+                if (typeof liff !== 'undefined') {
+                    if (!liff.isLoggedIn()) {
+                        liff.login(); 
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'ยังไม่ได้ผูกบัญชี LINE',
+                            html: '<p class="text-sm text-gray-500 mt-2">กรุณาเข้าสู่ระบบด้วย <b>รหัสนักศึกษา</b> และ <b>รหัสผ่าน</b> ของคุณในครั้งแรก เพื่อให้ระบบทำการผูกบัญชีให้อัตโนมัติครับ</p>',
+                            confirmButtonText: 'ตกลง',
+                            confirmButtonColor: '#0066FF',
+                            customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800 pt-2', confirmButton: 'rounded-xl px-8 py-2.5 font-bold shadow-md' }
+                        });
+                    }
+                }
+            };
+
+            useEffect(() => {
+                const initializeApp = async () => {
+                    try {
+                        const resStatus = await runGoogleScript('checkStatus');
+                        if (resStatus && resStatus.maintenance) {
+                            setPage('maintenance');
+                            return;
+                        }
+
+                        if (typeof liff !== 'undefined') {
+                            try {
+                                await liff.init({ liffId: "2009556969-8SWGBXPW" });
+                                
+                                if (liff.isLoggedIn()) {
+                                    const profile = await liff.getProfile();
+                                    const lineId = profile.userId;
+                                    setLiffUserId(lineId);
+                                    
+                                    setPage('loading');
+
+                                    const loginRes = await runGoogleScript('loginWithLine', [lineId]);
+                                    
+                                    if (loginRes.success) {
+                                        let dashData = await runGoogleScript('getDashboardData', [loginRes.studentId, true]);
+                                        setUser(loginRes);
+                                        setDashboardData(dashData);
+                                        setPage('dashboard');
+                                        
+                                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                                        Toast.fire({ icon: 'success', title: `เข้าสู่ระบบผ่าน LINE สำเร็จ` });
+                                        return; 
+                                    }
+                                }
+                            } catch (liffError) {
+                                console.error("LIFF Init failed", liffError);
+                            }
+                        }
+
+                        setPage('login');
+                    } catch (e) {
+                        console.error("Check status failed", e);
+                        setPage('login'); 
+                    }
+                };
+                initializeApp();
+            }, []);
+
+            const handleLogin = async (u, p) => {
+                if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
+                setLoading(true);
+                try {
+                    let res;
+                    
+                    if (liffUserId) {
+                        res = await runGoogleScript('bindLineUser', [u, p, liffUserId]);
+                        if(res.success && res.studentId) {
+                            u = res.studentId; 
+                            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'เชื่อมต่อบัญชี LINE สำเร็จ', showConfirmButton: false, timer: 3000 });
+                        }
+                    } else {
+                        res = await runGoogleScript('loginUser', [u, p]);
+                    }
+
+                    if(res.success) {
+                        let dashData = res.dashboardData;
+                        if (!dashData) { dashData = await runGoogleScript('getDashboardData', [u, true]); }
+                        
+                        if(!res.permissions) res.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                        if(!res.studentId) res.studentId = u;
+
+                        setUser(res); 
+                        setDashboardData(dashData); 
+                        setPage('dashboard');
+
+                        if (!dashData.announcement && !liffUserId) {
+                            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                            Toast.fire({ icon: 'success', title: `ยินดีต้อนรับ คุณ${res.name || u}` });
+                        }
+                    } else { 
+                        Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: res.message, customClass: { popup: 'rounded-2xl' } }); 
+                    }
+                } catch(e) { 
+                    Swal.fire('Error', e.toString(), 'error'); 
+                }
+                setLoading(false);
+            };
+
+            const handleRegisterSuccess = (u) => { setPage('login'); };
+
+            const handleLogout = () => {
+                setUser(null); 
+                setDashboardData(null);
+                setPage('login'); 
+            };
+
+            return (
+                <div>
+                    {page === 'loading' && <Loading />} 
+                    {page === 'maintenance' && <MaintenanceMode />} 
+                    {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} onLineLogin={handleLineLogin} />}
+                    {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
+                    {page === 'dashboard' && user && <Dashboard user={user} initialData={dashboardData} onLogout={handleLogout} />}
+                    {loading && <Loading />}
                 </div>
             );
         };
