@@ -271,7 +271,7 @@ const { useState, useEffect, useRef } = React;
         // ==========================================
         // 📱 Login Component
         // ==========================================
-        const Login = ({ onLogin, onRegister }) => {
+        const Login = ({ onLogin, onRegister, onLineLogin }) => {
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
 
@@ -327,7 +327,7 @@ const { useState, useEffect, useRef } = React;
                                     </div>
                                     
                                     {/* ✅ ปุ่มล็อกอินด้วย LINE ดึง LIFF มาใช้ */}
-                                    <button onClick={() => window.location.href = "https://liff.line.me/2009556969-8SWGBXPW"} 
+                                    <button onClick={onLineLogin} 
                                     className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[#00B900]/20 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-sm">
                                         <i className="fa-brands fa-line text-xl"></i> เข้าสู่ระบบผ่าน LINE
                                     </button>
@@ -1598,7 +1598,8 @@ const { useState, useEffect, useRef } = React;
 
                         {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                        <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-5 pt-12 px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
+                        {/* ✅ อัปเดตแถบเมนูด้านล่าง มีเบลอ Gradient บล็อกการกดพื้นหลัง */}
+                        <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-safe pt-12 px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
                             
                             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F0F4F8] via-[#F0F4F8]/90 to-transparent pointer-events-auto"></div>
                             
@@ -1673,6 +1674,15 @@ const { useState, useEffect, useRef } = React;
             
             // ✅ ตัวแปรเก็บ LINE User ID เผื่อกรณีเข้าผ่านไลน์แต่ยังไม่เคยผูกบัญชี
             const [liffUserId, setLiffUserId] = useState(null); 
+            // ✅ เพิ่มฟังก์ชันนี้เข้าไป
+            const handleLineLogin = () => {
+                if (typeof liff !== 'undefined') {
+                    if (!liff.isLoggedIn()) {
+                        // คำสั่งนี้จะพาวิ่งไปเปิดแอป LINE เพื่อดึงข้อมูล แล้วเด้งกลับมาหน้าเดิมอัตโนมัติ!
+                        liff.login(); 
+                    }
+                }
+            };
 
             useEffect(() => {
                 const initializeApp = async () => {
@@ -1784,7 +1794,7 @@ const { useState, useEffect, useRef } = React;
                 <div>
                     {page === 'loading' && <Loading />} 
                     {page === 'maintenance' && <MaintenanceMode />} 
-                    {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} />}
+                    {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} onLineLogin={handleLineLogin} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && <Dashboard user={user} initialData={dashboardData} onLogout={handleLogout} />}
                     {loading && <Loading />}
