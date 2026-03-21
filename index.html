@@ -98,7 +98,7 @@
             100% { transform: rotate(0); }
         }
         .animate-ring {
-            animation: ring 2s ease-in-out infinite;
+            animation: ring 1s ease-in-out infinite;
             transform-origin: top center; /* ให้จุดหมุนอยู่ด้านบนเหมือนแขวนกระดิ่งไว้ */
         }
     </style>
@@ -1220,7 +1220,7 @@ const { useState, useEffect, useRef } = React;
                 let statusColorClass = "border-blue-400"; 
                 let statusIconBg = "bg-blue-50"; 
                 let statusIconText = "text-blue-600";
-                let statusTitle = "สถานะปัจจุบัน"; 
+                let statusTitle = "สถานะสินค้าปัจจุบัน"; 
                 let statusSubtitle = ""; 
                 let actionColorClass = "text-[#0066FF] bg-blue-50 hover:bg-blue-100";
 
@@ -1238,7 +1238,7 @@ const { useState, useEffect, useRef } = React;
                     <div className="w-full pb-10 relative">
                        {(hasBills || hasActiveOrders) && (
                             /* ✅ ดึงซ้ายขวาให้กว้างเท่ากรอบเมนู (w-full) และลดช่องว่างบน-ล่างให้ชิดกัน (mb-2) */
-                            <div className={`bg-white/95 backdrop-blur-md py-1.5 px-4 w-full mb-2 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
+                            <div className={`bg-white/95 backdrop-blur-md py-2 px-4 w-full mb-1 rounded-full shadow-sm flex items-center gap-2.5 border border-gray-200 animate-[pop_0.3s_ease-out] relative z-10`}>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
                                    <i className="fa-solid fa-bell text-[12px] animate-ring"></i>
                                 </div>
