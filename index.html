@@ -26,23 +26,18 @@
             -webkit-tap-highlight-color: transparent; 
         }
 
-        /* ใส่ในแท็บ <style> เดิมของคุณ */
         @media screen and (max-width: 768px) {
             input, select, textarea {
-            font-size: 16px !important; /* บังคับให้เป็น 16px เฉพาะในมือถือ */
+            font-size: 16px !important; 
           }
         }
 
-        /* 📱 iOS Slide In Animation */
         @keyframes slideInRight {
             0% { transform: translateX(100%); opacity: 0.5; }
             100% { transform: translateX(0); opacity: 1; }
         }
-        .animate-slide-in-right { 
-            animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards; 
-        }
+        .animate-slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1) forwards; }
 
-        /* Animations */
         @keyframes blink-border {
             0%, 100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
             50% { border-color: #fee2e2; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2); }
@@ -55,12 +50,10 @@
         .loader { border: 4px solid #e0f2fe; border-top: 4px solid #2563eb; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         html { scroll-behavior: smooth; }
 
-        /* Animation Timer */
         @keyframes border-flow {
             0% { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
             50% { border-color: #2563eb; box-shadow: 0 0 25px rgba(37, 99, 235, 0.8); }
@@ -68,11 +61,9 @@
         }
         .popup-timer-border { border: 3px solid transparent; animation: border-flow 1.5s infinite; border-radius: 1.5rem !important; }
 
-        /* Loading Text */
         .loading-text:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' ..'; } 60% { content: ' ...'; } 80%, 100% { content: ''; } }
 
-        /* Background Decoration */
         @keyframes fall {
             0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) translateX(20px) rotate(360deg); opacity: 0; }
@@ -82,22 +73,17 @@
             animation-name: fall; animation-timing-function: linear; animation-iteration-count: infinite;
         }
 
-        /* New App Animations */
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes pop { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* iOS Bottom Safe Area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1.25rem); }
         .pt-safe { padding-top: env(safe-area-inset-top, 0.5rem); }
 
-        /* 📱 Drawer Animation (แจ้งเตือนลิ้นชัก) */
         @keyframes slideDownDrawer {
             0% { transform: translateY(-50%); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
         }
-        .animate-drawer { 
-            animation: slideDownDrawer 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; 
-        }
+        .animate-drawer { animation: slideDownDrawer 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
     </style>
 </head>
 <body>
@@ -231,70 +217,60 @@ const { useState, useEffect, useRef } = React;
             );
         };
 
+        // ✅ อัปเดต Modal ประกาศใหม่ ตาม Requirement (แยกระหว่าง ลิ้งค์รูป และ ข้อความ)
         const AnnouncementModal = ({ text, onClose }) => {
+            const isUrl = (string) => {
+                if (!string || typeof string !== 'string') return false;
+                const cleanStr = string.trim().toLowerCase();
+                return cleanStr.startsWith('http') && !cleanStr.includes(' ');
+            };
+
+            const textIsUrl = isUrl(text);
+
+            if (textIsUrl) {
+                // แสดงเป็น Modal รูปภาพแบบเดียวกับสลีป
+                return ReactDOM.createPortal(
+                    <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
+                        <div className="relative w-full max-w-md max-h-[75vh] flex items-center justify-center mb-6">
+                            <img src={getDirectDriveUrl(text)} className="max-w-full max-h-full object-contain rounded-2xl animate-[pop_0.3s_ease-out] drop-shadow-2xl" alt="Announcement" onClick={e => e.stopPropagation()} onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/400x500?text=Link+Load+Error'; }} />
+                        </div>
+                        <button onClick={onClose} className="bg-white/20 hover:bg-white/30 text-white font-bold py-3.5 px-8 rounded-full backdrop-blur-md transition flex items-center justify-center gap-2 text-sm shadow-lg border border-white/20 active:scale-95 animate-[slideDownDrawer_0.4s_ease-out]">
+                            <i className="fa-solid fa-xmark"></i> ปิดหน้าต่าง
+                        </button>
+                    </div>, document.body
+                );
+            }
+
+            // แสดงเป็นข้อความมินิมอล ทันสมัย
             return ReactDOM.createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-5 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
-                    <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-[pop_0.3s_ease-out]" onClick={e => e.stopPropagation()}>
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-center relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 opacity-20"><i className="fa-solid fa-bullhorn text-8xl text-white"></i></div>
-                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-md border border-white/30 shadow-inner">
-                                <i className="fa-solid fa-bell text-3xl text-white animate-[ring_2s_ease-in-out_infinite]"></i>
+                <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-5 animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
+                    <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-[pop_0.3s_ease-out] border border-gray-100 p-6 relative" onClick={e => e.stopPropagation()}>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/60 rounded-bl-full -z-10"></div>
+                        
+                        <div className="flex items-center gap-4 mb-5">
+                            <div className="w-14 h-14 bg-blue-50 text-[#0066FF] rounded-2xl flex items-center justify-center shadow-inner shrink-0">
+                                <i className="fa-solid fa-bell text-2xl animate-[ring_2s_ease-in-out_infinite]"></i>
                             </div>
-                            <h2 className="text-2xl font-bold text-white tracking-tight relative z-10">ประกาศสำคัญ</h2>
+                            <div>
+                                <h2 className="text-xl font-extrabold text-gray-800 tracking-tight leading-tight">ประกาศแจ้งเตือน</h2>
+                                <p className="text-[10px] text-[#0066FF] font-bold uppercase tracking-wider mt-0.5">Announcement</p>
+                            </div>
                         </div>
-                        <div className="p-6 max-h-[50vh] overflow-y-auto no-scrollbar bg-gray-50/30">
-                            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap font-medium">{text}</p>
+                        
+                        <div className="max-h-[50vh] overflow-y-auto no-scrollbar mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50">
+                            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap font-medium text-sm">{text}</p>
                         </div>
-                        <div className="p-4 border-t border-gray-100 bg-white">
-                            <button onClick={onClose} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-transform text-lg flex justify-center items-center gap-2">
-                                รับทราบ <i className="fa-solid fa-check-circle"></i>
-                            </button>
-                        </div>
+                        
+                        <button onClick={onClose} className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-3.5 rounded-xl transition-transform active:scale-95 text-base flex justify-center items-center gap-2 border border-gray-200 shadow-sm">
+                            รับทราบ <i className="fa-solid fa-check text-green-500 ml-1"></i>
+                        </button>
                     </div>
                 </div>, document.body
             );
         };
 
         // ==========================================
-        // Auth Themes & Components
-        // ==========================================
-        const useFestivalTheme = () => {
-            const date = new Date();
-            const month = date.getMonth() + 1; 
-            const day = date.getDate();
-            const isRange = (m1, d1, m2, d2) => {
-                const cur = month * 100 + day;
-                return cur >= (m1 * 100 + d1) && cur <= (m2 * 100 + d2);
-            };
-
-            let theme = {
-                name: 'default',
-                bgGradient: 'from-blue-50 to-indigo-100', headerGradient: 'from-blue-600 to-indigo-600',
-                buttonColor: 'bg-blue-600 hover:bg-blue-700', accentColor: 'text-blue-600',
-                mascot: 'https://img5.pic.in.th/file/secure-sv1/-8f8bd3b6672e701d.png', decoration: null 
-            };
-
-            if (isRange(1, 1, 1, 9)) theme = { name: 'newyear', bgGradient: 'from-yellow-50 to-orange-100', headerGradient: 'from-orange-500 to-yellow-500', buttonColor: 'bg-orange-500 hover:bg-orange-600', accentColor: 'text-orange-600', mascot: 'https://cdn-icons-png.flaticon.com/512/13373/13373572.png', decoration: ['🎉', '🎆', '2026', '✨'] };
-            else if (isRange(2, 15, 2, 17)) theme = { name: 'cny', bgGradient: 'from-red-50 to-yellow-100', headerGradient: 'from-red-600 to-red-500', buttonColor: 'bg-red-600 hover:bg-red-700', accentColor: 'text-red-700', mascot: 'https://cdn-icons-png.flaticon.com/512/14231/14231241.png', decoration: ['🧧', '🏮', '💰', '🐉'] };
-            else if (isRange(2, 10, 2, 14)) theme = { name: 'valentine', bgGradient: 'from-pink-50 to-rose-100', headerGradient: 'from-pink-500 to-rose-500', buttonColor: 'bg-pink-500 hover:bg-pink-600', accentColor: 'text-pink-600', mascot: 'https://cdn-icons-png.flaticon.com/512/14122/14122588.png', decoration: ['❤️', '💖', '💌', '🌹','LOVE'] };
-            else if (isRange(4, 10, 4, 16)) theme = { name: 'songkran', bgGradient: 'from-cyan-50 to-blue-200', headerGradient: 'from-cyan-500 to-blue-500', buttonColor: 'bg-cyan-600 hover:bg-cyan-700', accentColor: 'text-cyan-600', mascot: 'https://cdn-icons-png.flaticon.com/512/4524/4524490.png', decoration: ['💦', '🔫', '🌺', '💧'] };
-            else if (isRange(10, 20, 10, 31)) theme = { name: 'halloween', bgGradient: 'from-purple-100 to-orange-200', headerGradient: 'from-purple-800 to-orange-600', buttonColor: 'bg-purple-800 hover:bg-purple-900', accentColor: 'text-purple-800', mascot: 'https://cdn-icons-png.flaticon.com/512/5833/5833493.png', decoration: ['🎃', '👻', '🦇', '🕸️'] };
-            else if (isRange(11, 20, 11, 25)) theme = { name: 'loykrathong', bgGradient: 'from-indigo-100 to-yellow-50', headerGradient: 'from-indigo-600 to-blue-700', buttonColor: 'bg-indigo-600 hover:bg-indigo-700', accentColor: 'text-indigo-700', mascot: 'https://cdn-icons-png.flaticon.com/512/8716/8716920.png', decoration: ['🪷', '🌕', '🕯️', '🎆'] };
-            else if (isRange(12, 10, 12, 31)) theme = { name: 'christmas', bgGradient: 'from-green-50 to-red-100', headerGradient: 'from-green-600 to-red-600', buttonColor: 'bg-green-700 hover:bg-green-800', accentColor: 'text-green-700', mascot: 'https://cdn-icons-png.flaticon.com/512/6240/6240060.png', decoration: ['🎄', '🎅', '❄️', '🎁'] };
-            return theme;
-        };
-
-        const BackgroundDecoration = ({ items }) => {
-            if (!items) return null;
-            const flakes = Array.from({ length: 15 }).map((_, i) => {
-                const style = { left: `${Math.random() * 100}vw`, animationDuration: `${Math.random() * 5 + 5}s`, animationDelay: `${Math.random() * 5}s`, fontSize: `${Math.random() * 20 + 20}px` };
-                return <div key={i} className="falling-item" style={style}>{items[i % items.length]}</div>
-            });
-            return <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">{flakes}</div>;
-        };
-
-       // ==========================================
-        // 📱 Login Component (รองรับคอมพิวเตอร์ Split Screen)
+        // 📱 Login Component
         // ==========================================
         const Login = ({ onLogin, onRegister }) => {
             const [id, setId] = useState('');
@@ -304,20 +280,16 @@ const { useState, useEffect, useRef } = React;
                 <div className="min-h-screen flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-hidden">
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px]">
                         
-                        {/* 🖥️ ส่วนซ้ายสำหรับหน้าจอคอม */}
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
                             <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150?text=Logo'; }} />
-                            {/* ✅ ปรับให้อยู่บรรทัดเดียว และเล็กลงนิดหน่อย */}
                             <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h2>
                             <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Payment</p>
                             <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
                             <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-black/10 rounded-full blur-3xl"></div>
                         </div>
 
-                        {/* 📱 ส่วนขวา (ฟอร์ม) สำหรับทุกหน้าจอ */}
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
-                            {/* บนมือถือโชว์โลโก้ */}
                             <div className="md:hidden text-center mb-2">
                                 <div className="relative inline-block">
                                     <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
@@ -325,7 +297,6 @@ const { useState, useEffect, useRef } = React;
                                         <img src={getDirectDriveUrl('https://drive.google.com/file/d/1xUmu5w6937s_xEeuxttKeqIOShPbP8_P/view?usp=drivesdk')} alt="Logo" className="w-full h-full object-cover rounded-full transform transition-transform scale-150" onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }} />
                                     </div>
                                 </div>
-                                {/* ✅ ปรับฟอนต์เล็กลงเป็น text-xl และบังคับไม่ให้ตกบรรทัด */}
                                 <h1 className="text-xl font-black text-gray-800 tracking-tight mt-4 whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h1>
                                 <p className="text-[#0066FF] mt-0.5 font-extrabold text-xs tracking-wide">MedTech 67 Payment System</p>
                             </div>
@@ -347,8 +318,26 @@ const { useState, useEffect, useRef } = React;
                                         </div>
                                     </div>
                                     <button onClick={() => onLogin(id, pass)} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 md:py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all transform active:scale-[0.98] mt-4 text-base">เข้าสู่ระบบ</button>
-                                    <div className="flex items-center justify-center px-1 pt-3">
+                                    
+                                    {/* ✅ เพิ่มปุ่มขอความช่วยเหลือ / ติดต่อแอดมิน ที่นี่ */}
+                                    <div className="flex flex-col items-center justify-center px-1 pt-4 gap-3">
                                         <button onClick={onRegister} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors">ลืมรหัสผ่าน? / สร้างรหัสผ่าน</button>
+                                        
+                                        <div className="flex items-center gap-2 w-full justify-center opacity-40">
+                                            <div className="h-px bg-gray-400 w-12"></div>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-gray-600">หรือ</span>
+                                            <div className="h-px bg-gray-400 w-12"></div>
+                                        </div>
+                                        
+                                        <button onClick={() => Swal.fire({
+                                            title:'ขอความช่วยเหลือ', 
+                                            html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน หรือลืมรหัสผ่าน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold shadow-sm shadow-[#00B900]/20 active:scale-95 transition-transform no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
+                                            showConfirmButton:false, showCloseButton:true, 
+                                            customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold text-gray-800 pt-2', closeButton: 'focus:outline-none hover:text-red-500 transition-colors'}
+                                        })} 
+                                        className="text-xs font-bold text-gray-500 hover:text-[#00B900] transition-colors flex items-center gap-1.5 bg-gray-50 px-5 py-2.5 rounded-full border border-gray-100 shadow-sm active:scale-95">
+                                            <i className="fa-solid fa-headset"></i> ขอความช่วยเหลือ / ติดต่อแอดมิน
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -363,7 +352,7 @@ const { useState, useEffect, useRef } = React;
         };
         
         // ==========================================
-        // 📝 Register Component (รองรับคอมพิวเตอร์)
+        // 📝 Register Component (เหมือนเดิม)
         // ==========================================
         const Register = ({ onBack, onRegisterSuccess }) => {
             const [step, setStep] = useState(1);
@@ -414,7 +403,6 @@ const { useState, useEffect, useRef } = React;
                         <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
                             <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
-                            {/* ✅ ปรับให้อยู่บรรทัดเดียว และเล็กลงนิดหน่อย */}
                             <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">สร้างรหัสผ่านใหม่</h2>
                             <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Payment</p>
                         </div>
@@ -427,7 +415,6 @@ const { useState, useEffect, useRef } = React;
                                         <img src={getDirectDriveUrl('https://drive.google.com/file/d/1LYD0PNwnadNKfuNgY8KokVw7Ngs5-X9R/view?usp=drivesdk')} className="w-full h-full object-cover rounded-full" />
                                     </div>
                                 </div>
-                                {/* ✅ ปรับฟอนต์เล็กลงเป็น text-xl และบังคับไม่ให้ตกบรรทัด */}
                                 <h1 className="text-xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">ลืมรหัสผ่าน / สร้างรหัสผ่าน</h1>
                                 <p className="text-[#0066FF] mt-1 font-extrabold text-xs tracking-wide">MedTech 67 Payment System</p>
                             </div>
@@ -553,7 +540,7 @@ const { useState, useEffect, useRef } = React;
         };
 
         // ==========================================
-        // 📱 หน้าต่างย่อย: OrderProductModal, PaymentModal ฯลฯ
+        // 📱 หน้าต่างย่อย (Modal ต่างๆ เหมือนเดิม)
         // ==========================================
         const OrderProductModal = ({ product, onClose, onConfirm }) => {
             const [selections, setSelections] = useState({});
@@ -710,9 +697,7 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
-        // ==========================================
-        // 📱 2. หน้าชำระเงินบิลค่าเทอม (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
-        // ==========================================
+        
         const PaymentModal = ({ bill, user, onClose, onSuccess }) => {
             const [file, setFile] = useState(null);
             const [preview, setPreview] = useState(null);
@@ -822,9 +807,7 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
-        // ==========================================
-        // 📱 3. หน้าชำระเงินค่าสินค้า (สไลด์ทับหน้าหลัก แต่เว้นแถบบน)
-        // ==========================================
+        
         const OrderPaymentModal = ({ order, user, onClose, onSuccess, qrMap, defaultQr }) => {
             const [file, setFile] = useState(null);
             const [preview, setPreview] = useState(null);
@@ -913,9 +896,7 @@ const { useState, useEffect, useRef } = React;
                 </div>
             );
         };
-        // ==========================================
-        // 📱 4. หน้าย่อยรายละเอียดโครงการการเงิน (ปรับให้ใหม่ขึ้นก่อนเสมอ)
-        // ==========================================
+        
        const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
             const [sortOrder, setSortOrder] = useState('desc'); 
             const sortedTransactions = sortOrder === 'desc' ? [...project.transactions].reverse() : [...project.transactions];
@@ -975,9 +956,6 @@ const { useState, useEffect, useRef } = React;
             );
         };
 
-        // ==========================================
-        // 📱 หน้าต่างติดตามสถานะการสั่งซื้อ (Order Tracking)
-        // ==========================================
         const OrderTrackingSubPage = ({ order, onClose }) => {
             const steps = [
                 { status: 'รอตรวจสอบ', icon: 'fa-clock', title: 'รอตรวจสอบ', desc: 'กำลังตรวจสอบการชำระเงิน' },
@@ -1134,8 +1112,12 @@ const { useState, useEffect, useRef } = React;
             
             const [financeSort, setFinanceSort] = useState('desc');
 
-            const themeColor = "bg-[#0066FF]"; 
             const themeText = "text-[#0066FF]";
+
+            // เมื่อเข้าสู่ระบบเสร็จ และมีประกาศ ให้แจ้งเตือนโชว์ขึ้นมาอัตโนมัติ
+            useEffect(() => {
+                if (data?.announcement) setShowAnnouncement(true);
+            }, [data?.announcement]);
 
             const hasAccess = (menuId) => {
                 if (!user?.permissions || !Array.isArray(user.permissions)) return true;
@@ -1187,15 +1169,15 @@ const { useState, useEffect, useRef } = React;
             };
 
             const renderMenuCard = (title, subtitle, icon, color, onClick, badge) => (
-                <div onClick={onClick} className="bg-white p-4 rounded-2xl shadow-sm relative overflow-hidden h-28 flex flex-col justify-between active:scale-95 transition-transform duration-200 cursor-pointer border border-gray-50">
+                <div onClick={onClick} className="bg-white p-4 rounded-2xl shadow-sm relative overflow-hidden h-28 flex flex-col justify-between active:scale-95 transition-transform duration-200 cursor-pointer border border-gray-50 hover:border-blue-100 group">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h3 className="font-bold text-gray-800 text-lg leading-tight">{title}</h3>
+                            <h3 className="font-bold text-gray-800 text-lg leading-tight group-hover:text-[#0066FF] transition-colors">{title}</h3>
                             {subtitle && <p className="text-[10px] text-gray-400 mt-1">{subtitle}</p>}
                             {badge > 0 && <span className="mt-1 inline-block bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse shadow-sm">{badge}</span>}
                         </div>
                     </div>
-                    <div className={`absolute -bottom-3 -right-3 w-16 h-16 rounded-full opacity-20 ${color}`}></div>
+                    <div className={`absolute -bottom-3 -right-3 w-16 h-16 rounded-full opacity-20 ${color} group-hover:scale-110 transition-transform`}></div>
                     <div className={`absolute bottom-2 right-2 text-3xl ${color.replace('bg-', 'text-')}`}><i className={`fa-solid ${icon}`}></i></div>
                 </div>
             );
@@ -1203,7 +1185,7 @@ const { useState, useEffect, useRef } = React;
             const renderNavItem = (id, icon, label, badge) => {
                 if (!hasAccess(id)) return null; 
                 return (
-                    <button onClick={() => { setTab(id); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative ${tab === id && !isSubPageOpen ? themeText : 'text-gray-400'}`}>
+                    <button onClick={() => { setTab(id); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative ${tab === id && !isSubPageOpen ? themeText : 'text-gray-400 hover:text-gray-600'}`}>
                         <div className={`text-xl mb-1 transition-transform ${tab === id && !isSubPageOpen ? '-translate-y-1' : ''}`}><i className={`fa-solid ${icon}`}></i></div>
                         <span className="text-[10px] font-bold">{label}</span>
                         {badge > 0 && <span className="absolute top-1 right-[25%] w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>}
@@ -1217,13 +1199,13 @@ const { useState, useEffect, useRef } = React;
                 let statusIconText = "text-blue-600";
                 let statusTitle = "สถานะปัจจุบัน"; 
                 let statusSubtitle = ""; 
-                let actionColorClass = "text-white bg-[#0066FF] hover:bg-blue-700";
+                let actionColorClass = "text-[#0066FF] bg-blue-50 hover:bg-blue-100";
 
                 if (hasBills) {
                     statusTitle = "มีบิลค้างชำระ";
                     if (overdueCount > 0) {
-                        statusColorClass = "border-red-500"; statusIconBg = "bg-red-50"; statusIconText = "text-red-500";
-                        statusSubtitle = `เกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-white bg-red-500 hover:bg-red-600";
+                        statusColorClass = "border-red-400"; statusIconBg = "bg-red-50"; statusIconText = "text-red-500";
+                        statusSubtitle = `เกินกำหนด ${overdueCount} รายการ`; actionColorClass = "text-red-600 bg-red-50 hover:bg-red-100 border border-red-100";
                     } else { statusSubtitle = `รอชำระ ${data?.bills?.length || 0} รายการ`; }
                 } else if (hasActiveOrders) { 
                     statusSubtitle = `ล่าสุด: ${activeOrders[0]?.status || ''}`; 
@@ -1231,9 +1213,8 @@ const { useState, useEffect, useRef } = React;
 
                 return (
                     <div className="w-full pb-10 relative">
-                        {/* ✅ แจ้งเตือนแบบลิ้นชัก (Drawer) ดีไซน์ใหม่ เล็กกะทัดรัดและพรีเมียมขึ้น */}
                         {(hasBills || hasActiveOrders) && (
-                            <div className={`bg-white/95 backdrop-blur-md px-4 pb-3 pt-6 -mt-5 mx-1 mb-5 rounded-b-[1.5rem] shadow-[0_4px_15px_-3px_rgba(0,0,0,0.05)] flex items-center gap-3 border-b-[3px] ${statusColorClass} animate-drawer relative z-10`}>
+                            <div className={`bg-white/95 backdrop-blur-md px-4 pb-3 pt-5 -mt-4 mx-1 mb-5 rounded-b-[1.5rem] shadow-sm flex items-center gap-3 border-b-[3px] ${statusColorClass} animate-drawer relative z-10`}>
                                 <div className={`w-9 h-9 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
                                     <i className="fa-solid fa-bell text-sm animate-[ring_2s_ease-in-out_infinite]"></i>
                                 </div>
@@ -1282,7 +1263,7 @@ const { useState, useEffect, useRef } = React;
                                                 </div>
                                                 <div className="text-right shrink-0 ml-2 flex flex-col items-end">
                                                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${statusBadgeColor}`}>{order.status}</span>
-                                                    <p className="text-[10px] text-gray-400 mt-1">กดเพื่อดู &gt;</p>
+                                                    <p className="text-[10px] text-gray-400 mt-1">กดเพื่อดู ></p>
                                                 </div>
                                             </div>
                                         );
@@ -1297,10 +1278,13 @@ const { useState, useEffect, useRef } = React;
                         )}
 
                         {data?.announcement && (
-                            <div className="mt-4 bg-gradient-to-r from-[#0066FF] to-[#004ECC] rounded-[1.5rem] p-5 text-white shadow-lg relative overflow-hidden animate-pop">
-                                <div className="absolute top-0 right-0 opacity-20 transform translate-x-4 -translate-y-4 pointer-events-none"><i className="fa-solid fa-bullhorn text-7xl"></i></div>
-                                <h3 className="font-bold text-lg mb-2 relative z-10 flex items-center gap-2"><i className="fa-solid fa-circle-info text-sm"></i> ประกาศ</h3>
-                                <p className="text-sm opacity-95 relative z-10 whitespace-pre-wrap break-words leading-relaxed">{data.announcement}</p>
+                            <div className="mt-4 bg-white border border-blue-100 rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden animate-pop group cursor-pointer" onClick={() => setShowAnnouncement(true)}>
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+                                <h3 className="font-extrabold text-gray-800 text-lg mb-1 flex items-center gap-2"><i className="fa-solid fa-bullhorn text-[#0066FF] text-base"></i> ประกาศแจ้งเตือน</h3>
+                                <p className="text-sm text-gray-500 line-clamp-2 mt-1 pr-8 leading-relaxed">คลิกเพื่อดูรายละเอียดประกาศ</p>
+                                <div className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 group-hover:text-[#0066FF] transition-colors">
+                                    <i className="fa-solid fa-chevron-right"></i>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1314,13 +1298,13 @@ const { useState, useEffect, useRef } = React;
 
                 return (
                     <div className="space-y-6 animate-pop pb-8 pt-2">
-                        <div className="bg-gradient-to-br from-purple-600 to-indigo-600 p-6 rounded-[2rem] text-white shadow-lg shadow-purple-200 relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-[#0066FF] to-indigo-600 p-6 rounded-[2rem] text-white shadow-lg shadow-blue-200 relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 opacity-10"><i className="fa-solid fa-sack-dollar text-8xl"></i></div>
-                            <p className="text-purple-100 text-sm font-bold tracking-wider mb-1 relative z-10"><i className="fa-solid fa-vault mr-1"></i> ยอดเงินคงเหลือชั้นปี</p>
+                            <p className="text-blue-100 text-sm font-bold tracking-wider mb-1 relative z-10"><i className="fa-solid fa-vault mr-1"></i> ยอดเงินคงเหลือชั้นปี</p>
                             <h2 className="text-4xl font-black relative z-10">{formatCurrency(fin.balance)}</h2>
-                            <div className="flex gap-4 mt-6 pt-4 border-t border-purple-400/30 relative z-10">
-                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-purple-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับรวม</p><p className="font-bold text-green-300 text-lg">{formatCurrency(fin.income)}</p></div>
-                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-purple-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่ายรวม</p><p className="font-bold text-red-300 text-lg">{formatCurrency(fin.expense)}</p></div>
+                            <div className="flex gap-4 mt-6 pt-4 border-t border-blue-400/30 relative z-10">
+                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับรวม</p><p className="font-bold text-green-300 text-lg">{formatCurrency(fin.income)}</p></div>
+                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่ายรวม</p><p className="font-bold text-red-300 text-lg">{formatCurrency(fin.expense)}</p></div>
                             </div>
                         </div>
 
@@ -1390,7 +1374,7 @@ const { useState, useEffect, useRef } = React;
                             <h2 className="text-xl font-bold text-gray-800">{user.name}</h2>
                             <p className="text-gray-400 text-sm font-medium mt-1">{user.studentId}</p>
                             <div className="mt-4 flex justify-center gap-2">
-                                <span className="bg-blue-50 border border-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">นักศึกษา</span>
+                                <span className="bg-blue-50 border border-blue-100 text-[#0066FF] px-3 py-1 rounded-full text-xs font-bold shadow-sm">นักศึกษา</span>
                                 <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">{user.userId || 'Verified'}</span>
                             </div>
                         </div>
@@ -1398,7 +1382,7 @@ const { useState, useEffect, useRef } = React;
                         <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-50">
                             <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100"><span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">บัญชีและการแจ้งเตือน</span></div>
                             <button onClick={handleChangePassword} className="w-full p-4 px-5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100">
-                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><i className="fa-solid fa-lock text-sm"></i></div><span className="text-sm font-bold text-gray-700">เปลี่ยนรหัสผ่าน</span></div>
+                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-lock text-sm"></i></div><span className="text-sm font-bold text-gray-700">เปลี่ยนรหัสผ่าน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
                             <button onClick={() => Swal.fire('Coming Soon', 'ฟีเจอร์นี้เตรียมเปิดใช้งานในอนาคต', 'info')} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
@@ -1434,15 +1418,16 @@ const { useState, useEffect, useRef } = React;
                     <div className="flex flex-col w-full min-h-screen md:min-h-0 md:h-[95vh] max-w-md md:max-w-3xl lg:max-w-5xl mx-auto bg-[#F0F4F8] relative overflow-hidden md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:border-[6px] border-white/80">
                         {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
-                        <header className={`sticky top-0 z-40 ${themeColor} text-white pt-safe px-5 shadow-md flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-5 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
+                        {/* ✅ อัปเดตส่วนแถบ Header ด้านบน (Modern Glassmorphism) */}
+                        <header className={`sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100 text-gray-800 pt-safe px-5 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] flex-shrink-0 transition-all duration-500 ease-in-out ${tab === 'home' && !isSubPageOpen ? 'pb-4 rounded-b-[2rem]' : 'pb-3 rounded-b-[1.5rem]'}`}>
                             <div className="flex justify-between items-center pt-2 relative min-h-[40px]">
                                 {/* 🟢 ปุ่มซ้าย (โปรไฟล์ หรือ ปุ่มบ้าน) */}
                                 <div className="relative z-50 flex items-center">
                                     {tab === 'home' && !isSubPageOpen ? (
                                         <>
-                                            <div onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition select-none border border-white/10 shadow-sm">
+                                            <div onClick={() => setShowDropdown(!showDropdown)} className="flex items-center gap-2 bg-blue-50/80 hover:bg-blue-100 text-[#0066FF] px-4 py-2 rounded-full cursor-pointer active:scale-95 transition select-none border border-blue-100/50 shadow-sm">
                                                 <span className="text-xs font-bold truncate max-w-[150px]">📍 {user.name}</span>
-                                                <i className={`fa-solid fa-chevron-down text-[10px] opacity-80 transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`}></i>
+                                                <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`}></i>
                                             </div>
                                             {showDropdown && (
                                                 <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-2xl shadow-xl overflow-hidden animate-[pop_0.2s_ease-out] border border-gray-100 origin-top-left">
@@ -1452,7 +1437,7 @@ const { useState, useEffect, useRef } = React;
                                             )}
                                         </>
                                     ) : (
-                                        <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-9 h-9 bg-white/20 backdrop-blur-md rounded-full cursor-pointer active:scale-90 transition border border-white/10 shadow-sm shrink-0">
+                                        <button onClick={() => { setTab('home'); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className="flex items-center justify-center w-10 h-10 bg-gray-50 rounded-full cursor-pointer active:scale-90 transition border border-gray-200 shadow-sm shrink-0 text-gray-600 hover:bg-gray-100">
                                             <i className="fa-solid fa-house text-sm"></i>
                                         </button>
                                     )}
@@ -1461,7 +1446,7 @@ const { useState, useEffect, useRef } = React;
                                 {/* 🟢 ชื่อหน้า ตรงกลางเป๊ะๆ */}
                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
                                     {tab !== 'home' || isSubPageOpen ? (
-                                        <h2 className="font-bold text-lg text-white tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1 pointer-events-auto">
+                                        <h2 className="font-extrabold text-lg text-gray-800 tracking-wide animate-[fadeIn_0.4s_ease-out] line-clamp-1 pointer-events-auto">
                                             {(!isSubPageOpen && tab === 'bills') && 'รายการบิลของคุณ'}
                                             {(!isSubPageOpen && tab === 'orders') && 'ร้านค้า'}
                                             {(!isSubPageOpen && tab === 'history') && 'ประวัติการทำรายการ'}
@@ -1473,18 +1458,20 @@ const { useState, useEffect, useRef } = React;
                                 
                                 {/* 🟢 ปุ่มขวา (รีเฟรช) */}
                                 <div className="flex gap-3 relative z-50 shrink-0">
-                                    <button onClick={() => fetchData(false)} className={`w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition border border-white/10 shadow-sm ${loading ? 'animate-spin':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
+                                    <button onClick={() => fetchData(false)} className={`w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center active:scale-90 transition border border-gray-200 shadow-sm text-gray-600 hover:bg-gray-100 ${loading ? 'animate-spin text-[#0066FF]':''}`}><i className="fa-solid fa-rotate-right text-sm"></i></button>
                                 </div>
                             </div>
 
-                            <div className={`transition-all duration-500 ease-in-out overflow-hidden ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
-                                <div className="px-1 text-center">
-                                    <h1 className="text-2xl font-bold tracking-tight">MedTech 67 Finance System</h1>
+                            <div className={`transition-all duration-500 ease-in-out overflow-hidden flex justify-center ${tab === 'home' && !isSubPageOpen ? 'max-h-20 opacity-100 mt-4 mb-1' : 'max-h-0 opacity-0 mt-0 mb-0'}`}>
+                                <div className="px-1 text-center flex flex-col items-center">
+                                    <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#0066FF] to-indigo-600">MedTech 67</h1>
+                                    <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-0.5">Finance System</p>
                                 </div>
                             </div>
                         </header>
 
                         <main className="flex-1 w-full relative overflow-hidden">
+                            {/* ✅ เพิ่ม padding ด้านล่างให้เยอะขึ้น เพื่อไม่ให้ของโดนทับโดยแถบ Gradient */}
                             <div className={`absolute inset-0 px-5 pt-4 pb-36 overflow-y-auto no-scrollbar transition-opacity duration-300 ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                                 {tab === 'home' && hasAccess('home') && renderHomeContent()}
                                 {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
@@ -1605,9 +1592,13 @@ const { useState, useEffect, useRef } = React;
 
                         {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                        {/* --- แถบเมนูด้านล่าง แบบยึดติดกับกรอบหน้าจอ --- */}
-                        <div className={`absolute bottom-4 left-0 right-0 flex justify-center z-40 transition-all duration-500 ease-in-out pointer-events-none px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                            <nav className="pointer-events-auto bg-white rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] px-2 py-1 flex justify-between items-center w-full max-w-md border border-gray-100">
+                        {/* ✅ อัปเดตแถบเมนูด้านล่าง มีเบลอ Gradient บล็อกการกดพื้นหลัง */}
+                        <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-5 pt-12 px-4 ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
+                            
+                            {/* กรอบล่องหน ป้องกันการกดทับเนื้อหาด้านหลังของพื้นที่ Gradient */}
+                            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F0F4F8] via-[#F0F4F8]/90 to-transparent pointer-events-auto"></div>
+                            
+                            <nav className="relative z-10 pointer-events-auto bg-white/95 backdrop-blur-md rounded-[2rem] shadow-[0_10px_30px_-10px_rgba(0,102,255,0.15)] px-2 py-1.5 flex justify-between items-center w-full max-w-md border border-white/50 flex-shrink-0">
                                 {renderNavItem('home', 'fa-house', 'หน้าแรก', 0)}
                                 {renderNavItem('bills', 'fa-file-invoice-dollar', 'บิล', data?.bills?.length || 0)}
                                 {data?.orderEnabled && renderNavItem('orders', 'fa-bag-shopping', 'ร้านค้า', 0)}
@@ -1616,7 +1607,6 @@ const { useState, useEffect, useRef } = React;
                             </nav>
                         </div>
 
-                        {/* ✅ เพิ่มบรรทัดนี้กลับเข้าไปครับ (ตัวเรียกหน้าต่างดูสลีป) */}
                         {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
 
                     </div>
@@ -1672,25 +1662,23 @@ const { useState, useEffect, useRef } = React;
         // 📱 Main App Component 
         // ==========================================
         const App = () => {
-            // ✅ ตั้งหน้าเริ่มต้นเป็น loading เพื่อรอถามหลังบ้านก่อน
-            const [page, setPage] = useState('login'); 
+            const [page, setPage] = useState('loading'); 
             const [user, setUser] = useState(null);
             const [dashboardData, setDashboardData] = useState(null);
             const [loading, setLoading] = useState(false);
 
-            // ✅ สั่งให้เช็คสถานะการปิดปรับปรุง ทันทีที่เปิดเว็บ
             useEffect(() => {
                 const checkSystemStatus = async () => {
                     try {
                         const res = await runGoogleScript('checkStatus');
                         if (res && res.maintenance) {
-                            setPage('maintenance'); // ถ้าระบบตอบว่าปิด ให้ไปหน้าปิดปรับปรุง
+                            setPage('maintenance');
                         } else {
-                            setPage('login'); // ถ้าเปิดอยู่ ให้ไปหน้า Login ตามปกติ
+                            setPage('login');
                         }
                     } catch (e) {
                         console.error("Check status failed", e);
-                        setPage('login'); // ถ้าเช็คไม่สำเร็จ ปล่อยให้ไปหน้า Login ไว้ก่อน
+                        setPage('login'); 
                     }
                 };
                 checkSystemStatus();
@@ -1709,14 +1697,8 @@ const { useState, useEffect, useRef } = React;
                         setDashboardData(dashData); 
                         setPage('dashboard');
 
-                        if (dashData.announcement) {
-                            Swal.fire({
-                                html: `<div class="flex flex-col w-full"><div class="w-full bg-gradient-to-r from-blue-600 to-blue-800 p-8 text-white relative overflow-hidden flex flex-col items-center justify-center"><div class="absolute top-0 left-0 w-full h-full bg-white/10 skew-y-6"></div><div class="relative z-10 flex flex-col items-center"><div class="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-3 backdrop-blur-md shadow-lg"><i class="fa-solid fa-bullhorn text-3xl"></i></div><h3 class="text-2xl font-bold tracking-wide">ประกาศสำคัญ</h3></div></div><div class="w-full p-6 text-gray-700 text-lg font-medium leading-relaxed text-center bg-white whitespace-pre-wrap">${dashData.announcement}</div></div>`,
-                                confirmButtonText: '<i class="fa-regular fa-circle-check mr-2"></i> รับทราบ',
-                                confirmButtonColor: '#2563EB', buttonsStyling: true, padding: 0, width: '32rem',
-                                customClass: { popup: 'rounded-2xl overflow-hidden', htmlContainer: '!m-0 !p-0 w-full', confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold py-3 px-10 rounded-full shadow-lg mb-6 w-auto transition-transform hover:scale-105 active:scale-95' }
-                            });
-                        } else { 
+                        // ⚠️ เอา SweetAlert ของประกาศเก่าออก เพราะเรามี Modal สวยๆ ทำงานใน Dashboard อยู่แล้ว 
+                        if (!dashData.announcement) {
                             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
                             Toast.fire({ icon: 'success', title: `ยินดีต้อนรับ คุณ${res.name}` });
                         }
@@ -1740,7 +1722,7 @@ const { useState, useEffect, useRef } = React;
             return (
                 <div>
                     {page === 'loading' && <Loading />} 
-                    {page === 'maintenance' && <MaintenanceMode />} {/* ✅ โชว์หน้านี้ถ้าปิดปรับปรุง */}
+                    {page === 'maintenance' && <MaintenanceMode />} 
                     {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && <Dashboard user={user} initialData={dashboardData} onLogout={handleLogout} />}
