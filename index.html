@@ -1222,16 +1222,17 @@ const { useState, useEffect, useRef } = React;
                 return (
                     <div className="w-full pb-10 relative">
                         {(hasBills || hasActiveOrders) && (
-                            <div className={`bg-white/95 backdrop-blur-md px-4 pb-3 pt-5 -mt-4 mx-1 mb-5 rounded-b-[1.5rem] shadow-sm flex items-center gap-3 border-b-[3px] ${statusColorClass} animate-drawer relative z-10`}>
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
-                                    <i className="fa-solid fa-bell text-sm animate-[ring_2s_ease-in-out_infinite]"></i>
+                            /* ✅ ปรับเป็นแคปซูลโค้งมน (rounded-full) เล็กลงและลดช่องไฟ */
+                            <div className={`bg-white/95 backdrop-blur-md p-2.5 mx-4 mt-3 mb-5 rounded-full shadow-sm flex items-center gap-2 border border-gray-100 animate-[pop_0.3s_ease-out] relative z-10`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${statusIconBg} ${statusIconText} shrink-0`}>
+                                    <i className="fa-solid fa-bell text-xs animate-[ring_2s_ease-in-out_infinite]"></i>
                                 </div>
-                                <div className="flex-grow">
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-extrabold text-gray-800 text-[13px] leading-none">{statusTitle}</h4>
-                                        {overdueCount > 0 && <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>}
+                                <div className="flex-grow flex flex-col justify-center">
+                                    <div className="flex items-center gap-1.5">
+                                        <h4 className="font-extrabold text-gray-800 text-[12px] leading-none">{statusTitle}</h4>
+                                        {overdueCount > 0 && <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span></span>}
                                     </div>
-                                    <p className={`text-[11px] font-bold mt-1.5 leading-none ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
+                                    <p className={`text-[10px] font-bold mt-0.5 leading-none ${overdueCount > 0 ? 'text-red-500' : 'text-gray-500'}`}>{statusSubtitle}</p>
                                 </div>
                                 <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
                                     ดูเลย <i className="fa-solid fa-chevron-right text-[8px] mt-[1px]"></i>
@@ -1352,7 +1353,43 @@ const { useState, useEffect, useRef } = React;
                 );
             };
 
-            const renderSettingsContent = () => {
+            // ✅ ตรวจสอบว่าเคยผูก LINE ไว้หรือยัง (มีตัวอักษรมากกว่า 5 ตัวถือว่าผูกแล้ว)
+                const isLineConnected = user.userId && user.userId.length > 5;
+
+                // ✅ ฟังก์ชันจัดการการกดปุ่มเชื่อมต่อ / ยกเลิก
+                const handleLineConnectToggle = async () => {
+                    if (isLineConnected) {
+                        Swal.fire({
+                            title: 'ยกเลิกเชื่อมต่อ LINE?',
+                            html: '<p class="text-sm text-gray-500">หากยกเลิก คุณจะไม่ได้รับการแจ้งเตือนบิล<br>และสถานะสินค้าผ่าน LINE อีกต่อไป</p>',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#EF4444',
+                            cancelButtonColor: '#E5E7EB',
+                            confirmButtonText: 'ยกเลิกการเชื่อมต่อ',
+                            cancelButtonText: '<span class="text-gray-700">ปิดหน้าต่าง</span>',
+                            customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800', confirmButton: 'rounded-xl px-5 font-bold shadow-md', cancelButton: 'rounded-xl px-5 font-bold' }
+                        }).then(async (result) => {
+                            if (result.isConfirmed) {
+                                setLoading(true);
+                                try {
+                                    const res = await runGoogleScript('unbindLineUser', [user.studentId]);
+                                    if (res.success) {
+                                        user.userId = ''; // เคลียร์ค่าในระบบทันที
+                                        Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
+                                    } else {
+                                        Swal.fire('ผิดพลาด', res.message, 'error');
+                                    }
+                                } catch (e) { Swal.fire('Error', e.toString(), 'error'); }
+                                setLoading(false);
+                            }
+                        });
+                    } else {
+                        // ถ้ายังไม่เชื่อมต่อ ให้พาไปเปิดลิงก์ LIFF เพื่อผูกบัญชี
+                        window.location.href = "https://liff.line.me/2009556969-8SWGBXPW";
+                    }
+                };
+            
                 const handleContactAdmin = () => {
                     const qrImgUrl = getDirectDriveUrl('https://drive.google.com/file/d/1oYL1NI9kbsYpa4pOM0KLoBhR91FRNVuH/view?usp=drivesdk');
                     Swal.fire({
@@ -1393,9 +1430,18 @@ const { useState, useEffect, useRef } = React;
                                 <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-lock text-sm"></i></div><span className="text-sm font-bold text-gray-700">เปลี่ยนรหัสผ่าน</span></div>
                                 <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
                             </button>
-                            <button onClick={() => Swal.fire('Coming Soon', 'ฟีเจอร์นี้เตรียมเปิดใช้งานในอนาคต', 'info')} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
-                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-[#00B900]/10 flex items-center justify-center text-[#00B900]"><i className="fa-brands fa-line text-xl"></i></div><span className="text-sm font-bold text-gray-700">เชื่อมต่อ LINE แจ้งเตือน</span></div>
-                                <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                            {/* ✅ อัปเดตปุ่มเชื่อมต่อ LINE ให้ใช้งานฟังก์ชันจริง และเปลี่ยนสีตามสถานะ */}
+                            <button onClick={handleLineConnectToggle} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isLineConnected ? 'bg-[#00B900] text-white shadow-md shadow-[#00B900]/30' : 'bg-gray-100 text-gray-400'}`}>
+                                        <i className="fa-brands fa-line text-xl"></i>
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="text-sm font-bold text-gray-700 block leading-tight">เชื่อมต่อ LINE แจ้งเตือน</span>
+                                        <span className={`text-[10px] font-bold ${isLineConnected ? 'text-[#00B900]' : 'text-red-400'}`}>{isLineConnected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</span>
+                                    </div>
+                                </div>
+                                {isLineConnected ? <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded-lg border border-red-100">ยกเลิก</span> : <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>}
                             </button>
                         </div>
 
