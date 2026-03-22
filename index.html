@@ -1119,6 +1119,20 @@
             
             const [financeSort, setFinanceSort] = useState('desc');
 
+            const handleTabChange = (newTab) => {
+                setTab(newTab);
+                setSelectedBill(null);
+                setSelectedProduct(null);
+                setPendingOrder(null);
+                setSelectedProject(null);
+                setTrackingOrder(null);
+                
+                // ถ้าเปิดหน้า "บิล" ให้โหลดข้อมูลใหม่พร้อมโชว์หน้า Loading
+                if (newTab === 'bills') {
+                    fetchData(false); 
+                }
+            };
+
             const handleOpenPayment = (bill) => {
                 if (bill.status === 'ชำระแล้ว' || bill.status === 'รอตรวจสอบ') {
                     Swal.fire({
@@ -1223,7 +1237,7 @@
             const renderNavItem = (id, icon, label, badge) => {
                 if (!hasAccess(id)) return null; 
                 return (
-                    <button onClick={() => { setTab(id); setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null); }} className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative ${tab === id && !isSubPageOpen ? themeText : 'text-gray-400 hover:text-gray-600'}`}>
+                    <button onClick={() => handleTabChange(id)} className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative ${tab === id && !isSubPageOpen ? themeText : 'text-gray-400 hover:text-gray-600'}`}>
                         <div className={`text-xl mb-1 transition-transform ${tab === id && !isSubPageOpen ? '-translate-y-1' : ''}`}><i className={`fa-solid ${icon}`}></i></div>
                         <span className="text-[10px] font-bold">{label}</span>
                         {badge > 0 && <span className="absolute top-1 right-[25%] w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>}
@@ -1264,18 +1278,18 @@
                                     </div>
                                     <p className={`text-[10px] font-bold mt-1.5 leading-tight ${overdueCount > 0 ? 'text-red-500' : 'text-gray-400'}`}>{statusSubtitle}</p>
                                 </div>
-                                <button onClick={() => { if (hasBills) setTab('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[9px] font-bold px-3 py-1 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
+                                <button onClick={() => { if (hasBills) handleTabChange('bills'); else if (hasActiveOrders) setTrackingOrder(activeOrders[0]); }} className={`text-[9px] font-bold px-3 py-1 rounded-full transition-all active:scale-95 shadow-sm shrink-0 flex items-center gap-1 ${actionColorClass}`}>
                                     ดูเลย <i className="fa-solid fa-chevron-right text-[7px] mt-[1px]"></i>
                                 </button>
                             </div>
                         )}
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 animate-pop pt-2 relative z-20">
-                            {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => setTab('bills'), data?.bills?.length || 0)}
-                            {hasAccess('orders') && data?.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => setTab('orders'), 0)}
-                            {hasAccess('history') && renderMenuCard('ประวัติ', 'รายการย้อนหลัง', 'fa-clock-rotate-left', 'bg-cyan-500', () => setTab('history'), 0)}
-                            {hasAccess('finance') && renderMenuCard('การเงิน', 'สรุปยอดเงินชั้นปี', 'fa-wallet', 'bg-purple-500', () => setTab('finance'), 0)}
-                            {hasAccess('settings') && renderMenuCard('ตั้งค่า', 'จัดการบัญชี', 'fa-gear', 'bg-gray-500', () => setTab('settings'), 0)}
+                            {hasAccess('bills') && renderMenuCard('ชำระเงิน', 'จ่ายบิล/เก็บเงิน', 'fa-qrcode', 'bg-blue-600', () => handleTabChange('bills'), data?.bills?.length || 0)}
+                            {hasAccess('orders') && data?.orderEnabled && renderMenuCard('ร้านค้า', 'เสื้อ/ของที่ระลึก', 'fa-bag-shopping', 'bg-orange-500', () => handleTabChange('orders'), 0)}
+                            {hasAccess('history') && renderMenuCard('ประวัติ', 'รายการย้อนหลัง', 'fa-clock-rotate-left', 'bg-cyan-500', () => handleTabChange('history'), 0)}
+                            {hasAccess('finance') && renderMenuCard('การเงิน', 'สรุปยอดเงินชั้นปี', 'fa-wallet', 'bg-purple-500', () => handleTabChange('finance'), 0)}
+                            {hasAccess('settings') && renderMenuCard('ตั้งค่า', 'จัดการบัญชี', 'fa-gear', 'bg-gray-500', () => handleTabChange('settings'), 0)}
                         </div>
 
                         {hasAccess('orders') && data?.orders && data.orders.length > 0 && (
@@ -1709,7 +1723,7 @@
                                 {tab === 'settings' && hasAccess('settings') && renderSettingsContent()}
                             </div>
 
-                            {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null); fetchData();}} />}
+                            {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null); fetchData(false);}} />}
                             {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
                             {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); fetchData(); }} />}
                             {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
