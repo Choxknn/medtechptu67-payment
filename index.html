@@ -749,7 +749,7 @@
                                 } else if (res.status === 'รอตรวจสอบ') {
                                     Swal.fire({ icon: 'warning', title: 'บันทึกข้อมูลแล้ว', html: `<div style="color:#F59E0B; font-weight:bold; font-size:1.2em; margin-bottom: 8px;">สถานะ: รอตรวจสอบ</div><div style="color:#555;">${res.message || 'ระบบได้รับข้อมูลแล้ว แอดมินจะตรวจสอบเร็วๆ นี้'}</div>`, confirmButtonText: 'ตกลง', confirmButtonColor: '#F59E0B', customClass: { popup: 'rounded-3xl' } }).then(() => { onSuccess(); });
                                 } else { 
-                                    fireAutoCloseAlert('ชำระเงินสำเร็จ!', 'ขอบคุณที่ชำระเงิน').then(() => { onSuccess(); });
+                                    fireAutoCloseAlert('ชำระเงินสำเร็จ!', 'ระบบได้รับข้อมูลการชำระเงินของคุณแล้ว').then(() => { onSuccess(); });
                                 }
                             } else { fireErrorAlert('เกิดข้อผิดพลาด', res.error || res.message); }
                         }, 500);
