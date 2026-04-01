@@ -2887,9 +2887,19 @@
             
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
+            // 🌟 วางทับ handleLogout ตัวเดิม (สลับลำดับการทำงานเพื่อแก้บั๊กเด้งกลับ)
             const handleLogout = async () => {
-                await auth.signOut(); // ล็อกเอาท์จาก Firebase
+                // 1. เคลียร์ Local Storage ทิ้งก่อนเป็นอันดับแรกเลย! ระบบจะได้ไม่เผลอดึงกลับเข้ามา
                 localStorage.removeItem('medtech_student_id');
+                
+                // 2. สั่ง Firebase Auth ให้ล็อกเอาท์
+                try {
+                    await auth.signOut(); 
+                } catch (e) {
+                    console.error("Logout Error:", e);
+                }
+
+                // 3. รีเซ็ต State เพื่อพากลับไปหน้า Login
                 setUser(null); 
                 setDashboardData(null);
                 setPage('login'); 
