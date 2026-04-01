@@ -368,15 +368,16 @@
             const [confirmPass, setConfirmPass] = useState('');
             const [loading, setLoading] = useState(false);
 
+            // 🌟 4. วางทับ handleVerify ตัวเดิม (ใน Register)
             const handleVerify = async () => {
                 if (!studentId) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสนักศึกษา', 'warning');
                 setLoading(true);
                 try {
-                    // 🌟 เปลี่ยนมาดึงข้อมูลจาก Firestore 🌟
                     const snap = await db.collection('users').doc(studentId).get();
                     if (snap.exists) { 
                         const data = snap.data();
-                        setStudentInfo({ name: data.name, hasPassword: !!data.password }); 
+                        // เปลี่ยนมาเช็คตัวแปร hasPassword เพิ่มเติม
+                        setStudentInfo({ name: data.name, hasPassword: (data.hasPassword === true || !!data.password) }); 
                         setStep(2); 
                     } else { 
                         Swal.fire('ข้อผิดพลาด', 'ไม่พบรหัสนักศึกษาในระบบ', 'error'); 
@@ -385,20 +386,31 @@
                 setLoading(false);
             };
 
+            // 🌟 2. วางทับ handleSetPassword ตัวเดิม
             const handleSetPassword = async () => {
                 if (!newPass || !confirmPass) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสผ่านให้ครบ', 'warning');
                 if (newPass.length < 6) return Swal.fire('แจ้งเตือน', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'warning');
                 if (newPass !== confirmPass) return Swal.fire('แจ้งเตือน', 'รหัสผ่านไม่ตรงกัน', 'warning');
                 setLoading(true);
                 try {
-                    // 🌟 เช็คและอัปเดตข้อมูลบน Firestore 🌟
                     const userRef = db.collection('users').doc(studentId);
                     const snap = await userRef.get();
-                    if (snap.data().password) throw new Error('คุณมีรหัสผ่านในระบบแล้ว');
+                    if (snap.data().hasPassword || snap.data().password) throw new Error('คุณมีรหัสผ่านในระบบแล้ว');
                     
-                    await userRef.update({ password: newPass });
+                    const email = `${studentId}@ptu.ac.th`; // 🌟 ใช้อีเมลของมหาลัย
+                    
+                    // 1. สร้างบัญชีเข้า Firebase Auth
+                    await auth.createUserWithEmailAndPassword(email, newPass);
+                    
+                    // 2. บันทึกสถานะว่ามีรหัสผ่านแล้ว (ไม่เก็บรหัสผ่านจริงลงฐานข้อมูลแล้ว)
+                    await userRef.update({ hasPassword: true });
+                    
                     Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'สร้างรหัสผ่านเรียบร้อยแล้ว', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => onRegisterSuccess()); 
-                } catch (e) { Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: e.message, customClass: { popup: 'rounded-3xl' } }); }
+                } catch (e) { 
+                    let errMsg = e.message;
+                    if(e.code === 'auth/email-already-in-use') errMsg = 'รหัสนักศึกษานี้มีบัญชีในระบบแล้ว';
+                    Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: errMsg, customClass: { popup: 'rounded-3xl' } }); 
+                }
                 setLoading(false);
             };
 
@@ -1995,6 +2007,7 @@
             
             const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
 
+            // 🌟 3. วางทับ handleChangePassword ตัวเดิม
             const handleChangePassword = async () => {
                 setShowDropdown(false);
                 await Swal.fire({
@@ -2017,11 +2030,23 @@
                         if (newP.length < 6) return setError(newInput, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'); if (newP !== cNewP) return setError(confirmInput, 'ยืนยันรหัสผ่านไม่ตรงกัน');
                         
                         try { 
-                            const userDoc = await db.collection('users').doc(user.studentId).get();
-                            if(userDoc.data().password !== oldP) throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
-                            await db.collection('users').doc(user.studentId).update({ password: newP });
+                            const currentUser = auth.currentUser;
+                            if (!currentUser) throw new Error('กรุณาล็อกเอาท์และเข้าสู่ระบบด้วยรหัสผ่านอีกครั้งเพื่อเปลี่ยนรหัส');
+                            
+                            // 🌟 ใช้อีเมลของมหาลัย
+                            const email = `${user.studentId}@ptu.ac.th`;
+                            const credential = firebase.auth.EmailAuthProvider.credential(email, oldP);
+                            await currentUser.reauthenticateWithCredential(credential);
+                            
+                            // สั่งเปลี่ยนรหัสผ่านใหม่
+                            await currentUser.updatePassword(newP);
                             return true; 
-                        } catch(e) { Swal.showValidationMessage('เกิดข้อผิดพลาด: '+e.message); return false; }
+                        } catch(e) { 
+                            let errMsg = e.message;
+                            if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') errMsg = 'รหัสผ่านเดิมไม่ถูกต้อง';
+                            Swal.showValidationMessage('เกิดข้อผิดพลาด: '+errMsg); 
+                            return false; 
+                        }
                     }
                 }).then((result) => { if (result.isConfirmed) Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }); });
             };
@@ -2742,18 +2767,41 @@
                 initializeApp();
             }, []);
 
+           // 🌟 1. วางทับ handleLogin ตัวเดิม
             const handleLogin = async (u, p) => {
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 setLoginProgress(1);
                 const progressInterval = setInterval(() => setLoginProgress(old => Math.min(90, old + 10)), 250);
 
                 try {
-                    const userRef = db.collection('users').doc(u);
-                    const userDoc = await userRef.get();
+                    const email = `${u}@ptu.ac.th`; // 🌟 ใช้อีเมลของมหาลัย
+                    
+                    try {
+                        // 1. ลองล็อกอินผ่าน Firebase Auth
+                        await auth.signInWithEmailAndPassword(email, p);
+                    } catch (authError) {
+                        // 2. ถ้าระบบบอกว่ายังไม่มีบัญชี (ผู้ใช้เก่า) ให้ไปดึงจาก Firestore มาเช็ค
+                        if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential' || authError.code === 'auth/invalid-login-credentials') {
+                            const userDoc = await db.collection('users').doc(u).get();
+                            if (userDoc.exists && userDoc.data().password === p) {
+                                // 2.1 ถ้ารหัสผ่านเก่าถูก! สร้างบัญชี Auth ให้ใหม่ทันที (Auto Migration)
+                                await auth.createUserWithEmailAndPassword(email, p);
+                                // 2.2 อัปเดตข้อมูล และลบรหัสผ่านแบบ Text ธรรมดาทิ้งเพื่อความปลอดภัย
+                                await db.collection('users').doc(u).update({ 
+                                    hasPassword: true,
+                                    password: firebase.firestore.FieldValue.delete() 
+                                });
+                            } else {
+                                throw new Error('รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง');
+                            }
+                        } else {
+                            throw authError; // ถ้าเป็น Error อื่นๆ ให้โยนออกไป
+                        }
+                    }
 
-                    if (!userDoc.exists) throw new Error('ไม่พบรหัสนักศึกษาในระบบ');
-                    const userData = userDoc.data();
-                    if (userData.password !== p) throw new Error('รหัสผ่านไม่ถูกต้อง');
+                    // 3. เมื่อ Auth ผ่านแล้ว ดึงข้อมูลโปรไฟล์จาก Firestore มาใช้งาน
+                    const finalUserDoc = await db.collection('users').doc(u).get();
+                    const userData = finalUserDoc.data();
 
                     clearInterval(progressInterval);
                     setLoginProgress(100); 
@@ -2774,10 +2822,12 @@
                 } catch(e) { 
                     clearInterval(progressInterval);
                     setLoginProgress(null);
-                    Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: e.message, customClass: { popup: 'rounded-3xl' } }); 
+                    let errMsg = e.message;
+                    if(errMsg.includes('auth/')) errMsg = 'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง';
+                    Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: errMsg, customClass: { popup: 'rounded-3xl' } }); 
                 }
             };
-
+            
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
             const handleLogout = async () => {
