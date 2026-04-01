@@ -2690,10 +2690,10 @@
             const [appProgress, setAppProgress] = useState(null);
             const [maintenanceMsg, setMaintenanceMsg] = useState('ปิดปรับปรุงเซิร์ฟเวอร์');
 
-            // 🌟 2. วางทับ handleLineLogin ใน App (แบบแยกบัญชี)
+           // 🌟 วางทับ handleLineLogin ใน App (แก้หน้าโหลดค้าง + UI สวยงาม)
             const handleLineLogin = async () => {
                 try {
-                    setLoading(true);
+                    setLoading(true); // 1. เริ่มโหลดตอนดึงหน้า LINE
                     const provider = new firebase.auth.OAuthProvider('oidc.line');
                     const result = await auth.signInWithPopup(provider);
                     
@@ -2704,6 +2704,7 @@
                     const userSnap = await db.collection('users').where('userId', '==', lineId).get();
                     
                     if (!userSnap.empty) {
+                        // --- กรณีเคยผูกบัญชีไว้แล้ว ---
                         const userDoc = userSnap.docs[0];
                         const userData = userDoc.data();
                         
@@ -2715,49 +2716,75 @@
                         setUser({ studentId: userDoc.id, ...userData, lineUid: lineUid });
                         setDashboardData({}); 
                         setPage('dashboard');
+                        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'เข้าสู่ระบบผ่าน LINE สำเร็จ' });
+                        
                     } else {
                         // --- กรณี LINE นี้ยังไม่เคยผูกกับใคร ---
+                        setLoading(false); // 🌟 2. ปิดหน้าโหลดก่อนโชว์ Popup!
+
                         const { value: formValues } = await Swal.fire({
-                            title: 'ไม่พบบัญชีที่ผูกไว้',
-                            text: 'กรุณายืนยันรหัสนักศึกษาเพื่อผูกกับ LINE นี้',
+                            title: 'เชื่อมต่อบัญชี LINE',
                             html: `
-                                <input id="link-id" class="swal2-input" placeholder="รหัสนักศึกษา">
-                                <input id="link-pass" type="password" class="swal2-input" placeholder="รหัสผ่าน">
+                                <div class="text-left mt-2">
+                                    <p class="text-sm text-gray-500 mb-4 text-center">ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้<br>กรุณากรอกรหัสนักศึกษาและรหัสผ่านเพื่อผูกบัญชี</p>
+                                    <input id="link-id" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none mb-3 font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสนักศึกษา">
+                                    <input id="link-pass" type="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสผ่าน">
+                                </div>
                             `,
                             showCancelButton: true,
                             confirmButtonText: 'ยืนยันผูกบัญชี',
+                            cancelButtonText: 'ยกเลิก',
+                            confirmButtonColor: '#00B900',
+                            customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' },
                             preConfirm: () => {
-                                return {
-                                    id: document.getElementById('link-id').value,
-                                    pass: document.getElementById('link-pass').value
+                                const id = document.getElementById('link-id').value;
+                                const pass = document.getElementById('link-pass').value;
+                                if(!id || !pass) {
+                                    Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
+                                    return false;
                                 }
+                                return { id, pass };
                             }
                         });
 
                         if (formValues) {
+                            setLoading(true); // 🌟 3. เปิดหน้าโหลดอีกครั้งตอนเช็คข้อมูลในฐานข้อมูล
                             const { id: u, pass: p } = formValues;
-                            // ตรวจสอบรหัสผ่านผ่าน Firestore (เพราะยังไม่ link กัน บัญชี LINE เลยเช็ค pass ของ Email ตรงๆ ใน Auth ไม่ได้)
+                            
                             const checkDoc = await db.collection('users').doc(u).get();
                             
-                            // ถ้าเป็นคนย้ายรหัสผ่าน (Migration) หรือมีรหัสผ่านเดิมอยู่
+                            // เช็ครหัสผ่าน
                             if (checkDoc.exists && (checkDoc.data().password === p)) {
+                                // ผูกบัญชีลงฐานข้อมูล
                                 await db.collection('users').doc(u).update({ 
                                     userId: lineId,
                                     lineUid: lineUid 
                                 });
-                                Swal.fire('สำเร็จ', 'ผูกบัญชีเรียบร้อย กรุณากดล็อกอิน LINE อีกครั้ง', 'success');
-                                await auth.signOut();
+                                
+                                await auth.signOut(); // ล็อกเอาท์ LINE ออกก่อน เพื่อให้เข้าใหม่แบบเนียนๆ
+                                setLoading(false);
+                                
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'สำเร็จ',
+                                    text: 'ผูกบัญชีเรียบร้อย กรุณากดเข้าสู่ระบบด้วย LINE อีกครั้ง',
+                                    confirmButtonColor: '#00B900',
+                                    customClass: { popup: 'rounded-3xl' }
+                                });
                             } else {
+                                await auth.signOut();
                                 throw new Error("รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง");
                             }
                         } else {
-                            await auth.signOut();
+                            await auth.signOut(); // กรณีกดยกเลิก
                         }
                     }
                 } catch (error) {
-                    fireErrorAlert('เข้าสู่ระบบไม่สำเร็จ', error.message);
+                    if (error.code !== 'auth/popup-closed-by-user') {
+                        fireErrorAlert('เข้าสู่ระบบไม่สำเร็จ', error.message);
+                    }
                 } finally {
-                    setLoading(false);
+                    setLoading(false); // 4. ปิดการโหลดขั้นสุดท้ายเสมอ
                 }
             };
 
