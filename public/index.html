@@ -14,8 +14,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -23,7 +21,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
 
@@ -2210,50 +2207,35 @@
                 
                 const handleLineConnectToggle = async () => {
                     if (isLineConnected) {
-                        // --- ส่วนการยกเลิกเชื่อมต่อ ---
+                       // 🌟 5. วางทับโค้ดเดิมใต้คอมเมนต์ // --- ส่วนการเริ่มเชื่อมต่อ ---
                         Swal.fire({
-                            title: 'ยกเลิกเชื่อมต่อ LINE?',
-                            icon: 'warning',
+                            title: 'เชื่อมต่อ LINE',
+                            text: 'ระบบจะพาคุณไปลงชื่อเข้าใช้ LINE เพื่อดึงข้อมูลมาเชื่อมต่อ',
+                            icon: 'info',
                             showCancelButton: true,
-                            confirmButtonColor: '#EF4444',
-                            confirmButtonText: 'ยกเลิกการเชื่อมต่อ',
-                            cancelButtonText: 'ปิดหน้าต่าง',
-                            customClass: { popup: 'rounded-3xl' }
-                        }).then(async (result) => {
-                            if (result.isConfirmed) {
+                            confirmButtonText: 'ดำเนินการต่อ',
+                            cancelButtonText: 'ยกเลิก',
+                            confirmButtonColor: '#00B900',
+                            customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold', cancelButton: 'rounded-xl font-bold' }
+                        }).then(async (res) => {
+                            if(res.isConfirmed) {
                                 setLoading(true);
-                               try {
-                                    await db.collection('users').doc(user.studentId).update({ userId: "" });
-                                    setUser(prev => ({ ...prev, userId: "" }));
-                                    Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
-                                } catch (e) { 
-                                    fireErrorAlert('ผิดพลาด', e.message); 
+                                try {
+                                    const provider = new firebase.auth.OAuthProvider('oidc.line');
+                                    const result = await auth.signInWithPopup(provider);
+                                    const lineId = result.user.providerData[0].uid;
+                                    
+                                    await db.collection('users').doc(user.studentId).update({ userId: lineId });
+                                    setUser(prev => ({ ...prev, userId: lineId }));
+                                    
+                                    Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
+                                } catch(e) {
+                                    fireErrorAlert('พบข้อผิดพลาด', e.message);
                                 } finally {
                                     setLoading(false);
                                 }
                             }
                         });
-                    } else {
-                        // --- ส่วนการเริ่มเชื่อมต่อ ---
-                        if (typeof liff !== 'undefined') {
-                            try {
-                                if (!liff.isLoggedIn()) { 
-                                    Swal.fire({
-                                        title: 'เข้าสู่ระบบ LINE',
-                                        text: 'ระบบจะพาคุณไปยังหน้าเข้าสู่ระบบของแอป LINE เพื่อดึงข้อมูลการเชื่อมต่อ',
-                                        icon: 'info',
-                                        showCancelButton: true,
-                                        confirmButtonText: 'ดำเนินการต่อ',
-                                        cancelButtonText: 'ยกเลิก',
-                                        confirmButtonColor: '#00B900',
-                                        customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold', cancelButton: 'rounded-xl font-bold' }
-                                    }).then((res) => {
-                                        if(res.isConfirmed) {
-                                            liff.login();
-                                        }
-                                    });
-                                    return; 
-                                }
                                 
                                 const profile = await liff.getProfile();
                                 const lineId = profile.userId;
@@ -2647,65 +2629,124 @@
             const [maintenanceMsg, setMaintenanceMsg] = useState('ปิดปรับปรุงเซิร์ฟเวอร์');
 
             const handleLineLogin = async () => {
-    try {
-        setLoading(true);
-        // สร้าง Provider โดยใช้ ID ที่เราตั้งใน Firebase (oidc.line)
-        const provider = new firebase.auth.OAuthProvider('oidc.line');
-        
-        // สั่งให้ Firebase ล็อกอินผ่านหน้าต่าง Popup (หรือ Redirect ก็ได้)
-        const result = await auth.signInWithPopup(provider);
-        
-        // พอได้ User มาแล้ว (result.user)
-        // คุณสามารถเอาค่า UID ของ Firebase ไปเช็คกับ Firestore เพื่อดึงข้อมูลรหัสนักศึกษาต่อได้
-        console.log("ล็อกอินสำเร็จ:", result.user);
-        
-        // หมายเหตุ: ระบบจะจำสถานะล็อกอินให้เองอัตโนมัติ ไม่ต้องพึ่ง LocalStorage แบบเดิม
-    } catch (error) {
-        console.error("LINE Login Error:", error);
-        fireErrorAlert('เกิดข้อผิดพลาด', 'ไม่สามารถล็อกอินผ่าน LINE ได้: ' + error.message);
-    } finally {
-        setLoading(false);
-    }
-};
+                try {
+                    setLoading(true);
+                    const provider = new firebase.auth.OAuthProvider('oidc.line');
+                    const result = await auth.signInWithPopup(provider);
+                    
+                    // ดึง LINE User ID กลับมาเช็คใน Firestore
+                    const lineUid = result.user.providerData[0].uid;
+                    const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
+                    
+                    if (!userSnap.empty) {
+                        const userDoc = userSnap.docs[0];
+                        const studentId = userDoc.id;
+                        const userData = userDoc.data();
+                        
+                        if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                        
+                        localStorage.setItem('medtech_student_id', studentId);
+                        setUser({ studentId: studentId, ...userData });
+                        setDashboardData({}); 
+                        setPage('dashboard');
+                        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: 'เข้าสู่ระบบผ่าน LINE สำเร็จ' });
+                    } else {
+                        // ถ้าตรวจไม่เจอในระบบ ให้ Sign out ออกก่อนแล้วแจ้งเตือน
+                        await auth.signOut();
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'ยังไม่ได้ผูกบัญชี LINE',
+                            html: '<p class="text-sm text-gray-500 mt-2">กรุณาเข้าสู่ระบบด้วย <b>รหัสนักศึกษา</b> และ <b>รหัสผ่าน</b> ของคุณตามปกติ<br><br>จากนั้นไปที่เมนู <b>"ตั้งค่า"</b> เพื่อกดเชื่อมต่อบัญชี LINE ครับ</p>',
+                            confirmButtonText: 'ตกลง',
+                            confirmButtonColor: '#0066FF',
+                            customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800 pt-2', confirmButton: 'rounded-xl px-8 py-2.5 font-bold shadow-md' }
+                        });
+                    }
+                } catch (error) {
+                    console.error("LINE Login Error:", error);
+                    Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: error.message, customClass: { popup: 'rounded-3xl' } });
+                } finally {
+                    setLoading(false);
+                }
+            };
 
+           // 🌟 วางทับ useEffect ตัวเดิมในส่วนของ const App = () => { ... }
             useEffect(() => {
-    // 🌟 Firebase จะเป็นคนบอกเราเองว่ามีคนล็อกอินอยู่ไหม
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-        if (firebaseUser) {
-            // มีคนล็อกอินอยู่! ไปดึงข้อมูลเพิ่มเติมจาก Firestore
-            // โดยใช้ firebaseUser.uid หรือดึงจาก Collection users ที่คุณมีอยู่
-            // (แนะนำให้ใช้ UID เป็นชื่อ Document ใน Firestore จะปลอดภัยที่สุด)
-            setPage('dashboard');
-        } else {
-            // ไม่มีคนล็อกอิน หรือเพิ่ง Logout
-            setPage('login');
-        }
-    });
+                let progressInterval;
+                const startLoading = () => {
+                    setAppProgress(1);
+                    progressInterval = setInterval(() => {
+                        setAppProgress(old => Math.min(90, old + (old < 50 ? (Math.random() * 8 + 4) : (Math.random() * 2 + 1))));
+                    }, 250);
+                };
 
-    return () => unsubscribe(); // ล้างคำสั่งเมื่อปิดหน้าจอ
-}, []);
+                const finishLoad = (nextPage) => {
+                    clearInterval(progressInterval);
+                    setAppProgress(100);
+                    setTimeout(() => { setPage(nextPage); setAppProgress(null); }, 500);
+                };
 
-                        const savedStudentId = localStorage.getItem('medtech_student_id');
-                        if (savedStudentId) {
-                            const userDoc = await db.collection('users').doc(savedStudentId).get();
-                            if (userDoc.exists) {
-                                const userData = userDoc.data();
-                                if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                
-                                setUser({ studentId: savedStudentId, ...userData });
-                                setDashboardData({}); 
-                                
-                                clearInterval(progressInterval);
-                                setAppProgress(100);
-                                setTimeout(() => { setPage('dashboard'); setAppProgress(null); }, 600);
-                                return;
-                            } else {
-                                localStorage.removeItem('medtech_student_id');
+                const initializeApp = async () => {
+                    startLoading();
+                    try {
+                        // 1. ดึงข้อมูลระบบ (เช็คปิดปรับปรุง)
+                        const configDoc = await db.collection('config').doc('system').get();
+                        
+                        if (configDoc.exists) {
+                            const sysData = configDoc.data();
+                            if (sysData.maintenance === true || sysData.maintenance === 'ON') {
+                                setMaintenanceMsg(sysData.maintenanceMsg || 'ปิดปรับปรุงเซิร์ฟเวอร์');
+                                return finishLoad('maintenance');
                             }
                         }
-                        finishLoad('login');
-                    } catch (e) { finishLoad('login'); }
+
+                        // 2. ใช้ Firebase Auth เช็คสถานะการล็อกอิน (สำหรับคนที่ล็อกอินด้วย LINE)
+                        auth.onAuthStateChanged(async (firebaseUser) => {
+                            if (firebaseUser) {
+                                // ถ้าเคยล็อกอินผ่าน LINE ไว้ ให้หาว่า UID นี้ตรงกับนักศึกษาคนไหน
+                                const lineUid = firebaseUser.providerData[0]?.uid || firebaseUser.uid;
+                                const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
+                                
+                                if (!userSnap.empty) {
+                                    const userDoc = userSnap.docs[0];
+                                    const userData = userDoc.data();
+                                    
+                                    if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                                    
+                                    localStorage.setItem('medtech_student_id', userDoc.id); // ซิงค์กับระบบเดิม
+                                    setUser({ studentId: userDoc.id, ...userData });
+                                    setDashboardData({}); 
+                                    return finishLoad('dashboard');
+                                }
+                            }
+                            
+                            // 3. ตรวจสอบการล็อกอินด้วยรหัสผ่าน (Local Storage แบบเดิม)
+                            const savedStudentId = localStorage.getItem('medtech_student_id');
+                            if (savedStudentId) {
+                                const userDoc = await db.collection('users').doc(savedStudentId).get();
+                                if (userDoc.exists) {
+                                    const userData = userDoc.data();
+                                    if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                                    
+                                    setUser({ studentId: savedStudentId, ...userData });
+                                    setDashboardData({}); 
+                                    return finishLoad('dashboard');
+                                } else {
+                                    // ถ้ารหัสนักศึกษาไม่มีในระบบแล้ว ให้ลบข้อมูลเครื่องทิ้ง
+                                    localStorage.removeItem('medtech_student_id');
+                                }
+                            }
+                            
+                            // ถ้าไม่เจอทั้งการล็อกอินด้วย LINE และ รหัสผ่าน ให้พาไปหน้า Login
+                            finishLoad('login');
+                        });
+
+                    } catch (e) { 
+                        console.error("Initialize Error:", e);
+                        finishLoad('login'); 
+                    }
                 };
+
                 initializeApp();
             }, []);
 
@@ -2747,7 +2788,8 @@
 
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
-            const handleLogout = () => {
+            const handleLogout = async () => {
+                await auth.signOut(); // ล็อกเอาท์จาก Firebase
                 localStorage.removeItem('medtech_student_id');
                 setUser(null); 
                 setDashboardData(null);
