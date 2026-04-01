@@ -1756,19 +1756,19 @@
             // 🌟 ใช้งาน Firestore แบบ Real-time (onSnapshot) 🌟
             useEffect(() => {
                 const studentId = user.studentId;
+                if (!studentId) return; // 🛑 ถ้าไม่มี ID ไม่ต้องดึงข้อมูล
+
                 setLoading(true);
                 const unsubscribes = [];
 
-                // 🛠️ ฟังก์ชันช่วยแปลงวันที่ทุกรูปแบบเป็นตัวเลข เพื่อใช้เรียงลำดับ (ล่าสุดขึ้นก่อน)
+                // 🛠️ ฟังก์ชันช่วยแปลงวันที่ทุกรูปแบบเป็นตัวเลข
                 const getSortTime = (dateStr, timestamp) => {
                     if (timestamp) return Number(timestamp); 
                     if (!dateStr) return 0;
                     
-                    // 1. ลองแปลงแบบสากลก่อน (เช่น 2024-07-04T17:00:00.000Z)
                     const time = new Date(dateStr).getTime();
                     if (!isNaN(time)) return time;
                     
-                    // 2. ถ้าพัง แสดงว่าเป็นรูปแบบไทย (เช่น 31/03/2569 14:30:00) ให้ตัดคำมาคำนวณเอง
                     try {
                         const parts = String(dateStr).split(' ');
                         const dPart = parts[0].split('/');
@@ -1776,7 +1776,7 @@
                             const day = parseInt(dPart[0], 10);
                             const month = parseInt(dPart[1], 10) - 1;
                             let year = parseInt(dPart[2], 10);
-                            if (year > 2500) year -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+                            if (year > 2500) year -= 543;
                             
                             const tPart = (parts[1] || '00:00:00').split(':');
                             const hr = parseInt(tPart[0] || 0, 10);
@@ -1789,185 +1789,180 @@
                     return 0;
                 };
 
-                // 1. ดึงการตั้งค่าระบบ 
-                unsubscribes.push(
-                    db.collection('config').doc('system').onSnapshot(doc => {
-                        if (doc.exists) {
-                            const d = doc.data();
-                            setData(prev => ({ 
-                                ...prev, 
-                                announcement: d.announcement, 
-                                // 🌟 เช็คให้ชัวร์ว่าต้องเป็นคำว่า 'ON' หรือค่าแบบ true เท่านั้นถึงจะเปิดร้าน
-                                orderEnabled: d.orderSystem === 'ON' || d.orderSystem === true
-                            }));
+                // 🛡️ ฟังก์ชันพระเอก! ช่วยดึงข้อมูลและ "หยุด" ทันทีถ้าติด Permission Denied
+                const safeListen = (query, callback, name) => {
+                    const unsub = query.onSnapshot(
+                        (snap) => {
+                            callback(snap); // ถ้าสำเร็จ ให้ทำงานตามปกติ
+                        },
+                        (error) => {
+                            console.error(`🔴 ระงับการดึงข้อมูล [${name}]:`, error.message);
+                            unsub(); // 🛑 สั่งระงับตัวมันเองทันที! ป้องกันลูปนรกกินเงิน
                         }
-                    })
-                );
+                    );
+                    unsubscribes.push(unsub);
+                };
+
+                // 1. ดึงการตั้งค่าระบบ 
+                safeListen(db.collection('config').doc('system'), (doc) => {
+                    if (doc.exists) {
+                        const d = doc.data();
+                        setData(prev => ({ 
+                            ...prev, 
+                            announcement: d.announcement, 
+                            orderEnabled: d.orderSystem === 'ON' || d.orderSystem === true
+                        }));
+                    }
+                }, "Config System");
 
                 // 2. ดึง QR Map 
-                unsubscribes.push(
-                    db.collection('config').doc('qrMap').onSnapshot(doc => {
-                        if (doc.exists) {
-                            const data = doc.data();
-                            const codesArray = data.codes || []; 
-                            const newQrMap = {};
-                            let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
+                safeListen(db.collection('config').doc('qrMap'), (doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        const codesArray = data.codes || []; 
+                        const newQrMap = {};
+                        let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
 
-                            codesArray.forEach(item => {
-                                if (item && item.amount !== undefined) {
-                                    const amt = String(item.amount);
-                                    newQrMap[amt] = String(item.url); 
-                                    if (amt === "0") {
-                                        defaultUrl = String(item.url); 
-                                    }
+                        codesArray.forEach(item => {
+                            if (item && item.amount !== undefined) {
+                                const amt = String(item.amount);
+                                newQrMap[amt] = String(item.url); 
+                                if (amt === "0") {
+                                    defaultUrl = String(item.url); 
                                 }
-                            });
+                            }
+                        });
 
-                            setData(prev => ({ 
-                                ...prev, 
-                                qrMap: newQrMap, 
-                                defaultQr: defaultUrl 
-                            }));
-                        }
-                    })
-                );
+                        setData(prev => ({ 
+                            ...prev, 
+                            qrMap: newQrMap, 
+                            defaultQr: defaultUrl 
+                        }));
+                    }
+                }, "QR Map");
 
                 // 3. ดึงข้อมูลบิล 
-                unsubscribes.push(
-                    db.collection('users').doc(studentId).collection('bills').onSnapshot(snap => {
-                        const billsArray = snap.docs
-                            .map(doc => ({ billId: doc.id, ...doc.data() }))
-                            .filter(bill => bill.status !== 'ชำระแล้ว'); 
+                safeListen(db.collection('users').doc(studentId).collection('bills'), (snap) => {
+                    const billsArray = snap.docs
+                        .map(doc => ({ billId: doc.id, ...doc.data() }))
+                        .filter(bill => bill.status !== 'ชำระแล้ว'); 
                     
-                        setData(prev => {
-                            const processedBills = billsArray.map(b => calculateBillData(b, prev.qrMap, prev.defaultQr));
-                            return { ...prev, bills: processedBills };
-                        });
-                    })
-                );
+                    setData(prev => {
+                        const processedBills = billsArray.map(b => calculateBillData(b, prev.qrMap, prev.defaultQr));
+                        return { ...prev, bills: processedBills };
+                    });
+                }, "Bills");
 
-                // 4. ดึงข้อมูลออเดอร์เสื้อ (🌟 เรียงลำดับจากวันที่)
-                unsubscribes.push(
-                    db.collection('users').doc(studentId).collection('orders').onSnapshot(snap => {
-                        const ordersArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        const sortedOrders = ordersArray.sort((a, b) => getSortTime(b.date, b.timestamp) - getSortTime(a.date, a.timestamp));
-                        setData(prev => ({ ...prev, orders: sortedOrders }));
-                    })
-                );
+                // 4. ดึงข้อมูลออเดอร์เสื้อ (เรียงลำดับจากวันที่)
+                safeListen(db.collection('users').doc(studentId).collection('orders'), (snap) => {
+                    const ordersArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const sortedOrders = ordersArray.sort((a, b) => getSortTime(b.date, b.timestamp) - getSortTime(a.date, a.timestamp));
+                    setData(prev => ({ ...prev, orders: sortedOrders }));
+                }, "Orders");
 
-                // 5. ดึงประวัติการชำระเงิน (🌟 เรียงลำดับจากวันที่)
-                unsubscribes.push(
-                    db.collection('users').doc(studentId).collection('history').onSnapshot(snap => {
-                        const histArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        const sortedHistory = histArray.sort((a, b) => getSortTime(b.payDate, b.timestamp) - getSortTime(a.payDate, a.timestamp));
-                        setData(prev => ({ ...prev, history: sortedHistory }));
-                    })
-                );
+                // 5. ดึงประวัติการชำระเงิน (เรียงลำดับจากวันที่)
+                safeListen(db.collection('users').doc(studentId).collection('history'), (snap) => {
+                    const histArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const sortedHistory = histArray.sort((a, b) => getSortTime(b.payDate, b.timestamp) - getSortTime(a.payDate, a.timestamp));
+                    setData(prev => ({ ...prev, history: sortedHistory }));
+                }, "History");
 
                 // 6. ดึงข้อมูลสินค้า
-                unsubscribes.push(
-                    db.collection('products').onSnapshot(snap => {
-                        const prodArray = snap.docs.map(doc => {
-                            const prodData = doc.data();
-                            
-                            const productGallery = [prodData.image].filter(Boolean); 
-                            for (let i = 2; i <= 10; i++) { 
-                                const key = `image${i}`;
-                                if (prodData[key]) productGallery.push(prodData[key]);
-                            }
-
-                            const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
-                            for (let i = 2; i <= 5; i++) { 
-                                const key = `sizeChart${i}`;
-                                if (prodData[key]) sizeChartGallery.push(prodData[key]);
-                            }
-
-                            return { 
-                                id: doc.id, 
-                                ...prodData, 
-                                productGallery, 
-                                sizeChartGallery 
-                            };
-                        });
-                        setData(prev => ({ ...prev, products: prodArray }));
-                    })
-                );
-                
-                // 7. ดึงยอดสรุปการเงินรวม
-                unsubscribes.push(
-                    db.collection('finance').doc('summary').collection('logs').onSnapshot(doc => {
-                        if (doc.exists) {
-                            const d = doc.data();
-                            setData(prev => ({ 
-                                ...prev, 
-                                finance: { 
-                                    ...(prev.finance || { projects: [] }), 
-                                    balance: d.balance || 0, 
-                                    income: d.income || 0, 
-                                    expense: d.expense || 0 
-                                } 
-                            }));
+                safeListen(db.collection('products'), (snap) => {
+                    const prodArray = snap.docs.map(doc => {
+                        const prodData = doc.data();
+                        
+                        const productGallery = [prodData.image].filter(Boolean); 
+                        for (let i = 2; i <= 10; i++) { 
+                            const key = `image${i}`;
+                            if (prodData[key]) productGallery.push(prodData[key]);
                         }
-                    })
-                );
 
-                // 8. ดึงข้อมูล log การเงิน (🌟 คำนวณยอดรวมอัตโนมัติจาก Logs)
-                unsubscribes.push(
-                    db.collection('finance').doc('summary').collection('logs').onSnapshot(snap => {
-                        const logsArray = snap.docs.map(doc => doc.data());
-                        const groupedProjects = {};
-                        
-                        // 🌟 สร้างตัวแปรเก็บยอดรวมทั้งหมด
-                        let totalIncome = 0;
-                        let totalExpense = 0;
-                        
-                        logsArray.forEach(log => {
-                            const amt = Number(log.amount) || 0;
-                            const isIncome = log.type === 'รายรับ';
-                            
-                            // 🌟 บวกยอดรวมทั้งหมดของชั้นปี
-                            if (isIncome) totalIncome += amt;
-                            else totalExpense += amt;
+                        const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
+                        for (let i = 2; i <= 5; i++) { 
+                            const key = `sizeChart${i}`;
+                            if (prodData[key]) sizeChartGallery.push(prodData[key]);
+                        }
 
-                            const pName = log.project; 
-                            if (!pName || String(pName).trim() === '' || pName === 'ทั่วไป') return;
-                            
-                            if (!groupedProjects[pName]) {
-                                groupedProjects[pName] = { id: pName, name: pName, income: 0, expense: 0, transactions: [] };
-                            }
-                            
-                            if (isIncome) groupedProjects[pName].income += amt;
-                            else groupedProjects[pName].expense += amt;
-                            
-                            groupedProjects[pName].transactions.push({
-                                type: isIncome ? 'income' : 'expense',
-                                amount: amt,
-                                item: log.item || '-',
-                                responsible: log.person || '-',
-                                date: formatThaiDateTime(log.date), 
-                                receiptUrl: log.receiptUrl || '',
-                                transferSlipUrl: log.slipUrl || log.transferSlipUrl || '', 
-                                timestamp: getSortTime(log.date, log.timestamp)
-                            });
-                        });
-
-                        const projectsArray = Object.values(groupedProjects).map(p => {
-                            p.transactions.sort((a, b) => b.timestamp - a.timestamp);
-                            return p;
-                        });
-
-                        // 🌟 อัปเดตข้อมูลการเงินทั้งหมด (ยอดรวม + โปรเจกต์)
+                        return { 
+                            id: doc.id, 
+                            ...prodData, 
+                            productGallery, 
+                            sizeChartGallery 
+                        };
+                    });
+                    setData(prev => ({ ...prev, products: prodArray }));
+                }, "Products");
+                
+                // 7. ดึงยอดสรุปการเงินรวม (จาก doc summary)
+                safeListen(db.collection('finance').doc('summary'), (doc) => {
+                    if (doc.exists) {
+                        const d = doc.data();
                         setData(prev => ({ 
                             ...prev, 
                             finance: { 
-                                balance: totalIncome - totalExpense, 
-                                income: totalIncome, 
-                                expense: totalExpense, 
-                                projects: projectsArray 
+                                ...(prev.finance || { projects: [] }), 
+                                balance: d.balance || 0, 
+                                income: d.income || 0, 
+                                expense: d.expense || 0 
                             } 
                         }));
-                    })
-                );
+                    }
+                }, "Finance Summary");
+
+                // 8. ดึงข้อมูล log การเงิน (คำนวณยอดรวมอัตโนมัติจาก Logs)
+                safeListen(db.collection('finance').doc('summary').collection('logs'), (snap) => {
+                    const logsArray = snap.docs.map(doc => doc.data());
+                    const groupedProjects = {};
+                    
+                    let totalIncome = 0;
+                    let totalExpense = 0;
+                    
+                    logsArray.forEach(log => {
+                        const amt = Number(log.amount) || 0;
+                        const isIncome = log.type === 'รายรับ';
+                        
+                        if (isIncome) totalIncome += amt;
+                        else totalExpense += amt;
+
+                        const pName = log.project; 
+                        if (!pName || String(pName).trim() === '' || pName === 'ทั่วไป') return;
+                        
+                        if (!groupedProjects[pName]) {
+                            groupedProjects[pName] = { id: pName, name: pName, income: 0, expense: 0, transactions: [] };
+                        }
+                        
+                        if (isIncome) groupedProjects[pName].income += amt;
+                        else groupedProjects[pName].expense += amt;
+                        
+                        groupedProjects[pName].transactions.push({
+                            type: isIncome ? 'income' : 'expense',
+                            amount: amt,
+                            item: log.item || '-',
+                            responsible: log.person || '-',
+                            date: formatThaiDateTime(log.date), 
+                            receiptUrl: log.receiptUrl || '',
+                            transferSlipUrl: log.slipUrl || log.transferSlipUrl || '', 
+                            timestamp: getSortTime(log.date, log.timestamp)
+                        });
+                    });
+
+                    const projectsArray = Object.values(groupedProjects).map(p => {
+                        p.transactions.sort((a, b) => b.timestamp - a.timestamp);
+                        return p;
+                    });
+
+                    setData(prev => ({ 
+                        ...prev, 
+                        finance: { 
+                            balance: totalIncome - totalExpense, 
+                            income: totalIncome, 
+                            expense: totalExpense, 
+                            projects: projectsArray 
+                        } 
+                    }));
+                }, "Finance Logs");
+
                 setLoading(false);
 
                 return () => unsubscribes.forEach(unsub => unsub());
