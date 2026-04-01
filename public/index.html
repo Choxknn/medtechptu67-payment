@@ -275,101 +275,83 @@
             );
         };
 
-       // 🌟 คอมโพเนนต์ Login (ดีไซน์ ขาว-แดง คมชัดพรีเมียม)
+      // 🌟 คอมโพเนนต์ Login (ปรับปรุงให้กระชับสำหรับมือถือ)
         const Login = ({ loading, onLogin, onRegister, onLineLogin }) => {
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
             
-            // ลิ้งค์โลโก้
             const logoUrl = "https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T-Photoroom.png?alt=media&token=f50f9944-6bd3-43cb-abf9-56d9fdb50c81";
 
             return (
-                <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 py-8 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto no-scrollbar">
+                <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto no-scrollbar">
                     {loading && <Loading text="กำลังเข้าสู่ระบบ..." />}
-                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 my-auto shrink-0">
+                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 my-auto">
                         
-                        {/* 🖥️ ฝั่งซ้าย (Desktop View) ธีม ขาว-แดง (คมชัดที่สุด) */}
+                        {/* 🖥️ Desktop View (คงเดิม) */}
                         <div className="hidden md:flex md:w-1/2 bg-white p-10 flex-col items-center justify-center text-gray-900 relative overflow-hidden border-r border-gray-100">
-                            
-                            {/* 🌟 โลโก้ Desktop (พื้นขาว แสงสีแดงจางๆ) */}
                             <div className="relative z-10 mb-8 group cursor-default">
-                                {/* ลดแสงเรืองให้เหลือเพียงออร่าจางๆ เพื่อไม่ให้ดูเบลอ */}
-                                <div className="absolute inset-0 bg-red-100/70 rounded-full blur-[40px] animate-pulse group-hover:bg-red-100/90 transition-colors duration-500 scale-125"></div>
-                                <img 
-                                    src={logoUrl} 
-                                    className="w-56 h-56 object-contain drop-shadow-[0_15px_25px_rgba(220,38,38,0.3)] transform group-hover:scale-105 group-hover:-translate-y-2 transition-all duration-500 relative z-10" 
-                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/150?text=Logo'; }} 
-                                />
+                                <div className="absolute inset-0 bg-red-100/70 rounded-full blur-[40px] animate-pulse scale-125"></div>
+                                <img src={logoUrl} className="w-56 h-56 object-contain drop-shadow-[0_15px_25px_rgba(220,38,38,0.3)] transition-all duration-500 relative z-10" />
                             </div>
-                            
-                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap drop-shadow-sm text-gray-900">MedTech 67</h2>
+                            <h2 className="text-4xl font-black z-10 tracking-tight text-gray-900">MedTech 67</h2>
                             <p className="text-red-700 z-10 mt-3 font-bold text-sm tracking-widest uppercase bg-red-50 px-5 py-1.5 rounded-full border border-red-100 shadow-sm">Finance System</p>
-                            
-                            {/* ของตกแต่งแสงจางๆ ด้านหลัง */}
-                            <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-red-100/50 rounded-full blur-3xl"></div>
-                            <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-gray-100/50 rounded-full blur-3xl"></div>
                         </div>
 
-                        {/* 📱 ฝั่งขวา (Mobile View & Form) - เหมือนเดิม */}
+                        {/* 📱 Mobile View & Form (ปรับให้สั้นลง) */}
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
                             
-                            {/* 🌟 โลโก้ใหม่ Mobile (แสงสีแดง) */}
-                            <div className="md:hidden text-center mb-6 mt-4 relative z-10">
+                            {/* 🌟 ปรับขนาดโลโก้และหัวข้อให้แคบลง */}
+                            <div className="md:hidden text-center mb-4 mt-2 relative z-10">
                                 <div className="relative inline-block group">
-                                    <div className="absolute inset-0 bg-red-500/10 rounded-full blur-2xl animate-pulse transition-colors duration-500 scale-125"></div>
-                                    <div className="relative w-32 h-32 flex items-center justify-center z-10 mx-auto">
-                                        <img 
-                                            src={logoUrl} 
-                                            alt="Logo" 
-                                            className="w-full h-full object-contain drop-shadow-[0_10px_20px_rgba(220,38,38,0.3)] transform active:scale-95 transition-all duration-300 relative z-10" 
-                                            onError={(e) => { e.target.src = 'https://placehold.co/150'; }} 
-                                        />
+                                    <div className="absolute inset-0 bg-red-500/10 rounded-full blur-2xl animate-pulse scale-110"></div>
+                                    <div className="relative w-24 h-24 flex items-center justify-center z-10 mx-auto">
+                                        <img src={logoUrl} alt="Logo" className="w-full h-full object-contain drop-shadow-[0_8px_15px_rgba(220,38,38,0.2)]" />
                                     </div>
                                 </div>
-                                <h1 className="text-3xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">MedTech 67</h1>
-                                <p className="text-red-600 mt-2 font-extrabold text-xs tracking-widest uppercase bg-red-50 inline-block px-4 py-1.5 rounded-full border border-red-100 shadow-sm">Finance System</p>
+                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-2 whitespace-nowrap">MedTech 67</h1>
+                                <p className="text-red-600 font-extrabold text-[10px] tracking-widest uppercase bg-red-50 inline-block px-3 py-0.5 rounded-full border border-red-100 mt-1">Finance System</p>
                             </div>
 
-                            {/* 📋 ฟอร์มล็อกอิน */}
-                            <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none mt-2">
-                                <div className="space-y-3.5">
+                            {/* 📋 ฟอร์มล็อกอิน (ลดระยะห่างลง) */}
+                            <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-5 md:p-0 rounded-[2rem] md:rounded-none shadow-xl md:shadow-none border border-white md:border-none">
+                                <div className="space-y-3">
                                     <div className="space-y-1">
-                                        <label className="text-[11px] md:text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">รหัสนักศึกษา</label>
+                                        <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">รหัสนักศึกษา</label>
                                         <div className="relative group">
                                             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-red-500 transition-colors"><i className="fa-solid fa-user-graduate"></i></span>
-                                            <input type="text" value={id} onChange={e => setId(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="67XXXXXXXX" />
+                                            <input type="text" value={id} onChange={e => setId(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bold text-gray-700 text-sm shadow-sm" placeholder="67XXXXXXXX" />
                                         </div>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[11px] md:text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">รหัสผ่าน</label>
+                                        <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">รหัสผ่าน</label>
                                         <div className="relative group">
                                             <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-red-500 transition-colors"><i className="fa-solid fa-lock"></i></span>
-                                            <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="••••••••" />
+                                            <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bold text-gray-700 text-sm shadow-sm" placeholder="••••••••" />
                                         </div>
                                     </div>
-                                    <button onClick={() => onLogin(id, pass)} className="w-full bg-gray-900 hover:bg-black text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-gray-300 transition-all transform active:scale-[0.98] mt-3 text-base">เข้าสู่ระบบด้วยรหัสผ่าน</button>
+                                    <button onClick={() => onLogin(id, pass)} className="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl shadow-lg transition-all transform active:scale-[0.98] mt-2 text-sm">เข้าสู่ระบบด้วยรหัสผ่าน</button>
                                     
-                                    <div className="flex flex-col items-center justify-center px-1 pt-3 gap-2.5">
-                                        <div className="flex items-center gap-2 w-full justify-center opacity-40 mb-0">
+                                    <div className="flex flex-col items-center justify-center gap-2 pt-1">
+                                        <div className="flex items-center gap-2 w-full justify-center opacity-30">
                                             <div className="h-px bg-gray-400 w-full"></div>
-                                            <span className="text-[10px] uppercase font-bold tracking-widest text-gray-600 whitespace-nowrap">หรือ</span>
+                                            <span className="text-[9px] uppercase font-bold text-gray-600">หรือ</span>
                                             <div className="h-px bg-gray-400 w-full"></div>
                                         </div>
                                         
-                                        <button onClick={onLineLogin} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3 rounded-2xl shadow-md shadow-[#00B900]/20 transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-sm">
-                                            <i className="fa-brands fa-line text-xl"></i> เข้าสู่ระบบผ่าน LINE
+                                        <button onClick={onLineLogin} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-2.5 rounded-xl shadow-md transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-xs">
+                                            <i className="fa-brands fa-line text-lg"></i> เข้าสู่ระบบผ่าน LINE
                                         </button>
                                     
-                                        <div className="flex justify-between w-full px-2 mt-1">
-                                            <button onClick={onRegister} className="text-xs font-bold text-gray-500 hover:text-red-500 transition-colors">
+                                        <div className="flex justify-between w-full px-1 mt-1">
+                                            <button onClick={onRegister} className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors">
                                                 <i className="fa-solid fa-key mr-1"></i> ลืมรหัส / สร้างรหัส
                                             </button>
                                             <button onClick={() => Swal.fire({
                                                 title:'ขอความช่วยเหลือ', 
-                                                html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold shadow-sm shadow-[#00B900]/20 active:scale-95 transition-transform no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
+                                                html:'<p class="text-sm text-gray-600 mb-4 font-medium">หากพบปัญหาการเข้าใช้งาน<br>โปรดติดต่อฝ่ายการเงินผ่าน LINE</p><a href="https://lin.ee/10OG1hK" target="_blank" class="bg-[#00B900] text-white px-6 py-3 rounded-xl inline-block font-bold no-underline"><i class="fa-brands fa-line mr-1 text-lg"></i> ติดต่อแอดมิน</a>', 
                                                 showConfirmButton:false, showCloseButton:true, 
-                                                customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold text-gray-800 pt-2', closeButton: 'focus:outline-none hover:text-red-500 transition-colors'}
-                                            })} className="text-xs font-bold text-gray-500 hover:text-orange-500 transition-colors">
+                                                customClass:{popup:'rounded-3xl pb-8', title: 'text-xl font-extrabold pt-2'}
+                                            })} className="text-[10px] font-bold text-gray-400 hover:text-orange-500 transition-colors">
                                                 <i className="fa-solid fa-headset mr-1"></i> ติดต่อแอดมิน
                                             </button>
                                         </div>
