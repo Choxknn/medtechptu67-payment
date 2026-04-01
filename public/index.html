@@ -2245,7 +2245,7 @@
                             if (result.isConfirmed) {
                                 setLoading(true);
                                try {
-                                    await db.collection('users').doc(user.studentId).update({ userId: "" });
+                                     userId: "" });
                                     setUser(prev => ({ ...prev, userId: "" }));
                                     Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
                                 } catch (e) { 
@@ -2276,8 +2276,14 @@
                                     // ดึง UID ของ LINE กลับมาบันทึกลง Firestore
                                     const lineId = result.user.providerData[0].uid;
                                     
-                                    await db.collection('users').doc(user.studentId).update({ userId: lineId });
-                                    setUser(prev => ({ ...prev, userId: lineId }));
+                                    // 🌟 เปลี่ยนจากการเก็บแค่ userId (LINE) เป็นการเก็บทั้งคู่
+                                    await db.collection('users').doc(user.studentId).update({ 
+                                        userId: result.user.providerData[0].uid, // เก็บ LINE ID (U767...) ไว้เหมือนเดิมเพื่อใช้หาตัว
+                                        firebaseUid: result.user.uid             // 👈 เพิ่มตัวนี้! เก็บ Firebase UID (Kn2...)
+                                    });
+                                    
+                                    // อย่าลืมอัปเดต State ด้วย
+                                    setUser(prev => ({ ...prev, userId: result.user.providerData[0].uid, firebaseUid: result.user.uid }));
                                     
                                     Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
                                 } catch(e) {
@@ -2653,12 +2659,17 @@
                     
                     // ดึง LINE User ID กลับมาเช็คใน Firestore
                     const lineUid = result.user.providerData[0].uid;
+                    const firebaseUid = result.user.uid;
                     const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
                     
                     if (!userSnap.empty) {
                         const userDoc = userSnap.docs[0];
                         const studentId = userDoc.id;
                         const userData = userDoc.data();
+                        
+                        await db.collection('users').doc(studentId).update({ 
+                    firebaseUid: firebaseUid 
+                });
                         
                         if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                         
