@@ -275,36 +275,61 @@
             );
         };
 
+        // 🌟 คอมโพเนนต์ Login (ดีไซน์โลโก้ใหม่แบบโปร่งใส)
         const Login = ({ loading, onLogin, onRegister, onLineLogin }) => {
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
+            
+            // ลิ้งค์โลโก้ใหม่
+            const logoUrl = "https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T-Photoroom.png?alt=media&token=f50f9944-6bd3-43cb-abf9-56d9fdb50c81";
 
             return (
                 <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 py-8 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto no-scrollbar">
                     {loading && <Loading text="กำลังเข้าสู่ระบบ..." />}
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 my-auto shrink-0">
                         
-                        <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
-                            <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f" className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/150?text=Logo'; }} />
-                            <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">MedTech 67</h2>
-                            <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">Finance System</p>
+                        {/* 🖥️ ฝั่งซ้าย (Desktop View) */}
+                        <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#0066FF] to-indigo-700 p-10 flex-col items-center justify-center text-white relative overflow-hidden">
+                            <div className="absolute inset-0 bg-blue-900/20 backdrop-blur-3xl z-0"></div>
+                            
+                            {/* 🌟 โลโก้ใหม่ Desktop */}
+                            <div className="relative z-10 mb-8 group cursor-default">
+                                <div className="absolute inset-0 bg-white/30 rounded-full blur-2xl animate-pulse group-hover:bg-white/40 transition-colors duration-500"></div>
+                                <img 
+                                    src={logoUrl} 
+                                    className="w-56 h-56 object-contain drop-shadow-[0_15px_25px_rgba(0,0,0,0.4)] transform group-hover:scale-105 group-hover:-translate-y-2 transition-all duration-500 relative z-10" 
+                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/150?text=Logo'; }} 
+                                />
+                            </div>
+                            
+                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap drop-shadow-md">MedTech 67</h2>
+                            <p className="text-blue-50 z-10 mt-3 font-bold text-sm tracking-widest uppercase bg-white/10 px-5 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-sm">Finance System</p>
+                            
                             <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-                            <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-black/10 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-black/20 rounded-full blur-3xl"></div>
                         </div>
 
+                        {/* 📱 ฝั่งขวา (Mobile View & Form) */}
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
-                            <div className="md:hidden text-center mb-2">
-                                <div className="relative inline-block">
-                                    <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                                    <div className="relative w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
-                                        <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f" alt="Logo" className="w-full h-full object-cover rounded-full transform transition-transform scale-150" onError={(e) => { e.target.src = 'https://placehold.co/150'; }} />
+                            
+                            {/* 🌟 โลโก้ใหม่ Mobile */}
+                            <div className="md:hidden text-center mb-6 mt-4 relative z-10">
+                                <div className="relative inline-block group">
+                                    <div className="absolute inset-0 bg-[#0066FF]/20 rounded-full blur-2xl animate-pulse transition-colors duration-500"></div>
+                                    <div className="relative w-32 h-32 flex items-center justify-center z-10 mx-auto">
+                                        <img 
+                                            src={logoUrl} 
+                                            alt="Logo" 
+                                            className="w-full h-full object-contain drop-shadow-[0_10px_20px_rgba(0,102,255,0.3)] transform active:scale-95 transition-all duration-300" 
+                                            onError={(e) => { e.target.src = 'https://placehold.co/150'; }} 
+                                        />
                                     </div>
                                 </div>
-                                <h1 className="text-xl font-black text-gray-800 tracking-tight mt-4 whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h1>
-                                <p className="text-[#0066FF] mt-0.5 font-extrabold text-xs tracking-wide">MedTech 67 Payment</p>
+                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-4 whitespace-nowrap">ระบบชำระเงินชั้นปีที่ 3</h1>
+                                <p className="text-[#0066FF] mt-2 font-extrabold text-[10px] tracking-widest uppercase bg-blue-50 inline-block px-3 py-1 rounded-full border border-blue-100 shadow-sm">MedTech 67 Payment</p>
                             </div>
 
+                            {/* 📋 ฟอร์มล็อกอิน (คงเดิม) */}
                             <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none mt-2">
                                 <div className="space-y-3.5">
                                     <div className="space-y-1">
