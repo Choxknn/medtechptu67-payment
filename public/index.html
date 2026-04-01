@@ -2007,9 +2007,10 @@
             
             const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
 
-            // 🌟 3. วางทับ handleChangePassword ตัวเดิม
+            // 🌟 วางทับ handleChangePassword ตัวเดิม (เปลี่ยนรหัสได้ทุกกรณี)
             const handleChangePassword = async () => {
                 setShowDropdown(false);
+
                 await Swal.fire({
                     title: 'เปลี่ยนรหัสผ่าน',
                     html: `
@@ -2030,25 +2031,50 @@
                         if (newP.length < 6) return setError(newInput, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'); if (newP !== cNewP) return setError(confirmInput, 'ยืนยันรหัสผ่านไม่ตรงกัน');
                         
                         try { 
-                            const currentUser = auth.currentUser;
-                            if (!currentUser) throw new Error('กรุณาล็อกเอาท์และเข้าสู่ระบบด้วยรหัสผ่านอีกครั้งเพื่อเปลี่ยนรหัส');
-                            
-                            // 🌟 ใช้อีเมลของมหาลัย
                             const email = `${user.studentId}@ptu.ac.th`;
-                            const credential = firebase.auth.EmailAuthProvider.credential(email, oldP);
-                            await currentUser.reauthenticateWithCredential(credential);
+                            let isAuthAccountExists = true;
                             
-                            // สั่งเปลี่ยนรหัสผ่านใหม่
-                            await currentUser.updatePassword(newP);
+                            try {
+                                // 🌟 ทริคพิเศษ: ลองล็อกอินด้วยอีเมล+รหัสผ่านเดิม เพื่อดึง Session เข้าสู่บัญชีอีเมล (แก้ปัญหา Mismatch)
+                                await auth.signInWithEmailAndPassword(email, oldP);
+                            } catch (authErr) {
+                                if (authErr.code === 'auth/wrong-password' || authErr.code === 'auth/invalid-credential' || authErr.code === 'auth/invalid-login-credentials') {
+                                    throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
+                                } else if (authErr.code === 'auth/user-not-found') {
+                                    // 🌟 กรณีที่ 2: ยังไม่เคยมีบัญชี Firebase Auth (เปลี่ยนรหัสครั้งแรก)
+                                    isAuthAccountExists = false;
+                                    const userDoc = await db.collection('users').doc(user.studentId).get();
+                                    if (!userDoc.exists || userDoc.data().password !== oldP) {
+                                        throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
+                                    }
+                                } else {
+                                    throw authErr;
+                                }
+                            }
+                            
+                            if (isAuthAccountExists) {
+                                // เปลี่ยนรหัสผ่านใหม่ได้ทันที เพราะระบบล็อกอินด้วย Session ของอีเมลเรียบร้อยแล้ว
+                                await auth.currentUser.updatePassword(newP);
+                            } else {
+                                // ถ้าไม่เคยมีบัญชี Auth มาก่อน ให้สร้างใหม่แล้วลบรหัสเดิมทิ้ง (Auto-Migration)
+                                await auth.createUserWithEmailAndPassword(email, newP);
+                                await db.collection('users').doc(user.studentId).update({
+                                    hasPassword: true,
+                                    password: firebase.firestore.FieldValue.delete()
+                                });
+                            }
+                            
                             return true; 
                         } catch(e) { 
-                            let errMsg = e.message;
-                            if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') errMsg = 'รหัสผ่านเดิมไม่ถูกต้อง';
-                            Swal.showValidationMessage('เกิดข้อผิดพลาด: '+errMsg); 
+                            Swal.showValidationMessage('เกิดข้อผิดพลาด: ' + e.message); 
                             return false; 
                         }
                     }
-                }).then((result) => { if (result.isConfirmed) Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }); });
+                }).then((result) => { 
+                    if (result.isConfirmed) {
+                        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว', confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } });
+                    } 
+                });
             };
 
             const renderMenuCard = (title, subtitle, icon, color, onClick, badge) => (
