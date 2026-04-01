@@ -368,6 +368,7 @@
             );
         };
 
+        // 🌟 คอมโพเนนต์ Register (ปรับดีไซน์ ขาว-แดง และแก้บั๊กส่ง LINE)
         const Register = ({ onBack, onRegisterSuccess }) => {
             const [step, setStep] = useState(1);
             const [studentId, setStudentId] = useState('');
@@ -376,7 +377,9 @@
             const [confirmPass, setConfirmPass] = useState('');
             const [loading, setLoading] = useState(false);
 
-            // 🌟 4. วางทับ handleVerify ตัวเดิม (ใน Register)
+            const logoUrl = "https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T-Photoroom.png?alt=media&token=f50f9944-6bd3-43cb-abf9-56d9fdb50c81";
+
+            // 🔍 ตรวจสอบรหัสนักศึกษา
             const handleVerify = async () => {
                 if (!studentId) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสนักศึกษา', 'warning');
                 setLoading(true);
@@ -384,8 +387,13 @@
                     const snap = await db.collection('users').doc(studentId).get();
                     if (snap.exists) { 
                         const data = snap.data();
-                        // เปลี่ยนมาเช็คตัวแปร hasPassword เพิ่มเติม
-                        setStudentInfo({ name: data.name, hasPassword: (data.hasPassword === true || !!data.password) }); 
+                        setStudentInfo({ 
+                            name: data.name, 
+                            hasPassword: (data.hasPassword === true || !!data.password),
+                            // เก็บข้อมูล ID ไว้ใช้ใน step ถัดไป
+                            userId: data.userId,
+                            lineId: data.lineId
+                        }); 
                         setStep(2); 
                     } else { 
                         Swal.fire('ข้อผิดพลาด', 'ไม่พบรหัสนักศึกษาในระบบ', 'error'); 
@@ -394,7 +402,7 @@
                 setLoading(false);
             };
 
-            // 🌟 2. วางทับ handleSetPassword ตัวเดิม
+            // 🔑 สร้างรหัสผ่านใหม่
             const handleSetPassword = async () => {
                 if (!newPass || !confirmPass) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสผ่านให้ครบ', 'warning');
                 if (newPass.length < 6) return Swal.fire('แจ้งเตือน', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'warning');
@@ -402,21 +410,13 @@
                 setLoading(true);
                 try {
                     const userRef = db.collection('users').doc(studentId);
-                    const snap = await userRef.get();
-                    if (snap.data().hasPassword || snap.data().password) throw new Error('คุณมีรหัสผ่านในระบบแล้ว');
+                    const email = `${studentId}@ptu.ac.th`;
                     
-                    const email = `${studentId}@ptu.ac.th`; // 🌟 ใช้อีเมลของมหาลัย
-                    
-                    // 1. สร้างบัญชีเข้า Firebase Auth
-                    await auth.createUserWithEmailAndPassword(email, newPass);
-                    
-                    // 1. สร้างบัญชีเข้า Firebase Auth (สร้างตัวแปร cred มารับค่า)
                     const cred = await auth.createUserWithEmailAndPassword(email, newPass);
-                    
-                    // 2. บันทึกสถานะและ UID ลงฐานข้อมูล
                     await userRef.update({ 
                         hasPassword: true,
-                        firebaseUid: cred.user.uid // 🌟 เพิ่มบรรทัดนี้
+                        firebaseUid: cred.user.uid,
+                        password: firebase.firestore.FieldValue.delete()
                     });
                     
                     Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'สร้างรหัสผ่านเรียบร้อยแล้ว', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }).then(() => onRegisterSuccess()); 
@@ -428,104 +428,119 @@
                 setLoading(false);
             };
 
+            // 📩 ส่งรหัสผ่านไปที่ LINE (🌟 แก้ไขจุดที่หา ID ไม่เจอ)
             const handleRecovery = async () => {
                 setLoading(true);
                 try {
-                    // 🌟 ดึงข้อมูลจาก Firestore แล้วส่งไปให้ GAS ยิง LINE 🌟
                     const snap = await db.collection('users').doc(studentId).get();
                     const data = snap.data();
                     
-                    if (!data || !data.lineId || data.lineId.length < 10) {
-                        throw new Error('ไม่พบ LINE ID ในระบบ โปรดติดต่อแอดมิน');
+                    // 🌟 แก้ไข: ตรวจเช็คทั้ง userId และ lineId
+                    const targetLineId = data.userId || data.lineId;
+                    
+                    if (!targetLineId || targetLineId.length < 10) {
+                        throw new Error('ไม่พบการเชื่อมต่อ LINE ในระบบ โปรดติดต่อแอดมินเพื่อขอความช่วยเหลือ');
                     }
                     
-                    const payload = { name: data.name, password: data.password, lineId: data.userId };
+                    const payload = { 
+                        name: data.name, 
+                        password: data.password || "คุณมีการสร้างรหัสผ่านในระบบแล้ว หากจำไม่ได้โปรดติดต่อแอดมินเพื่อรีเซ็ต", 
+                        lineId: targetLineId 
+                    };
+                    
                     const res = await runGoogleScript('sendRecoveryLineMessage', [payload]);
                     
                     if (res.success) { 
-                        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ส่งรหัสผ่านไปที่ LINE แล้ว', confirmButtonColor: '#00B900', customClass: { popup: 'rounded-3xl' } }).then(() => onBack()); 
+                        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ระบบส่งข้อมูลไปที่ LINE ของคุณแล้ว', confirmButtonColor: '#00B900', customClass: { popup: 'rounded-3xl' } }).then(() => onBack()); 
                     } else { 
                         throw new Error(res.message); 
                     }
-                } catch (e) { Swal.fire('ข้อผิดพลาด', e.message, 'error'); }
+                } catch (e) { fireErrorAlert('ข้อผิดพลาด', e.message); }
                 setLoading(false);
             };
 
             return (
-                <div className="min-h-[100dvh] w-full flex items-center justify-center p-5 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto">
-                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 md:min-h-[600px] my-auto">
+                <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto no-scrollbar">
+                    {loading && <Loading text="กำลังประมวลผล..." />}
+                    <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 my-auto">
                         
-                        <div className="hidden md:flex md:w-1/2 bg-[#0066FF] p-10 flex-col items-center justify-center text-white relative overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-600/20 backdrop-blur-3xl z-0"></div>
-                            <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f" className="w-48 h-48 object-cover rounded-full z-10 shadow-2xl mb-6 border-4 border-white/20" />
-                            <h2 className="text-3xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap">ตรวจสอบข้อมูล</h2>
-                            <p className="text-blue-100 z-10 mt-2 font-bold text-base tracking-wider">MedTech 67 Finance System</p>
+                        {/* 🖥️ Desktop View (ขาว-แดง) */}
+                        <div className="hidden md:flex md:w-1/2 bg-white p-10 flex-col items-center justify-center text-gray-900 relative overflow-hidden border-r border-gray-100">
+                            <div className="relative z-10 mb-8 group cursor-default">
+                                <div className="absolute inset-0 bg-red-100/70 rounded-full blur-[40px] animate-pulse scale-125"></div>
+                                <img src={logoUrl} className="w-56 h-56 object-contain drop-shadow-[0_15px_25px_rgba(220,38,38,0.3)] relative z-10" />
+                            </div>
+                            <h2 className="text-4xl font-black z-10 tracking-tight text-gray-900">ตรวจสอบข้อมูล</h2>
+                            <p className="text-red-700 z-10 mt-3 font-bold text-sm tracking-widest uppercase bg-red-50 px-5 py-1.5 rounded-full border border-red-100 shadow-sm">Identity Verification</p>
                         </div>
 
+                        {/* 📱 Mobile View & Form */}
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
-                            <div className="md:hidden text-center mb-6">
-                                <div className="relative inline-block">
-                                    <div className="absolute inset-0 bg-blue-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                                    <div className="relative w-28 h-28 bg-white rounded-full flex items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,102,255,0.3)] border-4 border-white overflow-hidden z-10">
-                                        <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f" className="w-full h-full object-cover rounded-full" />
+                            <div className="md:hidden text-center mb-4 mt-2 relative z-10">
+                                <div className="relative inline-block group">
+                                    <div className="absolute inset-0 bg-red-500/10 rounded-full blur-2xl animate-pulse scale-110"></div>
+                                    <div className="relative w-24 h-24 flex items-center justify-center z-10 mx-auto">
+                                        <img src={logoUrl} alt="Logo" className="w-full h-full object-contain drop-shadow-[0_8px_15px_rgba(220,38,38,0.2)]" />
                                     </div>
                                 </div>
-                                <h1 className="text-xl font-black text-gray-800 tracking-tight mt-5 whitespace-nowrap">ตรวจสอบข้อมูล</h1>
-                                <p className="text-[#0066FF] mt-1 font-extrabold text-xs tracking-wide">MedTech 67 Finance System</p>
+                                <h1 className="text-2xl font-black text-gray-800 tracking-tight mt-2 whitespace-nowrap">ตรวจสอบข้อมูล</h1>
+                                <p className="text-red-600 font-extrabold text-[10px] tracking-widest uppercase bg-red-50 inline-block px-3 py-0.5 rounded-full border border-red-100 mt-1">Identity Verification</p>
                             </div>
 
-                            <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-6 md:p-0 rounded-[2.5rem] md:rounded-none shadow-xl md:shadow-none shadow-blue-900/5 border border-white md:border-none">
-                                {step === 1 && (
-                                    <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-bold text-gray-500 ml-1 uppercase tracking-wider">ตรวจสอบข้อมูล</label>
+                            <div className="bg-white/80 md:bg-transparent backdrop-blur-xl p-5 md:p-0 rounded-[2rem] md:rounded-none shadow-xl md:shadow-none border border-white md:border-none">
+                                {step === 1 ? (
+                                    <div className="space-y-4 animate-pop">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">ระบุรหัสนักศึกษา</label>
                                             <div className="relative group">
-                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF] transition-colors"><i className="fa-solid fa-id-card"></i></span>
-                                                <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 shadow-sm text-sm" placeholder="67XXXXXXXX" />
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-red-500 transition-colors"><i className="fa-solid fa-id-card"></i></span>
+                                                <input type="text" value={studentId} onChange={e => setStudentId(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bold text-gray-700 text-sm shadow-sm" placeholder="67XXXXXXXX" />
                                             </div>
                                         </div>
-                                        <button onClick={handleVerify} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-[0.98] mt-4 flex justify-center items-center text-lg">{loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'ตรวจสอบข้อมูล'}</button>
+                                        <button onClick={handleVerify} className="w-full bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl shadow-lg transition-all transform active:scale-[0.98] text-sm">ตรวจสอบข้อมูล</button>
                                     </div>
-                                )}
-                                {step === 2 && studentInfo && (
-                                    <div className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
-                                        <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl text-center mb-4">
-                                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-blue-500"><i className="fa-solid fa-user-check text-xl"></i></div>
-                                            <p className="text-sm text-gray-500 font-bold mb-1">ยินดีต้อนรับ</p>
-                                            <h3 className="font-bold text-gray-800 text-lg leading-tight">{studentInfo.name}</h3>
+                                ) : (
+                                    <div className="space-y-4 animate-pop">
+                                        <div className="bg-red-50/50 border border-red-100 p-4 rounded-2xl text-center">
+                                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-red-500"><i className="fa-solid fa-user-check"></i></div>
+                                            <p className="text-[10px] text-gray-400 font-bold mb-1">ยินดีต้อนรับ</p>
+                                            <h3 className="font-bold text-gray-800 text-sm leading-tight">{studentInfo.name}</h3>
                                         </div>
+
                                         {studentInfo.hasPassword ? (
-                                            <div className="text-center space-y-4">
-                                                <div className="bg-yellow-50 text-yellow-700 p-4 rounded-xl text-sm font-bold border border-yellow-100"><i className="fa-solid fa-circle-exclamation mr-2"></i>คุณมีรหัสผ่านในระบบแล้ว</div>
-                                                <p className="text-sm text-gray-500 font-medium px-2">หากจำไม่ได้ สามารถให้ระบบส่งรหัสผ่านเดิมไปที่แอป LINE ของคุณได้ และสามารถเปลี่ยนได้ในตั้งค่าหรือติดต่อแอดมมิน</p>
-                                                <button onClick={handleRecovery} disabled={loading} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
-                                                    {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><i className="fa-brands fa-line text-xl"></i> ส่งรหัสผ่านไปที่ LINE</>}
+                                            <div className="space-y-3 text-center">
+                                                <div className="bg-orange-50 text-orange-700 p-3 rounded-xl text-[11px] font-bold border border-orange-100"><i className="fa-solid fa-circle-exclamation mr-1.5"></i>คุณมีรหัสผ่านในระบบแล้ว</div>
+                                                <p className="text-[10px] text-gray-400 font-medium px-2">หากจำรหัสไม่ได้ สามารถให้ระบบส่งข้อมูลไปที่ LINE ของคุณได้ทันที</p>
+                                                <button onClick={handleRecovery} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3 rounded-xl shadow-md transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-xs">
+                                                    <i className="fa-brands fa-line text-lg"></i> ส่งข้อมูลไปที่ LINE
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="space-y-4">
-                                                <div className="bg-green-50 text-green-700 p-3 rounded-xl text-xs font-bold text-center border border-green-100 mb-2"><i className="fa-solid fa-unlock-keyhole mr-1.5"></i>กรุณาตั้งรหัสผ่านใหม่เพื่อเข้าใช้งาน</div>
-                                                <div className="space-y-2"><div className="relative group"><span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF]"><i className="fa-solid fa-key"></i></span><input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 text-sm" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)" /></div></div>
-                                                <div className="space-y-2"><div className="relative group"><span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-[#0066FF]"><i className="fa-solid fa-check-double"></i></span><input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#0066FF] outline-none font-bold text-gray-700 text-sm" placeholder="ยืนยันรหัสผ่านใหม่" /></div></div>
-                                                <button onClick={handleSetPassword} disabled={loading} className="w-full bg-[#0066FF] hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] flex justify-center items-center gap-2 mt-2">
-                                                    {loading ? <div className="loader w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'บันทึกรหัสผ่าน'}
-                                                </button>
+                                            <div className="space-y-3">
+                                                <div className="bg-green-50 text-green-700 p-2 rounded-lg text-[10px] font-bold text-center border border-green-100"><i className="fa-solid fa-unlock-keyhole mr-1.5"></i>กรุณาตั้งรหัสผ่านใหม่เพื่อเริ่มใช้งาน</div>
+                                                <div className="relative"><span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"><i className="fa-solid fa-key text-xs"></i></span><input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bold text-gray-700 text-sm" placeholder="รหัสผ่านใหม่" /></div>
+                                                <div className="relative"><span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"><i className="fa-solid fa-check-double text-xs"></i></span><input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-bold text-gray-700 text-sm" placeholder="ยืนยันรหัสผ่าน" /></div>
+                                                <button onClick={handleSetPassword} className="w-full bg-gray-900 text-white font-bold py-3 rounded-xl shadow-lg transition-all active:scale-[0.95] text-sm">บันทึกรหัสผ่าน</button>
                                             </div>
                                         )}
                                     </div>
                                 )}
-                            </div>
-                            <div className="mt-8 text-center pb-4">
-                                <button onClick={onBack} className="text-sm font-bold text-gray-500 hover:text-[#0066FF] transition-colors flex items-center justify-center mx-auto gap-2 bg-white/50 md:bg-gray-50 px-4 py-2 rounded-full border border-white md:border-gray-200 hover:bg-white shadow-sm">
+                                
+                                <button onClick={onBack} className="w-full mt-4 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors flex items-center justify-center gap-2">
                                     <i className="fa-solid fa-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ
                                 </button>
+                            </div>
+
+                            <div className="mt-8 text-center pb-4">
+                                <p className="text-gray-400 text-[10px] font-medium">© 2026 Finance MedTechptu 67. All rights reserved.</p>
+                                <p className="text-gray-400 text-[10px] font-medium">🖥️ Develop by CHOKUN</p>
                             </div>
                         </div>
                     </div>
                 </div>
             );
         };
-
+        
         const ProgressLoading = ({ progress }) => ReactDOM.createPortal(
             <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
                 <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col items-center relative overflow-hidden">
