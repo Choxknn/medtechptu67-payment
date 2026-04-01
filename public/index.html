@@ -2207,7 +2207,31 @@
                 
                 const handleLineConnectToggle = async () => {
                     if (isLineConnected) {
-                       // 🌟 5. วางทับโค้ดเดิมใต้คอมเมนต์ // --- ส่วนการเริ่มเชื่อมต่อ ---
+                        // --- ส่วนการยกเลิกเชื่อมต่อ ---
+                        Swal.fire({
+                            title: 'ยกเลิกเชื่อมต่อ LINE?',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#EF4444',
+                            confirmButtonText: 'ยกเลิกการเชื่อมต่อ',
+                            cancelButtonText: 'ปิดหน้าต่าง',
+                            customClass: { popup: 'rounded-3xl' }
+                        }).then(async (result) => {
+                            if (result.isConfirmed) {
+                                setLoading(true);
+                               try {
+                                    await db.collection('users').doc(user.studentId).update({ userId: "" });
+                                    setUser(prev => ({ ...prev, userId: "" }));
+                                    Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
+                                } catch (e) { 
+                                    fireErrorAlert('ผิดพลาด', e.message); 
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }
+                        });
+                    } else {
+                        // --- ส่วนการเริ่มเชื่อมต่อ ---
                         Swal.fire({
                             title: 'เชื่อมต่อ LINE',
                             text: 'ระบบจะพาคุณไปลงชื่อเข้าใช้ LINE เพื่อดึงข้อมูลมาเชื่อมต่อ',
@@ -2223,6 +2247,8 @@
                                 try {
                                     const provider = new firebase.auth.OAuthProvider('oidc.line');
                                     const result = await auth.signInWithPopup(provider);
+                                    
+                                    // ดึง UID ของ LINE กลับมาบันทึกลง Firestore
                                     const lineId = result.user.providerData[0].uid;
                                     
                                     await db.collection('users').doc(user.studentId).update({ userId: lineId });
@@ -2236,6 +2262,8 @@
                                 }
                             }
                         });
+                    }
+                };
                                 
                                 const profile = await liff.getProfile();
                                 const lineId = profile.userId;
