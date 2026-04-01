@@ -2690,10 +2690,10 @@
             const [appProgress, setAppProgress] = useState(null);
             const [maintenanceMsg, setMaintenanceMsg] = useState('ปิดปรับปรุงเซิร์ฟเวอร์');
 
-           // 🌟 วางทับ handleLineLogin ใน App (แก้หน้าโหลดค้าง + UI สวยงาม)
+           // 🌟 วางทับ handleLineLogin ใน App (แก้ไขระบบตรวจสอบรหัสผ่าน)
             const handleLineLogin = async () => {
                 try {
-                    setLoading(true); // 1. เริ่มโหลดตอนดึงหน้า LINE
+                    setLoading(true);
                     const provider = new firebase.auth.OAuthProvider('oidc.line');
                     const result = await auth.signInWithPopup(provider);
                     
@@ -2708,7 +2708,6 @@
                         const userDoc = userSnap.docs[0];
                         const userData = userDoc.data();
                         
-                        // อัปเดต lineUid (เผื่อมีการลบบัญชีแล้วสมัครใหม่)
                         await db.collection('users').doc(userDoc.id).update({ lineUid: lineUid });
 
                         if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
@@ -2720,7 +2719,7 @@
                         
                     } else {
                         // --- กรณี LINE นี้ยังไม่เคยผูกกับใคร ---
-                        setLoading(false); // 🌟 2. ปิดหน้าโหลดก่อนโชว์ Popup!
+                        setLoading(false); // ปิดหน้าโหลดชั่วคราวให้กล่องเด้งขึ้นมาได้
 
                         const { value: formValues } = await Swal.fire({
                             title: 'เชื่อมต่อบัญชี LINE',
@@ -2748,20 +2747,56 @@
                         });
 
                         if (formValues) {
-                            setLoading(true); // 🌟 3. เปิดหน้าโหลดอีกครั้งตอนเช็คข้อมูลในฐานข้อมูล
-                            const { id: u, pass: p } = formValues;
-                            
-                            const checkDoc = await db.collection('users').doc(u).get();
-                            
-                            // เช็ครหัสผ่าน
-                            if (checkDoc.exists && (checkDoc.data().password === p)) {
-                                // ผูกบัญชีลงฐานข้อมูล
-                                await db.collection('users').doc(u).update({ 
-                                    userId: lineId,
-                                    lineUid: lineUid 
-                                });
+                            setLoading(true);
+                            try {
+                                const { id: u, pass: p } = formValues;
+                                const checkDoc = await db.collection('users').doc(u).get();
                                 
-                                await auth.signOut(); // ล็อกเอาท์ LINE ออกก่อน เพื่อให้เข้าใหม่แบบเนียนๆ
+                                if (!checkDoc.exists) {
+                                    await auth.signOut();
+                                    throw new Error("ไม่พบรหัสนักศึกษาในระบบ");
+                                }
+                                
+                                const userData = checkDoc.data();
+                                const email = `${u}@ptu.ac.th`;
+                                
+                                if (userData.hasPassword) {
+                                    // 🌟 1. กรณีผู้ใช้ย้ายรหัสไปอยู่ Firebase Auth แล้ว
+                                    await auth.signOut(); // ล็อกเอาท์ออกจาก LINE ชั่วคราว
+                                    try {
+                                        // ยืนยันตัวตนด้วยรหัสผ่านผ่าน Firebase
+                                        await auth.signInWithEmailAndPassword(email, p);
+                                        
+                                        // พออีเมลผ่าน Rules จะยอมให้แก้ข้อมูลตัวเองได้ทันที!
+                                        await db.collection('users').doc(u).update({ 
+                                            userId: lineId,
+                                            lineUid: lineUid 
+                                        });
+                                    } catch (err) {
+                                        throw new Error("รหัสผ่านไม่ถูกต้อง");
+                                    }
+                                } else {
+                                    // 🌟 2. กรณีผู้ใช้ยังเป็นรหัสผ่านแบบ Text รุ่นเก่า
+                                    if (userData.password === p) {
+                                        await auth.signOut();
+                                        
+                                        // สร้างบัญชีให้ใหม่ไปเลย (Auto Migration)
+                                        await auth.createUserWithEmailAndPassword(email, p);
+                                        
+                                        await db.collection('users').doc(u).update({ 
+                                            userId: lineId,
+                                            lineUid: lineUid,
+                                            hasPassword: true,
+                                            password: firebase.firestore.FieldValue.delete()
+                                        });
+                                    } else {
+                                        await auth.signOut();
+                                        throw new Error("รหัสผ่านไม่ถูกต้อง");
+                                    }
+                                }
+
+                                // เมื่อผูกเสร็จ ล็อกเอาท์เพื่อบังคับให้กด "ล็อกอิน LINE" อีกรอบอย่างสมบูรณ์
+                                await auth.signOut(); 
                                 setLoading(false);
                                 
                                 Swal.fire({
@@ -2771,20 +2806,24 @@
                                     confirmButtonColor: '#00B900',
                                     customClass: { popup: 'rounded-3xl' }
                                 });
-                            } else {
+
+                            } catch (err) {
                                 await auth.signOut();
-                                throw new Error("รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง");
+                                setLoading(false);
+                                let errMsg = err.message;
+                                if (errMsg.includes('auth/')) errMsg = "รหัสผ่านไม่ถูกต้อง";
+                                Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: errMsg, customClass: { popup: 'rounded-3xl' } });
                             }
                         } else {
                             await auth.signOut(); // กรณีกดยกเลิก
+                            setLoading(false);
                         }
                     }
                 } catch (error) {
                     if (error.code !== 'auth/popup-closed-by-user') {
                         fireErrorAlert('เข้าสู่ระบบไม่สำเร็จ', error.message);
                     }
-                } finally {
-                    setLoading(false); // 4. ปิดการโหลดขั้นสุดท้ายเสมอ
+                    setLoading(false);
                 }
             };
 
