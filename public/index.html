@@ -2256,7 +2256,7 @@
            const renderSettingsContent = () => {
                 const isLineConnected = user.userId && user.userId.length > 5;
                 
-              // 🌟 1. วางทับ handleLineConnectToggle ใน Dashboard
+              // 🌟 วางทับ handleLineConnectToggle ใน Dashboard
             const handleLineConnectToggle = async () => {
                 if (isLineConnected) {
                     // --- ส่วนการยกเลิกเชื่อมต่อ ---
@@ -2273,12 +2273,12 @@
                             setLoading(true);
                             try {
                                 const currentUser = auth.currentUser;
-                                // ถอด LINE ออกจาก Firebase Auth
+                                // ถอด LINE ออกจาก Firebase Auth (ใช้ try-catch ครอบเผื่อ session หลุด)
                                 if (currentUser && currentUser.providerData.some(p => p.providerId === 'oidc.line')) {
-                                    await currentUser.unlink('oidc.line');
+                                    try { await currentUser.unlink('oidc.line'); } catch(e) { console.error("Unlink auth:", e); }
                                 }
                                 
-                                // 🌟 สำคัญ: ลบแค่ userId ของ LINE ออก ห้ามลบ firebaseUid เด็ดขาด!
+                                // 🌟 ลบแค่ userId ของ LINE ออก ห้ามลบ firebaseUid
                                 await db.collection('users').doc(user.studentId).update({ 
                                     userId: "" 
                                 });
@@ -2287,29 +2287,39 @@
                                 Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
                             } catch (e) { 
                                 console.error("Disconnect Error:", e);
-                                fireErrorAlert('ผิดพลาด', 'ไม่สามารถยกเลิกการเชื่อมต่อได้: ' + e.message); 
+                                fireErrorAlert('ผิดพลาด', 'ไม่สามารถยกเลิกได้: ' + e.message); 
                             } finally {
                                 setLoading(false);
                             }
                         }
                     });
                 } else {
-                    // --- ส่วนการเริ่มเชื่อมต่อ (ในหน้าตั้งค่า) ---
+                    // --- ส่วนการเริ่มเชื่อมต่อ (อัปเกรดความปลอดภัยและแก้ Token Expired) ---
                     Swal.fire({
-                        title: 'เชื่อมต่อ LINE',
-                        text: 'ระบบจะพาคุณไปลงชื่อเข้าใช้ LINE เพื่อดึงข้อมูลมาเชื่อมต่อ',
-                        icon: 'info',
+                        title: 'ยืนยันตัวตนก่อนเชื่อมต่อ',
+                        text: 'เพื่อความปลอดภัย กรุณากรอกรหัสผ่านของคุณเพื่อยืนยันการเชื่อมต่อ LINE',
+                        input: 'password',
+                        inputAttributes: {
+                            autocapitalize: 'off',
+                            autocorrect: 'off'
+                        },
                         showCancelButton: true,
                         confirmButtonText: 'ดำเนินการต่อ',
                         cancelButtonText: 'ยกเลิก',
                         confirmButtonColor: '#00B900',
-                        customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold', cancelButton: 'rounded-xl font-bold' }
+                        customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600 hover:bg-gray-200' }
                     }).then(async (res) => {
-                        if(res.isConfirmed) {
+                        if(res.isConfirmed && res.value) {
                             setLoading(true);
                             try {
+                                const email = `${user.studentId}@ptu.ac.th`;
+                                const pass = res.value;
+                                
+                                // 🌟 1. ดึง Session ใหม่ทันที (แก้ปัญหา Token Expired ได้ล้านเปอร์เซ็นต์)
+                                await auth.signInWithEmailAndPassword(email, pass);
+                                
+                                // 🌟 2. เชื่อมต่อ LINE Popup
                                 const provider = new firebase.auth.OAuthProvider('oidc.line');
-                                // 🌟 สำคัญ: ใช้ linkWithPopup แทน signIn เพื่อรักษา Session เดิมไว้ จะได้ไม่ติด Permission
                                 const result = await auth.currentUser.linkWithPopup(provider);
                                 
                                 const lineProvider = result.user.providerData.find(p => p.providerId === 'oidc.line');
@@ -2317,20 +2327,25 @@
                                 
                                 if (!lineId) throw new Error("ไม่สามารถดึงข้อมูลจาก LINE ได้");
 
+                                // 🌟 3. บันทึกข้อมูลลง Firestore (เก็บให้ครบทั้ง 2 ID)
                                 await db.collection('users').doc(user.studentId).update({ 
-                                    userId: lineId
+                                    userId: lineId,
+                                    firebaseUid: result.user.uid
                                 });
                                 
-                                setUser(prev => ({ ...prev, userId: lineId }));
+                                setUser(prev => ({ ...prev, userId: lineId, firebaseUid: result.user.uid }));
                                 Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
                             } catch(e) {
                                 console.error("Connect Error:", e);
                                 let errMsg = e.message;
-                                if (e.code === 'auth/credential-already-in-use') errMsg = 'LINE นี้ถูกผูกกับบัญชีอื่นไปแล้วครับ';
+                                if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-login-credentials') errMsg = 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่';
+                                else if (e.code === 'auth/credential-already-in-use') errMsg = 'บัญชี LINE นี้ถูกผูกกับรหัสนักศึกษาอื่นไปแล้วครับ';
                                 fireErrorAlert('พบข้อผิดพลาด', errMsg);
                             } finally {
                                 setLoading(false);
                             }
+                        } else if (res.isConfirmed && !res.value) {
+                            fireErrorAlert('แจ้งเตือน', 'กรุณากรอกรหัสผ่าน');
                         }
                     });
                 }
