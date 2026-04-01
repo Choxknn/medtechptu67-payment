@@ -2942,43 +2942,61 @@
                 initializeApp();
             }, []);
 
-           // 🌟 1. วางทับ handleLogin ตัวเดิม
+           // 🌟 วางทับ handleLogin ใน App (ฉบับแก้บั๊กค้างเติ่ง + ซ่อมแซมตัวเอง)
             const handleLogin = async (u, p) => {
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 setLoginProgress(1);
                 const progressInterval = setInterval(() => setLoginProgress(old => Math.min(90, old + 10)), 250);
 
                 try {
-                    const email = `${u}@ptu.ac.th`; // 🌟 ใช้อีเมลของมหาลัย
+                    const email = `${u}@ptu.ac.th`; 
+                    let userCred;
+                    let needsMigration = false;
                     
                     try {
-                        // 1. ลองล็อกอินผ่าน Firebase Auth
-                        await auth.signInWithEmailAndPassword(email, p);
+                        // 1. ลองล็อกอินผ่าน Firebase Auth ก่อน
+                        userCred = await auth.signInWithEmailAndPassword(email, p);
                     } catch (authError) {
-                        // 2. ถ้าระบบบอกว่ายังไม่มีบัญชี (ผู้ใช้เก่า) ให้ไปดึงจาก Firestore มาเช็ค
+                        // 2. ถ้าเข้าไม่ได้ ให้เช็คว่าเป็นผู้ใช้เก่าที่ต้องย้ายข้อมูล (Migration) หรือไม่
                         if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential' || authError.code === 'auth/invalid-login-credentials') {
                             const userDoc = await db.collection('users').doc(u).get();
+                            
+                            // เช็คว่ารหัสผ่านเดิมในฐานข้อมูลตรงกันไหม
                             if (userDoc.exists && userDoc.data().password === p) {
-                                // 2.1 ถ้ารหัสผ่านเก่าถูก! สร้างบัญชี Auth ให้ใหม่ทันที (Auto Migration)
-                                await auth.createUserWithEmailAndPassword(email, p);
-                                
-                                const cred = await auth.createUserWithEmailAndPassword(email, p);
-                                
-                                // 2.2 อัปเดตข้อมูล และลบรหัสผ่านแบบ Text ทิ้ง
-                                await db.collection('users').doc(u).update({ 
-                                    hasPassword: true,
-                                    firebaseUid: cred.user.uid, // 🌟 เพิ่มบรรทัดนี้
-                                    password: firebase.firestore.FieldValue.delete() 
-                                });
+                                needsMigration = true;
+                                try {
+                                    // 2.1 สร้างบัญชี Auth ให้ใหม่
+                                    userCred = await auth.createUserWithEmailAndPassword(email, p);
+                                } catch (createErr) {
+                                    // 🌟 ดักจับกรณีสร้างใน Auth ไปแล้วแต่ Firestore ค้างเติ่ง (เน็ตหลุด/กดเบิ้ล)
+                                    if (createErr.code === 'auth/email-already-in-use') {
+                                        userCred = await auth.signInWithEmailAndPassword(email, p);
+                                    } else {
+                                        throw createErr;
+                                    }
+                                }
                             } else {
-                                throw new Error('รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง');
+                                throw new Error('auth/wrong-password'); // รหัสเก่าก็ไม่ถูก เตะออกเลย
                             }
                         } else {
-                            throw authError; // ถ้าเป็น Error อื่นๆ ให้โยนออกไป
+                            throw authError;
                         }
                     }
 
-                    // 3. เมื่อ Auth ผ่านแล้ว ดึงข้อมูลโปรไฟล์จาก Firestore มาใช้งาน
+                    // 🌟 3. บังคับอัปเดต Firestore (สำหรับคนที่เพิ่งย้าย หรือคนที่ค้างจากการสร้างรอบที่แล้ว)
+                    if (userCred) {
+                        const checkDoc = await db.collection('users').doc(u).get();
+                        // ถ้า firebaseUid ยังไม่ถูกบันทึก ให้จัดการอัปเดตให้เรียบร้อย
+                        if (checkDoc.exists && !checkDoc.data().firebaseUid) {
+                            await db.collection('users').doc(u).update({ 
+                                hasPassword: true,
+                                firebaseUid: userCred.user.uid,
+                                password: firebase.firestore.FieldValue.delete() 
+                            });
+                        }
+                    }
+
+                    // 4. เมื่อเคลียร์ทุกอย่างเสร็จสมบูรณ์ ดึงข้อมูลโปรไฟล์จาก Firestore มาเปิดหน้าเว็บ
                     const finalUserDoc = await db.collection('users').doc(u).get();
                     const userData = finalUserDoc.data();
 
