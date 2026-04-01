@@ -2202,7 +2202,7 @@
                 );
             };
 
-            const renderSettingsContent = () => {
+           const renderSettingsContent = () => {
                 const isLineConnected = user.userId && user.userId.length > 5;
                 
                 const handleLineConnectToggle = async () => {
@@ -2264,41 +2264,6 @@
                         });
                     }
                 };
-                                
-                                const profile = await liff.getProfile();
-                                const lineId = profile.userId;
-                                
-                                Swal.fire({
-                                    title: 'ยืนยันการเชื่อมต่อ LINE',
-                                    text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันตัวตน',
-                                    input: 'password',
-                                    showCancelButton: true,
-                                    confirmButtonText: 'ยืนยัน',
-                                    confirmButtonColor: '#00B900',
-                                    customClass: { popup: 'rounded-3xl' }
-                                }).then(async (result) => {
-                                    if (result.isConfirmed && result.value) {
-                                        setLoading(true);
-                                        try {
-                                            const userDoc = await db.collection('users').doc(user.studentId).get();
-                                            if(userDoc.data().password === result.value) {
-                                                await db.collection('users').doc(user.studentId).update({ userId: lineId });
-                                                setUser(prev => ({ ...prev, userId: lineId }));
-                                                Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
-                                            } else {
-                                                fireErrorAlert('รหัสผ่านไม่ถูกต้อง', 'กรุณาลองใหม่อีกครั้ง');
-                                            }
-                                        } catch(e) {
-                                            fireErrorAlert('Error', e.message);
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }
-                                });
-                            } catch (e) { console.error(e); }
-                        }
-                    }
-                };
 
                 const handleContactAdmin = () => {
                     const qrImgUrl = getDirectDriveUrl('https://drive.google.com/file/d/1oYL1NI9kbsYpa4pOM0KLoBhR91FRNVuH/view?usp=drivesdk');
@@ -2330,7 +2295,6 @@
                             <p className="text-gray-400 text-sm font-medium mt-1">{user.studentId}</p>
                             <div className="mt-4 flex justify-center gap-2">
                                 <span className="bg-blue-50 border border-blue-100 text-[#0066FF] px-3 py-1 rounded-full text-xs font-bold shadow-sm">นักศึกษา</span>
-                                {/* 🌟 แก้ไขการเช็ค Verified และซ่อนปุ่มถ้ายังไม่เชื่อม */}
                                 {(user.userId || user.lineId) && (
                                     <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
                                         Verified <i className="fa-solid fa-circle-check ml-0.5"></i>
