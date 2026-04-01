@@ -275,11 +275,12 @@
             );
         };
 
-       // 🌟 คอมโพเนนต์ Login (ดีไซน์ ดำ-แดง พรีเมียม)
+       // 🌟 คอมโพเนนต์ Login (ดีไซน์ ขาว-แดง คมชัดพรีเมียม)
         const Login = ({ loading, onLogin, onRegister, onLineLogin }) => {
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
             
+            // ลิ้งค์โลโก้
             const logoUrl = "https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T-Photoroom.png?alt=media&token=f50f9944-6bd3-43cb-abf9-56d9fdb50c81";
 
             return (
@@ -287,35 +288,35 @@
                     {loading && <Loading text="กำลังเข้าสู่ระบบ..." />}
                     <div className="w-full max-w-sm md:max-w-4xl bg-[#F0F4F8] md:bg-white md:shadow-2xl md:rounded-[3rem] relative z-10 flex flex-col md:flex-row overflow-hidden md:border-8 border-white/60 my-auto shrink-0">
                         
-                        {/* 🖥️ ฝั่งซ้าย (Desktop View) ธีม ดำ-แดง */}
-                        <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-gray-900 via-black to-red-950 p-10 flex-col items-center justify-center text-white relative overflow-hidden">
-                            <div className="absolute inset-0 bg-red-900/10 backdrop-blur-3xl z-0"></div>
+                        {/* 🖥️ ฝั่งซ้าย (Desktop View) ธีม ขาว-แดง (คมชัดที่สุด) */}
+                        <div className="hidden md:flex md:w-1/2 bg-white p-10 flex-col items-center justify-center text-gray-900 relative overflow-hidden border-r border-gray-100">
                             
-                            {/* 🌟 โลโก้ใหม่ Desktop (แสงสีแดง) */}
+                            {/* 🌟 โลโก้ Desktop (พื้นขาว แสงสีแดงจางๆ) */}
                             <div className="relative z-10 mb-8 group cursor-default">
-                                <div className="absolute inset-0 bg-red-600/40 rounded-full blur-[40px] animate-pulse group-hover:bg-red-500/60 transition-colors duration-500 scale-125"></div>
+                                {/* ลดแสงเรืองให้เหลือเพียงออร่าจางๆ เพื่อไม่ให้ดูเบลอ */}
+                                <div className="absolute inset-0 bg-red-100/70 rounded-full blur-[40px] animate-pulse group-hover:bg-red-100/90 transition-colors duration-500 scale-125"></div>
                                 <img 
                                     src={logoUrl} 
-                                    className="w-56 h-56 object-contain drop-shadow-[0_15px_25px_rgba(220,38,38,0.5)] transform group-hover:scale-105 group-hover:-translate-y-2 transition-all duration-500 relative z-10" 
+                                    className="w-56 h-56 object-contain drop-shadow-[0_15px_25px_rgba(220,38,38,0.3)] transform group-hover:scale-105 group-hover:-translate-y-2 transition-all duration-500 relative z-10" 
                                     onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/150?text=Logo'; }} 
                                 />
                             </div>
                             
-                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap drop-shadow-md">MedTech 67</h2>
-                            <p className="text-red-100 z-10 mt-3 font-bold text-sm tracking-widest uppercase bg-red-500/20 px-5 py-1.5 rounded-full backdrop-blur-md border border-red-500/30 shadow-sm">Finance System</p>
+                            <h2 className="text-4xl font-black z-10 tracking-tight text-center leading-tight whitespace-nowrap drop-shadow-sm text-gray-900">MedTech 67</h2>
+                            <p className="text-red-700 z-10 mt-3 font-bold text-sm tracking-widest uppercase bg-red-50 px-5 py-1.5 rounded-full border border-red-100 shadow-sm">Finance System</p>
                             
-                            {/* ของตกแต่งแสงด้านหลัง */}
-                            <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-red-600/20 rounded-full blur-3xl"></div>
-                            <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-gray-600/20 rounded-full blur-3xl"></div>
+                            {/* ของตกแต่งแสงจางๆ ด้านหลัง */}
+                            <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-red-100/50 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-[-10%] right-[-10%] w-72 h-72 bg-gray-100/50 rounded-full blur-3xl"></div>
                         </div>
 
-                        {/* 📱 ฝั่งขวา (Mobile View & Form) */}
+                        {/* 📱 ฝั่งขวา (Mobile View & Form) - เหมือนเดิม */}
                         <div className="w-full md:w-1/2 flex flex-col justify-center p-2 md:p-12 relative">
                             
-                            {/* 🌟 โลโก้ใหม่ Mobile (ชื่อเหมือน Desktop แสงสีแดง) */}
+                            {/* 🌟 โลโก้ใหม่ Mobile (แสงสีแดง) */}
                             <div className="md:hidden text-center mb-6 mt-4 relative z-10">
                                 <div className="relative inline-block group">
-                                    <div className="absolute inset-0 bg-red-500/20 rounded-full blur-2xl animate-pulse transition-colors duration-500 scale-125"></div>
+                                    <div className="absolute inset-0 bg-red-500/10 rounded-full blur-2xl animate-pulse transition-colors duration-500 scale-125"></div>
                                     <div className="relative w-32 h-32 flex items-center justify-center z-10 mx-auto">
                                         <img 
                                             src={logoUrl} 
@@ -346,8 +347,6 @@
                                             <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-red-500 outline-none transition-all font-bold text-gray-700 shadow-sm text-sm" placeholder="••••••••" />
                                         </div>
                                     </div>
-                                    
-                                    {/* ปุ่มเข้าสู่ระบบ */}
                                     <button onClick={() => onLogin(id, pass)} className="w-full bg-gray-900 hover:bg-black text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-gray-300 transition-all transform active:scale-[0.98] mt-3 text-base">เข้าสู่ระบบด้วยรหัสผ่าน</button>
                                     
                                     <div className="flex flex-col items-center justify-center px-1 pt-3 gap-2.5">
