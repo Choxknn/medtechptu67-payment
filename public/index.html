@@ -1866,7 +1866,7 @@
                 
                 // 7. ดึงยอดสรุปการเงินรวม
                 unsubscribes.push(
-                    db.collection('finance').doc('summary').onSnapshot(doc => {
+                    db.collection('finance').doc('summary').collection('logs').onSnapshot(doc => {
                         if (doc.exists) {
                             const d = doc.data();
                             setData(prev => ({ 
