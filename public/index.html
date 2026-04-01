@@ -2230,7 +2230,7 @@
            const renderSettingsContent = () => {
                 const isLineConnected = user.userId && user.userId.length > 5;
                 
-                const handleLineConnectToggle = async () => {
+               const handleLineConnectToggle = async () => {
                     if (isLineConnected) {
                         // --- ส่วนการยกเลิกเชื่อมต่อ ---
                         Swal.fire({
@@ -2244,12 +2244,26 @@
                         }).then(async (result) => {
                             if (result.isConfirmed) {
                                 setLoading(true);
-                               try {
-                                     userId: "" });
-                                    setUser(prev => ({ ...prev, userId: "" }));
-                                    Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
+                                try {
+                                    // 🌟 ลบทั้ง userId (LINE) และ firebaseUid (Firebase) ออกจาก Firestore
+                                    await db.collection('users').doc(user.studentId).update({ 
+                                        userId: "",
+                                        firebaseUid: "" 
+                                    });
+                                    
+                                    // อัปเดต State ในหน้าเว็บ
+                                    setUser(prev => ({ ...prev, userId: "", firebaseUid: "" }));
+                                    
+                                    Swal.fire({ 
+                                        icon: 'success', 
+                                        title: 'ยกเลิกการเชื่อมต่อแล้ว', 
+                                        showConfirmButton: false, 
+                                        timer: 2000, 
+                                        customClass: { popup: 'rounded-3xl' } 
+                                    });
                                 } catch (e) { 
-                                    fireErrorAlert('ผิดพลาด', e.message); 
+                                    console.error("Disconnect Error:", e);
+                                    fireErrorAlert('ผิดพลาด', 'ไม่สามารถยกเลิกการเชื่อมต่อได้: ' + e.message); 
                                 } finally {
                                     setLoading(false);
                                 }
@@ -2273,20 +2287,26 @@
                                     const provider = new firebase.auth.OAuthProvider('oidc.line');
                                     const result = await auth.signInWithPopup(provider);
                                     
-                                    // ดึง UID ของ LINE กลับมาบันทึกลง Firestore
-                                    const lineId = result.user.providerData[0].uid;
+                                    // ดึงข้อมูล ID ทั้ง 2 แบบ
+                                    const lineId = result.user.providerData[0].uid; // U767...
+                                    const firebaseUid = result.user.uid;           // Kn2N...
                                     
-                                    // 🌟 เปลี่ยนจากการเก็บแค่ userId (LINE) เป็นการเก็บทั้งคู่
+                                    // 🌟 บันทึกทั้งคู่ลง Firestore เพื่อให้ Security Rules เช็คผ่าน
                                     await db.collection('users').doc(user.studentId).update({ 
-                                        userId: result.user.providerData[0].uid, // เก็บ LINE ID (U767...) ไว้เหมือนเดิมเพื่อใช้หาตัว
-                                        firebaseUid: result.user.uid             // 👈 เพิ่มตัวนี้! เก็บ Firebase UID (Kn2...)
+                                        userId: lineId,
+                                        firebaseUid: firebaseUid
                                     });
                                     
-                                    // อย่าลืมอัปเดต State ด้วย
-                                    setUser(prev => ({ ...prev, userId: result.user.providerData[0].uid, firebaseUid: result.user.uid }));
+                                    setUser(prev => ({ ...prev, userId: lineId, firebaseUid: firebaseUid }));
                                     
-                                    Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
+                                    Swal.fire({ 
+                                        icon: 'success', 
+                                        title: 'เชื่อมต่อสำเร็จ!', 
+                                        confirmButtonColor: '#0066FF', 
+                                        customClass: { popup: 'rounded-3xl' }
+                                    });
                                 } catch(e) {
+                                    console.error("Connect Error:", e);
                                     fireErrorAlert('พบข้อผิดพลาด', e.message);
                                 } finally {
                                     setLoading(false);
