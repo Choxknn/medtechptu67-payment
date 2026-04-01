@@ -2755,6 +2755,7 @@
 
                         if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                         localStorage.setItem('medtech_student_id', userDoc.id);
+                        localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
                         
                         setLoading(false);
                         setTimeout(() => {
@@ -2858,80 +2859,120 @@
                 }
             };
 
-           // 🌟 วางทับ useEffect ตัวเดิมในส่วนของ const App = () => { ... }
+           // 🚀 ระบบโหลดเข้าแอป (ปลอดภัย + โหลดไว)
             useEffect(() => {
                 let progressInterval;
+                
+                // ⚡ ฟังก์ชันเริ่มแถบโหลดแบบรวดเร็ว
                 const startLoading = () => {
-                    setAppProgress(1);
+                    setAppProgress(15);
                     progressInterval = setInterval(() => {
-                        setAppProgress(old => Math.min(90, old + (old < 50 ? (Math.random() * 8 + 4) : (Math.random() * 2 + 1))));
-                    }, 250);
+                        setAppProgress(old => {
+                            if (old >= 90) return 90; // ค้างไว้ที่ 90% รอโหลดเสร็จ
+                            return old + (Math.random() * 15 + 5); // วิ่งไวขึ้น
+                        });
+                    }, 150);
                 };
 
+                // 🛑 ฟังก์ชันจบการโหลดและเปลี่ยนหน้า
                 const finishLoad = (nextPage) => {
                     clearInterval(progressInterval);
                     setAppProgress(100);
-                    setTimeout(() => { setPage(nextPage); setAppProgress(null); }, 500);
+                    setTimeout(() => { 
+                        setPage(nextPage); 
+                        setAppProgress(null); 
+                    }, 200); // ลดเวลาหน่วงลงให้เว็บดูตอบสนองไวขึ้น
                 };
 
                 const initializeApp = async () => {
                     startLoading();
+                    
                     try {
-                        // 1. ดึงข้อมูลระบบ (เช็คปิดปรับปรุง)
+                        // --- 1. เช็คข้อมูลระบบ (ปิดปรับปรุง) ---
                         const configDoc = await db.collection('config').doc('system').get();
-                        
                         if (configDoc.exists) {
                             const sysData = configDoc.data();
                             if (sysData.maintenance === true || sysData.maintenance === 'ON') {
-                                setMaintenanceMsg(sysData.maintenanceMsg || 'ปิดปรับปรุงเซิร์ฟเวอร์');
-                                return finishLoad('maintenance');
+                                setMaintenanceMsg(sysData.maintenanceMsg || 'ขณะนี้ระบบกำลังปิดปรับปรุงชั่วคราว');
+                                return finishLoad('maintenance'); // หยุดแล้วไปหน้าปรับปรุง
                             }
                         }
 
-                        // 2. ใช้ Firebase Auth เช็คสถานะการล็อกอิน (สำหรับคนที่ล็อกอินด้วย LINE)
-                        auth.onAuthStateChanged(async (firebaseUser) => {
-                            if (firebaseUser) {
-                                // ถ้าเคยล็อกอินผ่าน LINE ไว้ ให้หาว่า UID นี้ตรงกับนักศึกษาคนไหน
-                                const lineUid = firebaseUser.providerData[0]?.uid || firebaseUser.uid;
-                                const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
-                                
-                                if (!userSnap.empty) {
-                                    const userDoc = userSnap.docs[0];
-                                    const userData = userDoc.data();
-                                    
-                                    if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                    
-                                    localStorage.setItem('medtech_student_id', userDoc.id); // ซิงค์กับระบบเดิม
-                                    setUser({ studentId: userDoc.id, ...userData });
-                                    setDashboardData({}); 
-                                    return finishLoad('dashboard');
-                                }
-                            }
-                            
-                            // 3. ตรวจสอบการล็อกอินด้วยรหัสผ่าน (Local Storage แบบเดิม)
-                            const savedStudentId = localStorage.getItem('medtech_student_id');
-                            if (savedStudentId) {
-                                const userDoc = await db.collection('users').doc(savedStudentId).get();
-                                if (userDoc.exists) {
-                                    const userData = userDoc.data();
-                                    if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                    
-                                    setUser({ studentId: savedStudentId, ...userData });
-                                    setDashboardData({}); 
-                                    return finishLoad('dashboard');
-                                } else {
-                                    // ถ้ารหัสนักศึกษาไม่มีในระบบแล้ว ให้ลบข้อมูลเครื่องทิ้ง
-                                    localStorage.removeItem('medtech_student_id');
-                                }
-                            }
-                            
-                            // ถ้าไม่เจอทั้งการล็อกอินด้วย LINE และ รหัสผ่าน ให้พาไปหน้า Login
-                            finishLoad('login');
+                        // --- 2. รอการยืนยันสถานะจาก Firebase Auth ---
+                        // เปลี่ยน onAuthStateChanged ให้เป็น Promise เพื่อให้โค้ดทำงานเป็นลำดับ
+                        const authUser = await new Promise(resolve => {
+                            const unsub = auth.onAuthStateChanged(user => {
+                                unsub(); // ฟังแค่ครั้งเดียวตอนโหลดเข้าเว็บ
+                                resolve(user);
+                            });
                         });
+
+                        if (authUser) {
+                            // ✅ ตรวจสอบแล้วว่าล็อกอินอยู่ (LINE หรือ Email)
+                            const savedId = localStorage.getItem('medtech_student_id');
+                            const savedData = localStorage.getItem('medtech_user_cache');
+
+                            if (savedId && savedData) {
+                                // 🌟 3. ล็อกอินอยู่ + มี Cache -> วาร์ปเข้าหน้า Dashboard ได้เลย
+                                try {
+                                    const cachedUser = JSON.parse(savedData);
+                                    setUser({ studentId: savedId, ...cachedUser });
+                                    setDashboardData({});
+                                    finishLoad('dashboard');
+                                    
+                                    // โหลดข้อมูลล่าสุดมาอัปเดตเบื้องหลัง (ไม่ต้องเปลี่ยนหน้าซ้ำ)
+                                    syncUserData(authUser, false); 
+                                } catch (e) {
+                                    // ถ้า Cache มีปัญหา ให้รันโหลดจากฐานข้อมูลใหม่
+                                    await syncUserData(authUser, true);
+                                }
+                            } else {
+                                // 4. ล็อกอินอยู่แต่ไม่มี Cache ในเครื่อง -> โหลดจากฐานข้อมูล
+                                await syncUserData(authUser, true);
+                            }
+                        } else {
+                            // 5. ไม่พบการล็อกอิน (Session หลุด หรือ ไม่เคยเข้า)
+                            localStorage.removeItem('medtech_student_id');
+                            localStorage.removeItem('medtech_user_cache');
+                            finishLoad('login');
+                        }
 
                     } catch (e) { 
                         console.error("Initialize Error:", e);
                         finishLoad('login'); 
+                    }
+                };
+
+                // 🔄 ฟังก์ชันเสริม: ดึงข้อมูลผู้ใช้จาก Firestore
+                const syncUserData = async (authUser, shouldNavigate = true) => {
+                    try {
+                        const lineUid = authUser.providerData[0]?.uid || authUser.uid;
+                        const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
+                        
+                        if (!userSnap.empty) {
+                            const userDoc = userSnap.docs[0];
+                            const userData = userDoc.data();
+                            
+                            if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                            
+                            // เซฟลงเครื่อง
+                            localStorage.setItem('medtech_student_id', userDoc.id);
+                            localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
+                            
+                            if (shouldNavigate) {
+                                setUser({ studentId: userDoc.id, ...userData });
+                                setDashboardData({});
+                                finishLoad('dashboard');
+                            } else {
+                                // อัปเดตข้อมูลเบื้องหลัง (กรณีวาร์ปเข้ามาด้วยแคชแล้ว)
+                                setUser(prev => ({ ...prev, ...userData }));
+                            }
+                        } else {
+                            if (shouldNavigate) finishLoad('login');
+                        }
+                    } catch (error) {
+                        console.error("Sync Error:", error);
+                        if (shouldNavigate) finishLoad('login');
                     }
                 };
 
@@ -3001,6 +3042,7 @@
 
                     if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                     localStorage.setItem('medtech_student_id', u);
+                    localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
 
                     setTimeout(() => {
                         setUser({ studentId: u, ...userData }); 
