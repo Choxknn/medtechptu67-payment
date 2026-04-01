@@ -368,7 +368,7 @@
             );
         };
 
-        // 🌟 คอมโพเนนต์ Register (ปรับดีไซน์ ขาว-แดง และแก้บั๊กส่ง LINE)
+        // 🌟 คอมโพเนนต์ Register (ปรับหน้าลืมรหัสผ่าน ให้แนะนำการล็อกอิน LINE / ติดต่อแอดมิน)
         const Register = ({ onBack, onRegisterSuccess }) => {
             const [step, setStep] = useState(1);
             const [studentId, setStudentId] = useState('');
@@ -389,10 +389,7 @@
                         const data = snap.data();
                         setStudentInfo({ 
                             name: data.name, 
-                            hasPassword: (data.hasPassword === true || !!data.password),
-                            // เก็บข้อมูล ID ไว้ใช้ใน step ถัดไป
-                            userId: data.userId,
-                            lineId: data.lineId
+                            hasPassword: (data.hasPassword === true || !!data.password)
                         }); 
                         setStep(2); 
                     } else { 
@@ -402,7 +399,7 @@
                 setLoading(false);
             };
 
-            // 🔑 สร้างรหัสผ่านใหม่
+            // 🔑 สร้างรหัสผ่านใหม่ (สำหรับคนที่ยังไม่เคยมีรหัส)
             const handleSetPassword = async () => {
                 if (!newPass || !confirmPass) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสผ่านให้ครบ', 'warning');
                 if (newPass.length < 6) return Swal.fire('แจ้งเตือน', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'warning');
@@ -425,37 +422,6 @@
                     if(e.code === 'auth/email-already-in-use') errMsg = 'รหัสนักศึกษานี้มีบัญชีในระบบแล้ว';
                     Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: errMsg, customClass: { popup: 'rounded-3xl' } }); 
                 }
-                setLoading(false);
-            };
-
-            // 📩 ส่งรหัสผ่านไปที่ LINE (🌟 แก้ไขจุดที่หา ID ไม่เจอ)
-            const handleRecovery = async () => {
-                setLoading(true);
-                try {
-                    const snap = await db.collection('users').doc(studentId).get();
-                    const data = snap.data();
-                    
-                    // 🌟 แก้ไข: ตรวจเช็คทั้ง userId และ lineId
-                    const targetLineId = data.userId || data.lineId;
-                    
-                    if (!targetLineId || targetLineId.length < 10) {
-                        throw new Error('ไม่พบการเชื่อมต่อ LINE ในระบบ โปรดติดต่อแอดมินเพื่อขอความช่วยเหลือ');
-                    }
-                    
-                    const payload = { 
-                        name: data.name, 
-                        password: data.password || "คุณมีการสร้างรหัสผ่านในระบบแล้ว หากจำไม่ได้โปรดติดต่อแอดมินเพื่อรีเซ็ต", 
-                        lineId: targetLineId 
-                    };
-                    
-                    const res = await runGoogleScript('sendRecoveryLineMessage', [payload]);
-                    
-                    if (res.success) { 
-                        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ระบบส่งข้อมูลไปที่ LINE ของคุณแล้ว', confirmButtonColor: '#00B900', customClass: { popup: 'rounded-3xl' } }).then(() => onBack()); 
-                    } else { 
-                        throw new Error(res.message); 
-                    }
-                } catch (e) { fireErrorAlert('ข้อผิดพลาด', e.message); }
                 setLoading(false);
             };
 
@@ -508,12 +474,28 @@
                                         </div>
 
                                         {studentInfo.hasPassword ? (
-                                            <div className="space-y-3 text-center">
-                                                <div className="bg-orange-50 text-orange-700 p-3 rounded-xl text-[11px] font-bold border border-orange-100"><i className="fa-solid fa-circle-exclamation mr-1.5"></i>คุณมีรหัสผ่านในระบบแล้ว</div>
-                                                <p className="text-[10px] text-gray-400 font-medium px-2">หากจำรหัสไม่ได้ สามารถให้ระบบส่งข้อมูลไปที่ LINE ของคุณได้ทันที</p>
-                                                <button onClick={handleRecovery} className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3 rounded-xl shadow-md transition-all transform active:scale-[0.98] flex justify-center items-center gap-2 text-xs">
-                                                    <i className="fa-brands fa-line text-lg"></i> ส่งข้อมูลไปที่ LINE
-                                                </button>
+                                            // 🌟 เปลี่ยนส่วนนี้ เป็นข้อความอธิบาย + ปุ่มกลับไปหน้าหลัก และ ปุ่มแอดไลน์
+                                            <div className="space-y-4 text-center animate-[pop_0.4s_ease-out]">
+                                                <div className="bg-orange-50 text-orange-800 p-4 rounded-xl border border-orange-100 flex items-start gap-3 text-left shadow-sm">
+                                                    <div className="w-8 h-8 bg-orange-200/50 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-orange-600">
+                                                        <i className="fa-solid fa-circle-exclamation"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h5 className="font-bold text-sm mb-1">คุณมีรหัสผ่านในระบบแล้ว</h5>
+                                                        <p className="text-[11px] font-medium text-orange-700 leading-relaxed">
+                                                            หากจำรหัสผ่านไม่ได้ คุณสามารถ <b>เข้าสู่ระบบผ่าน LINE</b> ที่หน้าแรกได้ทันทีหากเชื่อมแล้ว หรือ <b>ติดต่อแอดมิน</b> เพื่อขอรีเซ็ตรหัสผ่านใหม่
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex gap-2">
+                                                    <button onClick={onBack} className="flex-1 bg-gray-900 hover:bg-black text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] text-xs flex justify-center items-center gap-1.5">
+                                                        <i className="fa-solid fa-arrow-left"></i> กลับไปล็อกอิน
+                                                    </button>
+                                                    <a href="https://lin.ee/10OG1hK" target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] text-xs flex justify-center items-center gap-1.5 no-underline">
+                                                        <i className="fa-brands fa-line text-base"></i> ติดต่อแอดมิน
+                                                    </a>
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="space-y-3">
@@ -526,9 +508,11 @@
                                     </div>
                                 )}
                                 
-                                <button onClick={onBack} className="w-full mt-4 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors flex items-center justify-center gap-2">
-                                    <i className="fa-solid fa-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ
-                                </button>
+                                {step === 1 && (
+                                    <button onClick={onBack} className="w-full mt-4 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors flex items-center justify-center gap-2">
+                                        <i className="fa-solid fa-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ
+                                    </button>
+                                )}
                             </div>
 
                             <div className="mt-8 text-center pb-4">
