@@ -2337,7 +2337,7 @@
 
                                 // 🌟 2. เปิดหน้าต่าง LINE ล็อกอิน (Session จะเปลี่ยนเป็น LINE)
                                 const provider = new firebase.auth.OAuthProvider('oidc.line');
-                                const result = await auth.signInWithPopup(provider);
+                                await auth.signInWithRedirect(provider);
 
                                 const lineId = result.user.providerData[0].uid;
                                 const lineUid = result.user.uid;
