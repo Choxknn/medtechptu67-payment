@@ -2567,7 +2567,7 @@
             const [appProgress, setAppProgress] = useState(null);
             const [maintenanceMsg, setMaintenanceMsg] = useState('ปิดปรับปรุงเซิร์ฟเวอร์');
 
-            // 🌟 วางทับ handleLineLogin ใน App (เชื่อมสำเร็จแล้วเข้าสู่ระบบทันที)
+           // 🌟 วางทับ handleLineLogin ใน App (เชื่อมสำเร็จแล้วเข้าสู่ระบบทันที)
             const handleLineLogin = async () => {
                 try {
                     setLoading(true);
@@ -2692,241 +2692,87 @@
                 }
             };
 
-            // 🌟 2. โหลดระบบและดักจับ Redirect
+           // 🌟 วางทับ useEffect ตัวเดิมในส่วนของ const App = () => { ... }
             useEffect(() => {
+                let progressInterval;
+                const startLoading = () => {
+                    setAppProgress(1);
+                    progressInterval = setInterval(() => {
+                        setAppProgress(old => Math.min(90, old + (old < 50 ? (Math.random() * 8 + 4) : (Math.random() * 2 + 1))));
+                    }, 250);
+                };
+
+                const finishLoad = (nextPage) => {
+                    clearInterval(progressInterval);
+                    setAppProgress(100);
+                    setTimeout(() => { setPage(nextPage); setAppProgress(null); }, 500);
+                };
+
                 const initializeApp = async () => {
-                    setAppProgress(15); 
-                    
+                    startLoading();
                     try {
-                        // --- 1. เช็คปิดปรับปรุง ---
+                        // 1. ดึงข้อมูลระบบ (เช็คปิดปรับปรุง)
                         const configDoc = await db.collection('config').doc('system').get();
-                        if (configDoc.exists && (configDoc.data().maintenance === true || configDoc.data().maintenance === 'ON')) {
-                            setMaintenanceMsg(configDoc.data().maintenanceMsg || 'ขณะนี้ระบบกำลังปิดปรับปรุงชั่วคราว');
-                            setAppProgress(null);
-                            return setPage('maintenance');
-                        }
-
-                        // --- 2. ระบบ Cache (Warp Speed) - เช็คว่าไม่ได้กำลัง Redirect กลับมาจาก LINE ---
-                        const isRedirecting = window.location.href.includes('__firebase_request_key') || window.location.href.includes('code=');
                         
-                        if (!isRedirecting) {
-                            const savedId = localStorage.getItem('medtech_student_id');
-                            const savedData = localStorage.getItem('medtech_user_cache');
-
-                            if (savedId && savedData) {
-                                try {
-                                    const cachedUser = JSON.parse(savedData);
-                                    setUser({ studentId: savedId, ...cachedUser });
-                                    setDashboardData({});
-                                    setPage('dashboard');
-                                    setAppProgress(null);
-                                    return; // 🚀 วาร์ปเข้าหน้าจอทันที!
-                                } catch (e) { 
-                                    console.error("Cache Error"); 
-                                }
+                        if (configDoc.exists) {
+                            const sysData = configDoc.data();
+                            if (sysData.maintenance === true || sysData.maintenance === 'ON') {
+                                setMaintenanceMsg(sysData.maintenanceMsg || 'ปิดปรับปรุงเซิร์ฟเวอร์');
+                                return finishLoad('maintenance');
                             }
                         }
 
-                        // --- 3. ดักรับผลการ Redirect กลับมาจาก LINE ---
-                        try {
-                            const redirectResult = await auth.getRedirectResult();
-                            
-                            if (redirectResult && redirectResult.user) {
-                                setAppProgress(50);
-                                const fbUser = redirectResult.user;
-                                const lineId = fbUser.providerData[0]?.uid || fbUser.uid;
-                                const lineUid = fbUser.uid;
-                                
-                                const userSnap = await db.collection('users').where('userId', '==', lineId).get();
-                                const savedIdForLinking = localStorage.getItem('medtech_student_id');
-
-                                if (savedIdForLinking) {
-                                    // 👉 กรณี A: เชื่อมจากหน้าตั้งค่า
-                                    if (!userSnap.empty && userSnap.docs[0].id !== savedIdForLinking) {
-                                        const cachedData = JSON.parse(localStorage.getItem('medtech_user_cache') || "{}");
-                                        setUser({ studentId: savedIdForLinking, ...cachedData });
-                                        setDashboardData({});
-                                        setPage('dashboard');
-                                        setAppProgress(null);
-                                        Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: 'บัญชี LINE นี้ถูกผูกกับรหัสนักศึกษาอื่นไปแล้ว', customClass: { popup: 'rounded-3xl' } });
-                                        return;
-                                    }
-
-                                    const cachedData = JSON.parse(localStorage.getItem('medtech_user_cache') || "{}");
-                                    await db.collection('users').doc(savedIdForLinking).update({ 
-                                        userId: lineId,
-                                        lineUid: lineUid
-                                    });
-
-                                    cachedData.userId = lineId;
-                                    cachedData.lineUid = lineUid;
-                                    localStorage.setItem('medtech_user_cache', JSON.stringify(cachedData));
-
-                                    setUser({ studentId: savedIdForLinking, ...cachedData });
-                                    setDashboardData({});
-                                    setPage('dashboard');
-                                    setAppProgress(null);
-                                    Swal.fire({ icon: 'success', title: 'ผูกบัญชีสำเร็จ', text: 'เชื่อมต่อบัญชี LINE เรียบร้อยแล้ว', timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-3xl' } });
-                                    return;
-
-                                } else {
-                                    // 👉 กรณี B: เข้าสู่ระบบผ่าน LINE ครั้งแรก
-                                    if (!userSnap.empty) {
-                                        // เคยผูกไว้แล้ว
-                                        const userDoc = userSnap.docs[0];
-                                        const userData = userDoc.data();
-                                        
-                                        await db.collection('users').doc(userDoc.id).update({ lineUid: lineUid });
-
-                                        if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                        localStorage.setItem('medtech_student_id', userDoc.id);
-                                        localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
-                                        
-                                        setUser({ studentId: userDoc.id, ...userData, lineUid: lineUid });
-                                        setDashboardData({});
-                                        setPage('dashboard');
-                                        setAppProgress(null);
-                                        return; 
-                                    } else {
-                                        // ยังไม่เคยผูก ให้กรอกรหัส
-                                        setAppProgress(null); 
-                                        const { value: formValues } = await Swal.fire({
-                                            title: 'เชื่อมต่อบัญชี LINE',
-                                            html: `
-                                                <div class="text-left mt-2">
-                                                    <p class="text-sm text-gray-500 mb-4 text-center">ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้<br>กรุณากรอกรหัสนักศึกษาและรหัสผ่านเพื่อผูกบัญชี</p>
-                                                    <input id="link-id" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none mb-3 font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสนักศึกษา">
-                                                    <input id="link-pass" type="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสผ่าน">
-                                                </div>
-                                            `,
-                                            showCancelButton: true,
-                                            confirmButtonText: 'ผูกบัญชีและเข้าสู่ระบบ',
-                                            cancelButtonText: 'ยกเลิก',
-                                            confirmButtonColor: '#00B900',
-                                            customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' },
-                                            preConfirm: () => {
-                                                const id = document.getElementById('link-id').value;
-                                                const pass = document.getElementById('link-pass').value;
-                                                if(!id || !pass) {
-                                                    Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
-                                                    return false;
-                                                }
-                                                return { id, pass };
-                                            }
-                                        });
-
-                                        if (formValues) {
-                                            setLoading(true);
-                                            try {
-                                                const { id: u, pass: p } = formValues;
-                                                const checkDoc = await db.collection('users').doc(u).get();
-                                                if (!checkDoc.exists) throw new Error("ไม่พบรหัสนักศึกษาในระบบ");
-                                                
-                                                const userData = checkDoc.data();
-                                                const email = `${u}@ptu.ac.th`;
-                                                let finalFirebaseUid = userData.firebaseUid || "";
-                                                
-                                                if (userData.hasPassword) {
-                                                    const emailCred = await auth.signInWithEmailAndPassword(email, p);
-                                                    finalFirebaseUid = emailCred.user.uid;
-                                                } else {
-                                                    if (userData.password !== p) throw new Error("รหัสผ่านไม่ถูกต้อง");
-                                                    const emailCred = await auth.createUserWithEmailAndPassword(email, p);
-                                                    finalFirebaseUid = emailCred.user.uid;
-                                                }
-
-                                                await db.collection('users').doc(u).update({ 
-                                                    userId: lineId,
-                                                    lineUid: lineUid,
-                                                    firebaseUid: finalFirebaseUid,
-                                                    hasPassword: true,
-                                                    password: firebase.firestore.FieldValue.delete()
-                                                });
-
-                                                if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                                localStorage.setItem('medtech_student_id', u);
-                                                localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
-                                                
-                                                setLoading(false);
-                                                setUser({ studentId: u, ...userData, userId: lineId, lineUid: lineUid, firebaseUid: finalFirebaseUid });
-                                                setDashboardData({}); 
-                                                setPage('dashboard');
-                                                Swal.fire({ icon: 'success', title: 'ผูกบัญชีสำเร็จ', text: 'ยินดีต้อนรับเข้าสู่ระบบครับ', timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-3xl' } });
-                                                return;
-                                            } catch (err) {
-                                                await auth.signOut();
-                                                setLoading(false);
-                                                let errMsg = err.message;
-                                                if (errMsg.includes('auth/')) errMsg = "รหัสผ่านไม่ถูกต้อง";
-                                                Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: errMsg, customClass: { popup: 'rounded-3xl' } });
-                                                setPage('login');
-                                                return;
-                                            }
-                                        } else {
-                                            await auth.signOut();
-                                            setPage('login');
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (redirectError) {
-                            // 🛑 ดักจับ Error Missing Initial State ให้แสดงหน้าต่างแทนจอขาว
-                            if (redirectError.code === 'auth/missing-initial-state' || redirectError?.message?.includes('initial state')) {
-                                setAppProgress(null);
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'เบราว์เซอร์บล็อกการเข้าสู่ระบบ',
-                                    html: '<div class="text-sm text-gray-600 text-left mt-2 space-y-3"><p>ระบบความปลอดภัยของเบราว์เซอร์นี้ปิดกั้นการเข้าสู่ระบบด้วย LINE</p><p class="font-bold text-gray-800">💡 วิธีแก้ไข:</p><p>1. แนะนำให้ <b>เข้าสู่ระบบด้วยรหัสนักศึกษาและรหัสผ่านแทน</b></p><p>2. หรือกดปุ่ม 3 จุดมุมขวาบน <i class="fa-solid fa-ellipsis-vertical mx-1"></i> แล้วเลือก <b>"เปิดในเบราว์เซอร์เริ่มต้น"</b> (Chrome/Safari) แล้วค่อยล็อกอินด้วย LINE ครับ</p></div>',
-                                    confirmButtonColor: '#0066FF',
-                                    confirmButtonText: 'เข้าใจแล้ว',
-                                    customClass: { popup: 'rounded-3xl' }
-                                });
-                                return setPage('login');
-                            }
-                            console.error("Redirect Fallback Error:", redirectError);
-                        }
-
-                        // --- 4. Fallback เช็ค Auth แบบปกติ ---
-                        setAppProgress(80);
+                        // 2. ใช้ Firebase Auth เช็คสถานะการล็อกอิน (สำหรับคนที่ล็อกอินด้วย LINE)
                         auth.onAuthStateChanged(async (firebaseUser) => {
                             if (firebaseUser) {
+                                // ถ้าเคยล็อกอินผ่าน LINE ไว้ ให้หาว่า UID นี้ตรงกับนักศึกษาคนไหน
                                 const lineUid = firebaseUser.providerData[0]?.uid || firebaseUser.uid;
                                 const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
                                 
                                 if (!userSnap.empty) {
                                     const userDoc = userSnap.docs[0];
                                     const userData = userDoc.data();
+                                    
                                     if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                                     
-                                    localStorage.setItem('medtech_student_id', userDoc.id);
-                                    localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
-                                    
+                                    localStorage.setItem('medtech_student_id', userDoc.id); // ซิงค์กับระบบเดิม
                                     setUser({ studentId: userDoc.id, ...userData });
-                                    setDashboardData({});
-                                    setPage('dashboard');
-                                } else {
-                                    localStorage.removeItem('medtech_student_id');
-                                    localStorage.removeItem('medtech_user_cache');
-                                    setPage('login');
+                                    setDashboardData({}); 
+                                    return finishLoad('dashboard');
                                 }
-                            } else {
-                                setPage('login');
                             }
-                            setAppProgress(null);
+                            
+                            // 3. ตรวจสอบการล็อกอินด้วยรหัสผ่าน (Local Storage แบบเดิม)
+                            const savedStudentId = localStorage.getItem('medtech_student_id');
+                            if (savedStudentId) {
+                                const userDoc = await db.collection('users').doc(savedStudentId).get();
+                                if (userDoc.exists) {
+                                    const userData = userDoc.data();
+                                    if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                                    
+                                    setUser({ studentId: savedStudentId, ...userData });
+                                    setDashboardData({}); 
+                                    return finishLoad('dashboard');
+                                } else {
+                                    // ถ้ารหัสนักศึกษาไม่มีในระบบแล้ว ให้ลบข้อมูลเครื่องทิ้ง
+                                    localStorage.removeItem('medtech_student_id');
+                                }
+                            }
+                            
+                            // ถ้าไม่เจอทั้งการล็อกอินด้วย LINE และ รหัสผ่าน ให้พาไปหน้า Login
+                            finishLoad('login');
                         });
 
-                    } catch (error) {
-                        console.error("Init error:", error);
-                        setPage('login');
-                        setAppProgress(null);
+                    } catch (e) { 
+                        console.error("Initialize Error:", e);
+                        finishLoad('login'); 
                     }
                 };
 
                 initializeApp();
             }, []);
 
-            // 🌟 3. ล็อกอินปกติด้วยรหัสผ่าน
+           // 🌟 วางทับ handleLogin ใน App (ฉบับแก้บั๊กค้างเติ่ง + ซ่อมแซมตัวเอง)
             const handleLogin = async (u, p) => {
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 setLoginProgress(1);
@@ -2935,31 +2781,52 @@
                 try {
                     const email = `${u}@ptu.ac.th`; 
                     let userCred;
+                    let needsMigration = false;
                     
                     try {
+                        // 1. ลองล็อกอินผ่าน Firebase Auth ก่อน
                         userCred = await auth.signInWithEmailAndPassword(email, p);
                     } catch (authError) {
+                        // 2. ถ้าเข้าไม่ได้ ให้เช็คว่าเป็นผู้ใช้เก่าที่ต้องย้ายข้อมูล (Migration) หรือไม่
                         if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential' || authError.code === 'auth/invalid-login-credentials') {
                             const userDoc = await db.collection('users').doc(u).get();
+                            
+                            // เช็คว่ารหัสผ่านเดิมในฐานข้อมูลตรงกันไหม
                             if (userDoc.exists && userDoc.data().password === p) {
-                                try { userCred = await auth.createUserWithEmailAndPassword(email, p); } 
-                                catch (createErr) {
-                                    if (createErr.code === 'auth/email-already-in-use') { userCred = await auth.signInWithEmailAndPassword(email, p); } 
-                                    else { throw createErr; }
+                                needsMigration = true;
+                                try {
+                                    // 2.1 สร้างบัญชี Auth ให้ใหม่
+                                    userCred = await auth.createUserWithEmailAndPassword(email, p);
+                                } catch (createErr) {
+                                    // 🌟 ดักจับกรณีสร้างใน Auth ไปแล้วแต่ Firestore ค้างเติ่ง (เน็ตหลุด/กดเบิ้ล)
+                                    if (createErr.code === 'auth/email-already-in-use') {
+                                        userCred = await auth.signInWithEmailAndPassword(email, p);
+                                    } else {
+                                        throw createErr;
+                                    }
                                 }
-                            } else { throw new Error('auth/wrong-password'); }
-                        } else { throw authError; }
+                            } else {
+                                throw new Error('auth/wrong-password'); // รหัสเก่าก็ไม่ถูก เตะออกเลย
+                            }
+                        } else {
+                            throw authError;
+                        }
                     }
 
+                    // 🌟 3. บังคับอัปเดต Firestore (สำหรับคนที่เพิ่งย้าย หรือคนที่ค้างจากการสร้างรอบที่แล้ว)
                     if (userCred) {
                         const checkDoc = await db.collection('users').doc(u).get();
+                        // ถ้า firebaseUid ยังไม่ถูกบันทึก ให้จัดการอัปเดตให้เรียบร้อย
                         if (checkDoc.exists && !checkDoc.data().firebaseUid) {
                             await db.collection('users').doc(u).update({ 
-                                hasPassword: true, firebaseUid: userCred.user.uid, password: firebase.firestore.FieldValue.delete() 
+                                hasPassword: true,
+                                firebaseUid: userCred.user.uid,
+                                password: firebase.firestore.FieldValue.delete() 
                             });
                         }
                     }
 
+                    // 4. เมื่อเคลียร์ทุกอย่างเสร็จสมบูรณ์ ดึงข้อมูลโปรไฟล์จาก Firestore มาเปิดหน้าเว็บ
                     const finalUserDoc = await db.collection('users').doc(u).get();
                     const userData = finalUserDoc.data();
 
@@ -2968,14 +2835,15 @@
 
                     if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                     localStorage.setItem('medtech_student_id', u);
-                    localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
 
                     setTimeout(() => {
                         setUser({ studentId: u, ...userData }); 
                         setDashboardData({}); 
                         setPage('dashboard');
                         setLoginProgress(null);
-                        Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: `ยินดีต้อนรับ คุณ${userData.name}` });
+                        if (!liffUserId) {
+                            Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, icon: 'success', title: `ยินดีต้อนรับ คุณ${userData.name}` });
+                        }
                     }, 600);
 
                 } catch(e) { 
@@ -2989,11 +2857,19 @@
             
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
-            // 🌟 4. ออกจากระบบ
+            // 🌟 วางทับ handleLogout ตัวเดิม (สลับลำดับการทำงานเพื่อแก้บั๊กเด้งกลับ)
             const handleLogout = async () => {
+                // 1. เคลียร์ Local Storage ทิ้งก่อนเป็นอันดับแรกเลย! ระบบจะได้ไม่เผลอดึงกลับเข้ามา
                 localStorage.removeItem('medtech_student_id');
-                localStorage.removeItem('medtech_user_cache');
-                try { await auth.signOut(); } catch (e) {}
+                
+                // 2. สั่ง Firebase Auth ให้ล็อกเอาท์
+                try {
+                    await auth.signOut(); 
+                } catch (e) {
+                    console.error("Logout Error:", e);
+                }
+
+                // 3. รีเซ็ต State เพื่อพากลับไปหน้า Login
                 setUser(null); 
                 setDashboardData(null);
                 setPage('login'); 
@@ -3006,7 +2882,12 @@
                     {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} onLineLogin={handleLineLogin} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && (
-                    <Dashboard user={user} setUser={setUser} initialData={dashboardData} onLogout={handleLogout} />
+                    <Dashboard 
+                        user={user} 
+                        setUser={setUser} // 🌟 เพิ่มบรรทัดนี้ลงไป 🌟
+                        initialData={dashboardData} 
+                        onLogout={handleLogout} 
+                    />
                 )}
                     {page === 'maintenance' && <MaintenanceMode message={maintenanceMsg} onBypass={() => setPage('login')} />}
                     {loading && <Loading />}
