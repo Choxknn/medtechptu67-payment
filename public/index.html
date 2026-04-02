@@ -2542,15 +2542,17 @@
             const [user, setUser] = useState(null);
             const [dashboardData, setDashboardData] = useState(null);
             const [loading, setLoading] = useState(false);
+            const [liffUserId, setLiffUserId] = useState(null);
             const [loginProgress, setLoginProgress] = useState(null);
             const [appProgress, setAppProgress] = useState(null);
             const [maintenanceMsg, setMaintenanceMsg] = useState('ปิดปรับปรุงเซิร์ฟเวอร์');
 
-            // 🌟 1. ระบบ Login ผ่าน LINE (ใช้ Redirect ปกติ)
+            // 🌟 1. ระบบ Login ผ่าน LINE (เอาตัวดักจับเบราว์เซอร์ออกตามที่ขอครับ)
             const handleLineLogin = async () => {
                 try {
                     setLoading(true);
                     const provider = new firebase.auth.OAuthProvider('oidc.line');
+                    // สั่ง Redirect ทันทีไม่สนว่าเปิดจากแอปไหน
                     await auth.signInWithRedirect(provider);
                 } catch (error) {
                     console.error("Login Error:", error);
@@ -2559,13 +2561,13 @@
                 }
             };
 
-            // 🌟 2. ดักจับผลการล็อกอิน LINE, ดัก Error และใช้ Cache (Warp Speed)
+            // 🌟 2. โหลดระบบและดักจับ Redirect
             useEffect(() => {
                 const initializeApp = async () => {
                     setAppProgress(15); 
                     
                     try {
-                        // 🚧 2.1 เช็คปิดปรับปรุง
+                        // --- 1. เช็คปิดปรับปรุง ---
                         const configDoc = await db.collection('config').doc('system').get();
                         if (configDoc.exists && (configDoc.data().maintenance === true || configDoc.data().maintenance === 'ON')) {
                             setMaintenanceMsg(configDoc.data().maintenanceMsg || 'ขณะนี้ระบบกำลังปิดปรับปรุงชั่วคราว');
@@ -2573,7 +2575,7 @@
                             return setPage('maintenance');
                         }
 
-                        // ⚡ 2.2 ระบบ Cache (Warp Speed) - เช็คว่าไม่ได้กำลัง Redirect กลับมาจาก LINE 
+                        // --- 2. ระบบ Cache (Warp Speed) - เช็คว่าไม่ได้กำลัง Redirect กลับมาจาก LINE ---
                         const isRedirecting = window.location.href.includes('__firebase_request_key') || window.location.href.includes('code=');
                         
                         if (!isRedirecting) {
@@ -2594,7 +2596,7 @@
                             }
                         }
 
-                        // 🌟 2.3 ดักรับผลการ Redirect กลับมาจาก LINE
+                        // --- 3. ดักรับผลการ Redirect กลับมาจาก LINE ---
                         try {
                             const redirectResult = await auth.getRedirectResult();
                             
@@ -2738,23 +2740,23 @@
                                 }
                             }
                         } catch (redirectError) {
-                            // 🛑 2.4 ดักจับ Error Missing Initial State (โดนแอป LINE บล็อก Session)
+                            // 🛑 ดักจับ Error Missing Initial State ให้แสดงหน้าต่างแทนจอขาว
                             if (redirectError.code === 'auth/missing-initial-state' || redirectError?.message?.includes('initial state')) {
                                 setAppProgress(null);
                                 Swal.fire({
                                     icon: 'warning',
-                                    title: 'เบราว์เซอร์บล็อกการทำงาน',
-                                    html: '<div class="text-sm text-gray-600 text-left mt-2 space-y-3"><p>ระบบความปลอดภัยของแอป LINE ได้ปิดกั้นการเข้าสู่ระบบ</p><p class="font-bold text-gray-800">💡 วิธีแก้ไข:</p><p>1. แนะนำให้ <b>เข้าสู่ระบบด้วยรหัสนักศึกษาและรหัสผ่านแทน</b></p><p>2. หรือกดปุ่ม 3 จุดมุมขวาบน <i class="fa-solid fa-ellipsis-vertical mx-1"></i> แล้วเลือก <b>"เปิดในเบราว์เซอร์เริ่มต้น"</b> (Chrome/Safari) แล้วค่อยล็อกอินด้วย LINE ครับ</p></div>',
+                                    title: 'เบราว์เซอร์บล็อกการเข้าสู่ระบบ',
+                                    html: '<div class="text-sm text-gray-600 text-left mt-2 space-y-3"><p>ระบบความปลอดภัยของเบราว์เซอร์นี้ปิดกั้นการเข้าสู่ระบบด้วย LINE</p><p class="font-bold text-gray-800">💡 วิธีแก้ไข:</p><p>1. แนะนำให้ <b>เข้าสู่ระบบด้วยรหัสนักศึกษาและรหัสผ่านแทน</b></p><p>2. หรือกดปุ่ม 3 จุดมุมขวาบน <i class="fa-solid fa-ellipsis-vertical mx-1"></i> แล้วเลือก <b>"เปิดในเบราว์เซอร์เริ่มต้น"</b> (Chrome/Safari) แล้วค่อยล็อกอินด้วย LINE ครับ</p></div>',
                                     confirmButtonColor: '#0066FF',
                                     confirmButtonText: 'เข้าใจแล้ว',
-                                    customClass: { popup: 'rounded-[2rem]' }
+                                    customClass: { popup: 'rounded-3xl' }
                                 });
                                 return setPage('login');
                             }
-                            console.error("Redirect Error:", redirectError);
+                            console.error("Redirect Fallback Error:", redirectError);
                         }
 
-                        // ⏳ 2.5 Fallback เช็ค Auth แบบปกติ (กรณีไม่มีอะไรเกิดขึ้น)
+                        // --- 4. Fallback เช็ค Auth แบบปกติ ---
                         setAppProgress(80);
                         auth.onAuthStateChanged(async (firebaseUser) => {
                             if (firebaseUser) {
@@ -2873,8 +2875,8 @@
                     {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} onLineLogin={handleLineLogin} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && (
-                        <Dashboard user={user} setUser={setUser} initialData={dashboardData} onLogout={handleLogout} />
-                    )}
+                    <Dashboard user={user} setUser={setUser} initialData={dashboardData} onLogout={handleLogout} />
+                )}
                     {page === 'maintenance' && <MaintenanceMode message={maintenanceMsg} onBypass={() => setPage('login')} />}
                     {loading && <Loading />}
                 </div>
