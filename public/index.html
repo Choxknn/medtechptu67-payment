@@ -2738,7 +2738,7 @@
                 try {
                     setLoading(true);
                     const provider = new firebase.auth.OAuthProvider('oidc.line');
-                    const result = await auth.signInWithPopup(provider);
+                    const result = await auth.signInWithRedirect(provider);
                     
                     const lineId = result.user.providerData[0].uid; // ID ของ LINE (U767...)
                     const lineUid = result.user.uid;               // UID ของ Firebase LINE (Kn2N...)
@@ -2862,51 +2862,73 @@
           // 🚀 โหลดแบบปลอดภัยสูงสุด (เช็คปิดปรับปรุง -> เชื่อใจ Cache -> เช็ค Auth)
             useEffect(() => {
                 const initializeApp = async () => {
-                    setAppProgress(15); // เริ่มโชว์แถบโหลด เพื่อให้รู้ว่ากำลังติดต่อเซิร์ฟเวอร์
+                    setAppProgress(15); 
 
                     try {
-                        // 🚧 1. เช็คสถานะ "ปิดปรับปรุง" เป็นอันดับแรกสุด! (High Priority)
+                        // 🚧 1. เช็คสถานะ "ปิดปรับปรุง" (High Priority)
                         const configDoc = await db.collection('config').doc('system').get();
                         if (configDoc.exists) {
                             const sysData = configDoc.data();
                             if (sysData.maintenance === true || sysData.maintenance === 'ON') {
                                 setMaintenanceMsg(sysData.maintenanceMsg || 'ขณะนี้ระบบกำลังปิดปรับปรุงชั่วคราว');
                                 setAppProgress(null);
-                                return setPage('maintenance'); // 🛑 หยุดการทำงานทั้งหมด แล้วเด้งไปหน้าปิดปรับปรุงทันที
+                                return setPage('maintenance');
+                            }
+                        }
+
+                        // 🌟 2. ดักรับผลการ Redirect จาก LINE (แก้ปัญหา Popup Blocked)
+                        // เมื่อล็อกอินเสร็จ LINE จะดีดกลับมาที่หน้านี้ โค้ดส่วนนี้จะทำงานทันที
+                        const redirectResult = await auth.getRedirectResult();
+                        if (redirectResult && redirectResult.user) {
+                            setAppProgress(50);
+                            const user = redirectResult.user;
+                            const lineId = user.providerData[0]?.uid || user.uid;
+                            
+                            // เช็คในฐานข้อมูลว่าผูกรหัสนักศึกษาไว้หรือยัง
+                            const userSnap = await db.collection('users').where('userId', '==', lineId).get();
+                            if (!userSnap.empty) {
+                                const userDoc = userSnap.docs[0];
+                                const userData = userDoc.data();
+                                // บันทึกลงเครื่องและวาร์ปเข้า Dashboard
+                                localStorage.setItem('medtech_student_id', userDoc.id);
+                                localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
+                                setUser({ studentId: userDoc.id, ...userData });
+                                setDashboardData({});
+                                setPage('dashboard');
+                                setAppProgress(null);
+                                return; // 🛑 จบงานตรงนี้เลย
+                            } else {
+                                // ถ้ายังไม่ผูกบัญชี ให้แสดงหน้ากรอกรหัส (ตามฟังก์ชันเดิมที่คุณมี)
+                                // หรือเปลี่ยนหน้าไปที่หน้าให้กรอกข้อมูลผูกบัญชี
+                                if (window.handleNewOrderLineLink) {
+                                    window.handleNewOrderLineLink(lineId, user.uid);
+                                }
                             }
                         }
 
                         // ถ้าระบบเปิดปกติ ให้ไปสเต็ปถัดไป
-                        setAppProgress(40);
+                        setAppProgress(60);
 
-                        // ⚡ 2. เช็ค Cache ในเครื่อง
+                        // ⚡ 3. เช็ค Cache ในเครื่อง (ถ้าไม่มี Redirect เข้ามา)
                         const savedId = localStorage.getItem('medtech_student_id');
                         const savedData = localStorage.getItem('medtech_user_cache');
 
-                        // ==========================================
-                        // 🌟 กรณีที่ 1: เคยล็อกอินแล้ว (มี Cache ในเครื่อง)
-                        // ==========================================
                         if (savedId && savedData) {
                             try {
                                 const cachedUser = JSON.parse(savedData);
                                 setUser({ studentId: savedId, ...cachedUser });
                                 setDashboardData({});
-                                setPage('dashboard'); // 🚀 วาร์ปเข้าหน้า Dashboard ทันที!
+                                setPage('dashboard');
                                 setAppProgress(null);
-                                return; // 🛑 จบการทำงานตรงนี้เลย ไม่ต้องไปถาม Firebase Auth 
+                                return; 
                             } catch (e) { 
                                 console.error("Cache Error, fallback to normal load"); 
                             }
                         }
 
-                        setAppProgress(60);
-
-                        // ==========================================
-                        // ⏳ กรณีที่ 2: ไม่เคยล็อกอิน หรือ กดออกจากระบบ (ไม่มี Cache)
-                        // ==========================================
+                        // ⏳ 4. เช็ค AuthState ปกติ (Fallback)
                         auth.onAuthStateChanged(async (firebaseUser) => {
                             if (firebaseUser) {
-                                // เช็คเผื่อว่ามี Session ของ LINE ค้างอยู่
                                 const lineUid = firebaseUser.providerData[0]?.uid || firebaseUser.uid;
                                 const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
                                 
@@ -2915,7 +2937,6 @@
                                     const userData = userDoc.data();
                                     if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                                     
-                                    // บันทึกลง Cache ไว้ใช้รอบหน้า
                                     localStorage.setItem('medtech_student_id', userDoc.id);
                                     localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
                                     
@@ -2923,15 +2944,14 @@
                                     setDashboardData({});
                                     setPage('dashboard');
                                 } else {
-                                    // ถ้าหาบัญชีไม่เจอ ให้เคลียร์ข้อมูลเก่าทิ้ง
                                     localStorage.removeItem('medtech_student_id');
                                     localStorage.removeItem('medtech_user_cache');
                                     setPage('login');
                                 }
                             } else {
-                                setPage('login'); // ถ้าไม่ได้ล็อกอินเลย ก็พาไปหน้าล็อกอิน
+                                setPage('login');
                             }
-                            setAppProgress(null); // ปิดหน้าโหลด
+                            setAppProgress(null);
                         });
 
                     } catch (error) {
