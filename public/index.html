@@ -2708,12 +2708,11 @@
             const [appProgress, setAppProgress] = useState(null);
             const [maintenanceMsg, setMaintenanceMsg] = useState('ปิดปรับปรุงเซิร์ฟเวอร์');
 
-          // 🌟 1. วางทับ handleLineLogin เดิมใน App
+            // 🌟 1. เข้าสู่ระบบผ่าน LINE
             const handleLineLogin = async () => {
                 try {
                     setLoading(true);
                     const provider = new firebase.auth.OAuthProvider('oidc.line');
-                    // 🛑 สั่งเปิดหน้า LINE แล้วจบการทำงานของฟังก์ชันนี้เลย!
                     await auth.signInWithRedirect(provider);
                 } catch (error) {
                     console.error("Login Error:", error);
@@ -2722,13 +2721,12 @@
                 }
             };
 
-          // 🚀 โหลดแบบปลอดภัยสูงสุด (ดักจับ Redirect ของ LINE อย่างถูกต้อง)
+            // 🌟 2. ดักจับและโหลดระบบ
             useEffect(() => {
                 const initializeApp = async () => {
                     setAppProgress(15); 
 
                     try {
-                        // 🚧 1. เช็คสถานะ "ปิดปรับปรุง" (High Priority)
                         const configDoc = await db.collection('config').doc('system').get();
                         if (configDoc.exists) {
                             const sysData = configDoc.data();
@@ -2739,8 +2737,6 @@
                             }
                         }
 
-                        // 🌟 2. ดักรับผลการ Redirect กลับมาจาก LINE 
-                        // เมื่อ LINE ดีดกลับมาที่เว็บ โค้ดตรงนี้จะทำงานทันที
                         const redirectResult = await auth.getRedirectResult();
                         
                         if (redirectResult && redirectResult.user) {
@@ -2749,18 +2745,11 @@
                             const lineId = fbUser.providerData[0]?.uid || fbUser.uid;
                             const lineUid = fbUser.uid;
                             
-                            // หาบัญชีในฐานข้อมูลที่มี userId ตรงกับ LINE ที่ล็อกอินเข้ามา
                             const userSnap = await db.collection('users').where('userId', '==', lineId).get();
-
-                            // 🔍 เช็คก่อนว่ามี Session ของนักศึกษาค้างอยู่หรือไม่ (กรณีที่กดผูกบัญชีจากในหน้าตั้งค่า)
                             const savedIdForLinking = localStorage.getItem('medtech_student_id');
 
                             if (savedIdForLinking) {
-                                // --- กรณี A: ผู้ใช้อยู่ในระบบอยู่แล้ว และกด "ผูกบัญชี LINE" จากเมนูตั้งค่า ---
-                                
-                                // เช็คว่า LINE นี้ถูกคนอื่นเอาไปผูกหรือยัง?
                                 if (!userSnap.empty && userSnap.docs[0].id !== savedIdForLinking) {
-                                     // ถ้ามีคนใช้แล้ว เตะกลับไปหน้า Dashboard แล้วแจ้งเตือน
                                      const cachedData = JSON.parse(localStorage.getItem('medtech_user_cache') || "{}");
                                      setUser({ studentId: savedIdForLinking, ...cachedData });
                                      setDashboardData({});
@@ -2770,20 +2759,12 @@
                                      return;
                                 }
 
-                                // สลับกลับเป็น Email Session เพื่อให้มีสิทธิ์เขียน (ไม่งั้นจะติด Permission Denied)
                                 const cachedData = JSON.parse(localStorage.getItem('medtech_user_cache') || "{}");
-                                const email = `${savedIdForLinking}@ptu.ac.th`;
-                                
-                                // ขอรหัสผ่านจากผู้ใช้อีกครั้ง (เพราะเปลี่ยน Session) หรือใช้เทคนิคให้กรอกตอนก่อนกดปุ่มเชื่อม
-                                // *ในที่นี้เราพึ่งการตั้งค่า Firestore Rules ให้ Owner แก้ไขข้อมูลตัวเองได้อยู่แล้ว
-                                
-                                // อัปเดตข้อมูล LINE ลง Firestore ของนักศึกษาคนนั้น
                                 await db.collection('users').doc(savedIdForLinking).update({ 
                                     userId: lineId,
                                     lineUid: lineUid
                                 });
 
-                                // อัปเดต Cache
                                 cachedData.userId = lineId;
                                 cachedData.lineUid = lineUid;
                                 localStorage.setItem('medtech_user_cache', JSON.stringify(cachedData));
@@ -2796,9 +2777,7 @@
                                 return;
 
                             } else {
-                                // --- กรณี B: ล็อกอินผ่าน LINE จากหน้าแรก ---
                                 if (!userSnap.empty) {
-                                    // 👉 กรณี B1: เคยผูกแล้ว -> วาร์ปเข้า Dashboard ให้เลย
                                     const userDoc = userSnap.docs[0];
                                     const userData = userDoc.data();
                                     
@@ -2814,7 +2793,6 @@
                                     setAppProgress(null);
                                     return; 
                                 } else {
-                                    // 👉 กรณี B2: ยังไม่เคยผูกบัญชี -> เด้ง Popup ถามรหัสนักศึกษา/รหัสผ่าน
                                     setAppProgress(null); 
                                     
                                     const { value: formValues } = await Swal.fire({
@@ -2890,16 +2868,14 @@
                                             return;
                                         }
                                     } else {
-                                        // ถ้ายกเลิกป๊อปอัป ให้เคลียร์ Session ค้างของ LINE ออก
                                         await auth.signOut();
                                         setPage('login');
                                         return;
                                     }
                                 }
                             }
-                        }
+                        } // 🌟 ตรงนี้แหละครับ! ปีกกาที่ผมลืมใส่ให้รอบที่แล้ว 😅
 
-                        // ⚡ 3. เช็ค Cache ในเครื่อง (ถ้าไม่ได้มีการ Redirect มา)
                         setAppProgress(60);
                         const savedId = localStorage.getItem('medtech_student_id');
                         const savedData = localStorage.getItem('medtech_user_cache');
@@ -2913,11 +2889,10 @@
                                 setAppProgress(null);
                                 return; 
                             } catch (e) { 
-                                console.error("Cache Error, fallback to normal load"); 
+                                console.error("Cache Error"); 
                             }
                         }
 
-                        // ⏳ 4. เช็ค AuthState ปกติ (Fallback)
                         auth.onAuthStateChanged(async (firebaseUser) => {
                             if (firebaseUser) {
                                 const lineUid = firebaseUser.providerData[0]?.uid || firebaseUser.uid;
@@ -2954,7 +2929,8 @@
 
                 initializeApp();
             }, []);
-           // 🌟 วางทับ handleLogin ใน App (ฉบับแก้บั๊กค้างเติ่ง + ซ่อมแซมตัวเอง)
+
+            // 🌟 3. เข้าสู่ระบบแบบปกติ
             const handleLogin = async (u, p) => {
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 setLoginProgress(1);
@@ -2963,24 +2939,16 @@
                 try {
                     const email = `${u}@ptu.ac.th`; 
                     let userCred;
-                    let needsMigration = false;
                     
                     try {
-                        // 1. ลองล็อกอินผ่าน Firebase Auth ก่อน
                         userCred = await auth.signInWithEmailAndPassword(email, p);
                     } catch (authError) {
-                        // 2. ถ้าเข้าไม่ได้ ให้เช็คว่าเป็นผู้ใช้เก่าที่ต้องย้ายข้อมูล (Migration) หรือไม่
                         if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential' || authError.code === 'auth/invalid-login-credentials') {
                             const userDoc = await db.collection('users').doc(u).get();
-                            
-                            // เช็คว่ารหัสผ่านเดิมในฐานข้อมูลตรงกันไหม
                             if (userDoc.exists && userDoc.data().password === p) {
-                                needsMigration = true;
                                 try {
-                                    // 2.1 สร้างบัญชี Auth ให้ใหม่
                                     userCred = await auth.createUserWithEmailAndPassword(email, p);
                                 } catch (createErr) {
-                                    // 🌟 ดักจับกรณีสร้างใน Auth ไปแล้วแต่ Firestore ค้างเติ่ง (เน็ตหลุด/กดเบิ้ล)
                                     if (createErr.code === 'auth/email-already-in-use') {
                                         userCred = await auth.signInWithEmailAndPassword(email, p);
                                     } else {
@@ -2988,17 +2956,15 @@
                                     }
                                 }
                             } else {
-                                throw new Error('auth/wrong-password'); // รหัสเก่าก็ไม่ถูก เตะออกเลย
+                                throw new Error('auth/wrong-password'); 
                             }
                         } else {
                             throw authError;
                         }
                     }
 
-                    // 🌟 3. บังคับอัปเดต Firestore (สำหรับคนที่เพิ่งย้าย หรือคนที่ค้างจากการสร้างรอบที่แล้ว)
                     if (userCred) {
                         const checkDoc = await db.collection('users').doc(u).get();
-                        // ถ้า firebaseUid ยังไม่ถูกบันทึก ให้จัดการอัปเดตให้เรียบร้อย
                         if (checkDoc.exists && !checkDoc.data().firebaseUid) {
                             await db.collection('users').doc(u).update({ 
                                 hasPassword: true,
@@ -3008,7 +2974,6 @@
                         }
                     }
 
-                    // 4. เมื่อเคลียร์ทุกอย่างเสร็จสมบูรณ์ ดึงข้อมูลโปรไฟล์จาก Firestore มาเปิดหน้าเว็บ
                     const finalUserDoc = await db.collection('users').doc(u).get();
                     const userData = finalUserDoc.data();
 
@@ -3040,19 +3005,11 @@
             
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
-            // 🌟 วางทับ handleLogout ตัวเดิม (สลับลำดับการทำงานเพื่อแก้บั๊กเด้งกลับ)
+            // 🌟 4. ออกจากระบบ
             const handleLogout = async () => {
-                // 1. เคลียร์ Local Storage ทิ้งก่อนเป็นอันดับแรกเลย! ระบบจะได้ไม่เผลอดึงกลับเข้ามา
                 localStorage.removeItem('medtech_student_id');
-                
-                // 2. สั่ง Firebase Auth ให้ล็อกเอาท์
-                try {
-                    await auth.signOut(); 
-                } catch (e) {
-                    console.error("Logout Error:", e);
-                }
-
-                // 3. รีเซ็ต State เพื่อพากลับไปหน้า Login
+                localStorage.removeItem('medtech_user_cache');
+                try { await auth.signOut(); } catch (e) { console.error("Logout Error:", e); }
                 setUser(null); 
                 setDashboardData(null);
                 setPage('login'); 
@@ -3067,7 +3024,7 @@
                     {page === 'dashboard' && user && (
                     <Dashboard 
                         user={user} 
-                        setUser={setUser} // 🌟 เพิ่มบรรทัดนี้ลงไป 🌟
+                        setUser={setUser} 
                         initialData={dashboardData} 
                         onLogout={handleLogout} 
                     />
