@@ -23,6 +23,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
+
     <style>
         html, body, #root { width: 100%; height: 100dvh; margin: 0; padding: 0; overflow: hidden; overscroll-behavior-y: none; }
         body { font-family: 'Sarabun', sans-serif; background-color: #F0F4F8; color: #1F2937; -webkit-tap-highlight-color: transparent; }
@@ -71,6 +72,7 @@
             measurementId: "G-7WQWLGFSC0"
         };
     
+        // Initialize Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -109,6 +111,7 @@
             dateObj = new Date(dateStr);
         }
 
+        // แปลงเป็นรูปแบบ: 30 มี.ค. 69 (พ.ศ.)
         return dateObj.toLocaleDateString('th-TH', {
             day: 'numeric',
             month: 'short',
@@ -123,9 +126,13 @@
             if (!isoStr) return "-";
             try {
                 const date = new Date(isoStr);
-                if (isNaN(date.getTime())) return isoStr;
+                if (isNaN(date.getTime())) return isoStr; // กัน Error ถ้าไม่ใช่รูปแบบวันที่
                 return date.toLocaleDateString('th-TH', {
-                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 }) + ' น.';
             } catch (e) { return isoStr; }
         };
@@ -147,6 +154,7 @@
                     id = url.split("id=")[1].split("&")[0];
                 }
                 
+                // 🌟 แปลงเป็นลิงก์ lh3 แบบที่ถูกต้อง
                 if (id) return `https://lh3.googleusercontent.com/d/${id}`; 
                 
                 return url; 
@@ -155,6 +163,7 @@
             }
         };
 
+        // 📦 ฟังก์ชันบีบอัดรูปภาพก่อนส่งไป GAS
         const compressImage = (file, maxWidth = 1000, quality = 0.7) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -504,7 +513,7 @@
                 </div>
             );
         };
-        
+
         const ProgressLoading = ({ progress }) => ReactDOM.createPortal(
             <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
                 <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col items-center relative overflow-hidden">
@@ -949,7 +958,7 @@
 
                         // โครงสร้างข้อมูลประวัติ
                         const historyData = {
-                            amount: accumulatedTotal,            
+                            amount: accumulatedTotal,           
                             billId: bill.billId,
                             item: bill.item,
                             name: user.name,                    
@@ -1367,6 +1376,152 @@
                     <div className="max-w-2xl mx-auto relative">
                         {isSubmitting && <ProgressLoading progress={progress} />}
                         <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100">
+                                <i className="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <h2 className="font-bold text-xl ml-3 text-gray-800">ชำระเงินค่าสินค้า</h2>
+                        </div>
+                        <div className="px-5">
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-[2rem] border border-blue-100 flex justify-between items-center shadow-sm mb-6">
+                                <div>
+                                    <p className="font-extrabold text-gray-900 text-lg leading-tight">{order.name}</p>
+                                    <div className="flex gap-2 mt-1">
+                                        <span className="text-xs bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold shadow-sm border border-gray-100">{order.size}</span>
+                                        <span className="text-xs bg-white text-gray-600 px-2 py-0.5 rounded-md font-bold shadow-sm border border-gray-100">x{order.qty}</span>
+                                    </div>
+                                </div>
+                                <div className="text-3xl font-black text-[#0066FF]">{formatCurrency(order.total)}</div>
+                            </div>
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
+                                <div className="mb-4"><span className="text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 shadow-sm animate-pulse"><i className="fa-solid fa-arrow-down mr-1"></i> กรุณาแนบหลักฐานด้านล่าง</span></div>
+                                <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-gray-200 inline-block shadow-sm">
+                                    <img src={getDirectDriveUrl(paymentQrCode)} className="w-48 h-48 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://placehold.co/200'} />
+                                </div>
+                                <div className="mt-4 bg-gray-50 py-2 px-4 rounded-xl inline-block border border-gray-100">
+                                    <p className="text-sm font-bold text-gray-600 tracking-wider"><i className="fa-solid fa-building-columns mr-1 text-[#0066FF]"></i> {gWalletDisplay}</p>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
+                                <label className="block text-sm font-extrabold text-gray-800 mb-3"><i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน</label>
+                                <div className="group relative border-2 border-dashed border-gray-200 rounded-3xl bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all flex items-center justify-center cursor-pointer overflow-hidden py-8">
+                                    <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                    <div className="text-center z-0 w-full">
+                                        {!preview ? (
+                                            <><div className="w-16 h-16 bg-white shadow-sm border border-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:text-[#0066FF] group-hover:scale-110 transition"><i className="fa-solid fa-cloud-arrow-up text-2xl"></i></div><p className="text-sm font-bold text-gray-500 group-hover:text-[#0066FF]">แตะเพื่อเลือกรูป</p></>
+                                        ) : (
+                                            <div className="relative inline-block w-full px-4"><img src={preview} className="max-h-64 w-full object-contain rounded-xl p-1 bg-white shadow-sm border border-gray-100" /><div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl mx-4 backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div></div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={submit} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
+                                ยืนยันการโอน <i className="fa-solid fa-paper-plane ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const FinanceProjectSubPage = ({ project, onClose, onViewSlip }) => {
+            const [sortOrder, setSortOrder] = useState('desc'); 
+            const sortedTransactions = sortOrder === 'desc' ? [...project.transactions] : [...project.transactions].reverse();
+            return (
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="max-w-2xl mx-auto relative">
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
+                            <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0"><i className="fa-solid fa-chevron-left"></i></button>
+                            <h2 className="font-bold text-lg ml-3 text-gray-800 line-clamp-1">{project.name}</h2>
+                        </div>
+                        <div className="px-5">
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 mb-6 text-center">
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">ยอดคงเหลือโครงการ</p>
+                                <h2 className="text-4xl font-black text-[#0066FF] mb-4 leading-none">{formatCurrency(project.income - project.expense)}</h2>
+                                <div className="flex gap-4 pt-4 border-t border-gray-100">
+                                    {project.income > 0 && (
+                                        <div className="flex-1 bg-green-50/50 p-3 rounded-2xl border border-green-100"><p className="text-green-600 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับ</p><p className="font-bold text-green-700 text-sm">{formatCurrency(project.income)}</p></div>
+                                    )}
+                                    {project.expense > 0 && (
+                                        <div className="flex-1 bg-red-50/50 p-3 rounded-2xl border border-red-100"><p className="text-red-500 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่าย</p><p className="font-bold text-red-600 text-sm">{formatCurrency(project.expense)}</p></div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center mb-4 px-2">
+                                <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-list-check text-[#0066FF] mr-2"></i> รายการเคลื่อนไหว</h3>
+                                <button onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 active:scale-95 transition">
+                                    <i className={`fa-solid ${sortOrder === 'desc' ? 'fa-arrow-up-short-wide text-orange-500' : 'fa-arrow-down-short-wide text-[#0066FF]'}`}></i>{sortOrder === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {sortedTransactions.length === 0 ? (
+                                    <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ยังไม่มีรายการ</div>
+                                ) : (
+                                    sortedTransactions.map((tx, i) => (
+                                        <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 hover:border-blue-100 transition-colors">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner ${tx.type==='income'?'bg-green-50 text-green-500':'bg-red-50 text-red-500'}`}><i className={`fa-solid ${tx.type==='income'?'fa-arrow-down-long':'fa-arrow-up-long'}`}></i></div>
+                                                    <div><h4 className="font-bold text-gray-800 text-sm leading-tight mb-1 pr-2">{tx.item}</h4><p className="text-[11px] text-gray-500"><i className="fa-solid fa-user text-gray-300 mr-1"></i> {tx.responsible}</p><p className="text-[10px] font-bold text-gray-400 mt-0.5"><i className="fa-solid fa-calendar text-gray-300 mr-1"></i> {tx.date}</p></div>
+                                                </div>
+                                                <div className="text-right flex flex-col items-end shrink-0 pl-1 w-[90px]">
+                                                    <p className={`font-black mb-2 ${tx.type==='income'?'text-green-500':'text-red-500'}`}>{tx.type==='income'?'+':'-'}{formatCurrency(tx.amount)}</p>
+                                                    <div className="flex flex-col gap-1.5 w-full">
+                                                        {tx.receiptUrl && <button onClick={() => onViewSlip(tx.receiptUrl)} className="text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-blue-100/50"><i className="fa-solid fa-file-invoice mr-1.5"></i> ใบเสร็จ</button>}
+                                                        {tx.transferSlipUrl && <button onClick={() => onViewSlip(tx.transferSlipUrl)} className="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-1.5 rounded-lg transition-colors shadow-sm w-full flex items-center justify-center border border-indigo-100/50"><i className="fa-solid fa-money-bill-transfer mr-1.5"></i> สลิปจ่ายเงิน</button>}
+                                                        {(!tx.receiptUrl && !tx.transferSlipUrl) && <span className="inline-block text-[10px] font-bold bg-gray-50 text-gray-400 py-1.5 rounded-lg border border-gray-100 text-center w-full">ไม่มีหลักฐาน</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const OrderTrackingSubPage = ({ order, onClose }) => {
+            const steps = [
+                { status: 'รอตรวจสอบ', icon: 'fa-clock', title: 'รอตรวจสอบ', desc: 'กำลังตรวจสอบการชำระเงิน' },
+                { status: 'ชำระแล้ว', icon: 'fa-money-bill-wave', title: 'ชำระแล้ว', desc: 'ระบบยืนยันยอดเงินเรียบร้อย' },
+                { status: 'อยู่ระหว่างสั่งซื้อ', icon: 'fa-cart-shopping', title: 'กำลังสั่งซื้อ', desc: 'แอดมินกำลังรวบรวมออเดอร์' },
+                { status: 'อยู่ระหว่างผลิต', icon: 'fa-hammer', title: 'กำลังผลิต', desc: 'กำลังดำเนินการผลิตสินค้า' },
+                { status: 'รอรับของ', icon: 'fa-box', title: 'พร้อมรับสินค้า', desc: 'นำ QR Code มารับได้เลย' }, 
+                { status: 'รับแล้ว', icon: 'fa-box-open', title: 'รับสินค้าแล้ว', desc: 'ส่งมอบให้คุณเรียบร้อย' }
+            ];
+
+            const currentStatus = order.status?.trim() || 'รอตรวจสอบ';
+            const isCancelled = currentStatus === 'ยกเลิก';
+            const isReceived = currentStatus === 'รับแล้ว'; 
+            
+            let currentStepIndex = steps.findIndex(s => s.status === currentStatus);
+            if (currentStepIndex === -1 && !isCancelled && !isReceived) currentStepIndex = 0; 
+
+            const showQR = () => {
+                Swal.fire({
+                    title: 'QR Code รับสินค้า',
+                    html: `
+                        <div class="flex flex-col items-center">
+                            <p class="text-sm text-gray-500 mb-4">แสดงหน้านี้ให้แอดมินเพื่อรับของ</p>
+                            <div class="bg-white p-4 rounded-xl border-2 border-dashed border-green-500 inline-block shadow-sm">
+                                <img src="https://quickchart.io/qr?text=${order.id}&size=200" class="w-48 h-48" alt="QR Code" />
+                            </div>
+                            <p class="mt-4 font-mono text-xl font-bold text-green-600 tracking-widest bg-green-50 px-4 py-1 rounded-lg">${order.id}</p>
+                            <p class="text-xs text-gray-400 mt-3"><i class="fa-solid fa-box mr-1"></i> ${order.items}</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'ปิดหน้าต่าง',
+                    confirmButtonColor: '#10B981', 
+                    customClass: { popup: 'rounded-[2rem] pb-6', title: 'text-xl font-bold text-gray-800 mt-2' }
+                });
+            };
+
+            return (
+                <div className="absolute inset-0 bg-[#F0F4F8] z-50 animate-slide-in-right overflow-y-auto no-scrollbar pb-32">
+                    <div className="max-w-2xl mx-auto relative">
+                        <div className="sticky top-0 z-30 bg-gradient-to-b from-[#F0F4F8] to-transparent pt-4 pb-2 px-5 flex items-center mb-2">
                             <button onClick={onClose} className="text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center transition active:scale-90 border border-gray-100 shrink-0">
                                 <i className="fa-solid fa-chevron-left"></i>
                             </button>
@@ -1574,19 +1729,19 @@
             // 🌟 ใช้งาน Firestore แบบ Real-time (onSnapshot) 🌟
             useEffect(() => {
                 const studentId = user.studentId;
-                if (!studentId) return; // 🛑 ถ้าไม่มี ID ไม่ต้องดึงข้อมูล
-
                 setLoading(true);
                 const unsubscribes = [];
 
-                // 🛠️ ฟังก์ชันช่วยแปลงวันที่ทุกรูปแบบเป็นตัวเลข
+                // 🛠️ ฟังก์ชันช่วยแปลงวันที่ทุกรูปแบบเป็นตัวเลข เพื่อใช้เรียงลำดับ (ล่าสุดขึ้นก่อน)
                 const getSortTime = (dateStr, timestamp) => {
                     if (timestamp) return Number(timestamp); 
                     if (!dateStr) return 0;
                     
+                    // 1. ลองแปลงแบบสากลก่อน (เช่น 2024-07-04T17:00:00.000Z)
                     const time = new Date(dateStr).getTime();
                     if (!isNaN(time)) return time;
                     
+                    // 2. ถ้าพัง แสดงว่าเป็นรูปแบบไทย (เช่น 31/03/2569 14:30:00) ให้ตัดคำมาคำนวณเอง
                     try {
                         const parts = String(dateStr).split(' ');
                         const dPart = parts[0].split('/');
@@ -1594,7 +1749,7 @@
                             const day = parseInt(dPart[0], 10);
                             const month = parseInt(dPart[1], 10) - 1;
                             let year = parseInt(dPart[2], 10);
-                            if (year > 2500) year -= 543;
+                            if (year > 2500) year -= 543; // แปลง พ.ศ. เป็น ค.ศ.
                             
                             const tPart = (parts[1] || '00:00:00').split(':');
                             const hr = parseInt(tPart[0] || 0, 10);
@@ -1607,180 +1762,185 @@
                     return 0;
                 };
 
-                // 🛡️ ฟังก์ชันพระเอก! ช่วยดึงข้อมูลและ "หยุด" ทันทีถ้าติด Permission Denied
-                const safeListen = (query, callback, name) => {
-                    const unsub = query.onSnapshot(
-                        (snap) => {
-                            callback(snap); // ถ้าสำเร็จ ให้ทำงานตามปกติ
-                        },
-                        (error) => {
-                            console.error(`🔴 ระงับการดึงข้อมูล [${name}]:`, error.message);
-                            unsub(); // 🛑 สั่งระงับตัวมันเองทันที! ป้องกันลูปนรกกินเงิน
-                        }
-                    );
-                    unsubscribes.push(unsub);
-                };
-
                 // 1. ดึงการตั้งค่าระบบ 
-                safeListen(db.collection('config').doc('system'), (doc) => {
-                    if (doc.exists) {
-                        const d = doc.data();
-                        setData(prev => ({ 
-                            ...prev, 
-                            announcement: d.announcement, 
-                            orderEnabled: d.orderSystem === 'ON' || d.orderSystem === true
-                        }));
-                    }
-                }, "Config System");
+                unsubscribes.push(
+                    db.collection('config').doc('system').onSnapshot(doc => {
+                        if (doc.exists) {
+                            const d = doc.data();
+                            setData(prev => ({ 
+                                ...prev, 
+                                announcement: d.announcement, 
+                                // 🌟 เช็คให้ชัวร์ว่าต้องเป็นคำว่า 'ON' หรือค่าแบบ true เท่านั้นถึงจะเปิดร้าน
+                                orderEnabled: d.orderSystem === 'ON' || d.orderSystem === true
+                            }));
+                        }
+                    })
+                );
 
                 // 2. ดึง QR Map 
-                safeListen(db.collection('config').doc('qrMap'), (doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        const codesArray = data.codes || []; 
-                        const newQrMap = {};
-                        let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
+                unsubscribes.push(
+                    db.collection('config').doc('qrMap').onSnapshot(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            const codesArray = data.codes || []; 
+                            const newQrMap = {};
+                            let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
 
-                        codesArray.forEach(item => {
-                            if (item && item.amount !== undefined) {
-                                const amt = String(item.amount);
-                                newQrMap[amt] = String(item.url); 
-                                if (amt === "0") {
-                                    defaultUrl = String(item.url); 
+                            codesArray.forEach(item => {
+                                if (item && item.amount !== undefined) {
+                                    const amt = String(item.amount);
+                                    newQrMap[amt] = String(item.url); 
+                                    if (amt === "0") {
+                                        defaultUrl = String(item.url); 
+                                    }
                                 }
-                            }
-                        });
+                            });
 
-                        setData(prev => ({ 
-                            ...prev, 
-                            qrMap: newQrMap, 
-                            defaultQr: defaultUrl 
-                        }));
-                    }
-                }, "QR Map");
+                            setData(prev => ({ 
+                                ...prev, 
+                                qrMap: newQrMap, 
+                                defaultQr: defaultUrl 
+                            }));
+                        }
+                    })
+                );
 
                 // 3. ดึงข้อมูลบิล 
-                safeListen(db.collection('users').doc(studentId).collection('bills'), (snap) => {
-                    const billsArray = snap.docs
-                        .map(doc => ({ billId: doc.id, ...doc.data() }))
-                        .filter(bill => bill.status !== 'ชำระแล้ว'); 
+                unsubscribes.push(
+                    db.collection('users').doc(studentId).collection('bills').onSnapshot(snap => {
+                        const billsArray = snap.docs
+                            .map(doc => ({ billId: doc.id, ...doc.data() }))
+                            .filter(bill => bill.status !== 'ชำระแล้ว'); 
                     
-                    setData(prev => {
-                        const processedBills = billsArray.map(b => calculateBillData(b, prev.qrMap, prev.defaultQr));
-                        return { ...prev, bills: processedBills };
-                    });
-                }, "Bills");
+                        setData(prev => {
+                            const processedBills = billsArray.map(b => calculateBillData(b, prev.qrMap, prev.defaultQr));
+                            return { ...prev, bills: processedBills };
+                        });
+                    })
+                );
 
-                // 4. ดึงข้อมูลออเดอร์เสื้อ (เรียงลำดับจากวันที่)
-                safeListen(db.collection('users').doc(studentId).collection('orders'), (snap) => {
-                    const ordersArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const sortedOrders = ordersArray.sort((a, b) => getSortTime(b.date, b.timestamp) - getSortTime(a.date, a.timestamp));
-                    setData(prev => ({ ...prev, orders: sortedOrders }));
-                }, "Orders");
+                // 4. ดึงข้อมูลออเดอร์เสื้อ (🌟 เรียงลำดับจากวันที่)
+                unsubscribes.push(
+                    db.collection('users').doc(studentId).collection('orders').onSnapshot(snap => {
+                        const ordersArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        const sortedOrders = ordersArray.sort((a, b) => getSortTime(b.date, b.timestamp) - getSortTime(a.date, a.timestamp));
+                        setData(prev => ({ ...prev, orders: sortedOrders }));
+                    })
+                );
 
-                // 5. ดึงประวัติการชำระเงิน (เรียงลำดับจากวันที่)
-                safeListen(db.collection('users').doc(studentId).collection('history'), (snap) => {
-                    const histArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const sortedHistory = histArray.sort((a, b) => getSortTime(b.payDate, b.timestamp) - getSortTime(a.payDate, a.timestamp));
-                    setData(prev => ({ ...prev, history: sortedHistory }));
-                }, "History");
+                // 5. ดึงประวัติการชำระเงิน (🌟 เรียงลำดับจากวันที่)
+                unsubscribes.push(
+                    db.collection('users').doc(studentId).collection('history').onSnapshot(snap => {
+                        const histArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        const sortedHistory = histArray.sort((a, b) => getSortTime(b.payDate, b.timestamp) - getSortTime(a.payDate, a.timestamp));
+                        setData(prev => ({ ...prev, history: sortedHistory }));
+                    })
+                );
 
                 // 6. ดึงข้อมูลสินค้า
-                safeListen(db.collection('products'), (snap) => {
-                    const prodArray = snap.docs.map(doc => {
-                        const prodData = doc.data();
-                        
-                        const productGallery = [prodData.image].filter(Boolean); 
-                        for (let i = 2; i <= 10; i++) { 
-                            const key = `image${i}`;
-                            if (prodData[key]) productGallery.push(prodData[key]);
-                        }
+                unsubscribes.push(
+                    db.collection('products').onSnapshot(snap => {
+                        const prodArray = snap.docs.map(doc => {
+                            const prodData = doc.data();
+                            
+                            const productGallery = [prodData.image].filter(Boolean); 
+                            for (let i = 2; i <= 10; i++) { 
+                                const key = `image${i}`;
+                                if (prodData[key]) productGallery.push(prodData[key]);
+                            }
 
-                        const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
-                        for (let i = 2; i <= 5; i++) { 
-                            const key = `sizeChart${i}`;
-                            if (prodData[key]) sizeChartGallery.push(prodData[key]);
-                        }
+                            const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
+                            for (let i = 2; i <= 5; i++) { 
+                                const key = `sizeChart${i}`;
+                                if (prodData[key]) sizeChartGallery.push(prodData[key]);
+                            }
 
-                        return { 
-                            id: doc.id, 
-                            ...prodData, 
-                            productGallery, 
-                            sizeChartGallery 
-                        };
-                    });
-                    setData(prev => ({ ...prev, products: prodArray }));
-                }, "Products");
+                            return { 
+                                id: doc.id, 
+                                ...prodData, 
+                                productGallery, 
+                                sizeChartGallery 
+                            };
+                        });
+                        setData(prev => ({ ...prev, products: prodArray }));
+                    })
+                );
                 
-                // 7. ดึงยอดสรุปการเงินรวม (จาก doc summary)
-                safeListen(db.collection('finance').doc('summary'), (doc) => {
-                    if (doc.exists) {
-                        const d = doc.data();
+                // 7. ดึงยอดสรุปการเงินรวม
+                unsubscribes.push(
+                    db.collection('finance').doc('summary').collection('logs').onSnapshot(doc => {
+                        if (doc.exists) {
+                            const d = doc.data();
+                            setData(prev => ({ 
+                                ...prev, 
+                                finance: { 
+                                    ...(prev.finance || { projects: [] }), 
+                                    balance: d.balance || 0, 
+                                    income: d.income || 0, 
+                                    expense: d.expense || 0 
+                                } 
+                            }));
+                        }
+                    })
+                );
+
+                // 8. ดึงข้อมูล log การเงิน (🌟 คำนวณยอดรวมอัตโนมัติจาก Logs)
+                unsubscribes.push(
+                    db.collection('finance').doc('summary').collection('logs').onSnapshot(snap => {
+                        const logsArray = snap.docs.map(doc => doc.data());
+                        const groupedProjects = {};
+                        
+                        // 🌟 สร้างตัวแปรเก็บยอดรวมทั้งหมด
+                        let totalIncome = 0;
+                        let totalExpense = 0;
+                        
+                        logsArray.forEach(log => {
+                            const amt = Number(log.amount) || 0;
+                            const isIncome = log.type === 'รายรับ';
+                            
+                            // 🌟 บวกยอดรวมทั้งหมดของชั้นปี
+                            if (isIncome) totalIncome += amt;
+                            else totalExpense += amt;
+
+                            const pName = log.project; 
+                            if (!pName || String(pName).trim() === '' || pName === 'ทั่วไป') return;
+                            
+                            if (!groupedProjects[pName]) {
+                                groupedProjects[pName] = { id: pName, name: pName, income: 0, expense: 0, transactions: [] };
+                            }
+                            
+                            if (isIncome) groupedProjects[pName].income += amt;
+                            else groupedProjects[pName].expense += amt;
+                            
+                            groupedProjects[pName].transactions.push({
+                                type: isIncome ? 'income' : 'expense',
+                                amount: amt,
+                                item: log.item || '-',
+                                responsible: log.person || '-',
+                                date: formatThaiDateTime(log.date), 
+                                receiptUrl: log.receiptUrl || '',
+                                transferSlipUrl: log.slipUrl || log.transferSlipUrl || '', 
+                                timestamp: getSortTime(log.date, log.timestamp)
+                            });
+                        });
+
+                        const projectsArray = Object.values(groupedProjects).map(p => {
+                            p.transactions.sort((a, b) => b.timestamp - a.timestamp);
+                            return p;
+                        });
+
+                        // 🌟 อัปเดตข้อมูลการเงินทั้งหมด (ยอดรวม + โปรเจกต์)
                         setData(prev => ({ 
                             ...prev, 
                             finance: { 
-                                ...(prev.finance || { projects: [] }), 
-                                balance: d.balance || 0, 
-                                income: d.income || 0, 
-                                expense: d.expense || 0 
+                                balance: totalIncome - totalExpense, 
+                                income: totalIncome, 
+                                expense: totalExpense, 
+                                projects: projectsArray 
                             } 
                         }));
-                    }
-                }, "Finance Summary");
-
-                // 8. ดึงข้อมูล log การเงิน (คำนวณยอดรวมอัตโนมัติจาก Logs)
-                safeListen(db.collection('finance').doc('summary').collection('logs'), (snap) => {
-                    const logsArray = snap.docs.map(doc => doc.data());
-                    const groupedProjects = {};
-                    
-                    let totalIncome = 0;
-                    let totalExpense = 0;
-                    
-                    logsArray.forEach(log => {
-                        const amt = Number(log.amount) || 0;
-                        const isIncome = log.type === 'รายรับ';
-                        
-                        if (isIncome) totalIncome += amt;
-                        else totalExpense += amt;
-
-                        const pName = log.project; 
-                        if (!pName || String(pName).trim() === '' || pName === 'ทั่วไป') return;
-                        
-                        if (!groupedProjects[pName]) {
-                            groupedProjects[pName] = { id: pName, name: pName, income: 0, expense: 0, transactions: [] };
-                        }
-                        
-                        if (isIncome) groupedProjects[pName].income += amt;
-                        else groupedProjects[pName].expense += amt;
-                        
-                        groupedProjects[pName].transactions.push({
-                            type: isIncome ? 'income' : 'expense',
-                            amount: amt,
-                            item: log.item || '-',
-                            responsible: log.person || '-',
-                            date: formatThaiDateTime(log.date), 
-                            receiptUrl: log.receiptUrl || '',
-                            transferSlipUrl: log.slipUrl || log.transferSlipUrl || '', 
-                            timestamp: getSortTime(log.date, log.timestamp)
-                        });
-                    });
-
-                    const projectsArray = Object.values(groupedProjects).map(p => {
-                        p.transactions.sort((a, b) => b.timestamp - a.timestamp);
-                        return p;
-                    });
-
-                    setData(prev => ({ 
-                        ...prev, 
-                        finance: { 
-                            balance: totalIncome - totalExpense, 
-                            income: totalIncome, 
-                            expense: totalExpense, 
-                            projects: projectsArray 
-                        } 
-                    }));
-                }, "Finance Logs");
-
+                    })
+                );
                 setLoading(false);
 
                 return () => unsubscribes.forEach(unsub => unsub());
@@ -2099,7 +2259,7 @@
            const renderSettingsContent = () => {
                 const isLineConnected = user.userId && user.userId.length > 5;
                 
-             // 🌟 วางทับ handleLineConnectToggle ใน Dashboard (สับสวิตช์ Session แก้บั๊ก Permission)
+              // 🌟 วางทับ handleLineConnectToggle ใน Dashboard (สับสวิตช์ Session แก้บั๊ก Permission)
             const handleLineConnectToggle = async () => {
                 if (isLineConnected) {
                     // --- ส่วนการยกเลิกเชื่อมต่อ ---
@@ -2284,7 +2444,7 @@
                             </button>
                         </div>
 
-                        <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>MedTech67 Finance v2.0</p><p>🖥️ Develop by CHOKUN</p></div>
+                        <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v3.0 (Firestore)</p><p>🖥️ Develop by CHOKUN</p></div>
                     </div>
                 );
             };
@@ -2416,7 +2576,7 @@
                                                 {data.products.map(p => {
                                                     if (p.status === 'OFF') return null;
                                                     const isSoldOut = p.status === 'OUT' || p.stock <= 0;
-                                                    const displayImg = (p.productGallery && p.productGallery.length > 0) ? p.productGallery[0] : (p.image || p.img || "");
+                                                const displayImg = (p.productGallery && p.productGallery.length > 0) ? p.productGallery[0] : (p.image || p.img || "");
                                                     return (
                                                         <div key={p.id} onClick={() => !isSoldOut && setSelectedProduct(p)} className={`bg-white rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform border border-gray-50 cursor-pointer ${isSoldOut ? 'grayscale opacity-70' : 'hover:border-blue-200 hover:shadow-md'}`}>
                                                             <div className="aspect-square bg-gray-100 relative">
@@ -2557,7 +2717,7 @@
             );
         };
 
-            const App = () => {
+        const App = () => {
             const [page, setPage] = useState('loading'); 
             const [user, setUser] = useState(null);
             const [dashboardData, setDashboardData] = useState(null);
@@ -2894,7 +3054,7 @@
                 </div>
             );
         };
-        
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
