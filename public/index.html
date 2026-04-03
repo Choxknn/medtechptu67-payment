@@ -2729,117 +2729,111 @@
                     
                     setLoading(true);
                     const profile = await liff.getProfile();
-                    const lineProfileId = profile.userId; // รหัส LINE ID (Uxxxx...)
+                    const lineProfileId = profile.userId; 
                     
-                    const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
+                    // 🌟 1. ขอ Token และสร้าง Firebase Auth ก่อนดึงข้อมูล! (แก้ปัญหา Permission Denied)
+                    const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
                     
-                    if (!userSnap.empty) {
-                        const userDoc = userSnap.docs[0];
-                        const userData = userDoc.data();
+                    if (res.success && res.token) {
+                        const userCred = await auth.signInWithCustomToken(res.token);
                         
-                        try {
-                            // 🌟 แก้ตรงนี้: ส่ง firebaseUid ไปให้ GAS แทน (ถ้ามี) ถ้าไม่มีก็ใช้ lineProfileId
-                            const targetUid = userData.firebaseUid || lineProfileId;
-                            const res = await runGoogleScript('getCustomToken', { uid: targetUid });
+                        // 🌟 2. ตอนนี้มีสิทธิ์ Firebase Auth แล้ว ดึงข้อมูล Firestore ได้เลย!
+                        const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
+                        
+                        if (!userSnap.empty) {
+                            const userDoc = userSnap.docs[0];
+                            const userData = userDoc.data();
                             
-                            if (res.success && res.token) {
-                                const userCred = await auth.signInWithCustomToken(res.token);
-                                
-                                // 🌟 อัปเดตชื่อให้แอดมินดูง่ายๆ ในหน้า Firebase Auth
-                                if (userCred.user) {
-                                    await userCred.user.updateProfile({
-                                        displayName: `${userData.name} (${userDoc.id})`
-                                    });
-                                }
-                                
-                                if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                localStorage.setItem('medtech_student_id', userDoc.id);
-                                localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
-                                
-                                setUser({ studentId: userDoc.id, ...userData });
-                                setDashboardData({});
-                                setLoading(false);
-                                setPage('dashboard');
-                                Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
-                            } else {
-                                throw new Error("ไม่สามารถสร้าง Token จากเซิร์ฟเวอร์ได้");
-                            }
-                        } catch (tokenErr) {
-                            setLoading(false);
-                            console.error("Token Error:", tokenErr);
-                            Swal.fire({ icon: 'error', title: 'เซิร์ฟเวอร์มีปัญหา', text: 'ไม่สามารถออกตั๋วเข้าใช้งานได้ กรุณาติดต่อแอดมิน', customClass: { popup: 'rounded-3xl' } });
-                        }
-
-                    } else {
-                        // 🔴 กรณียังไม่เคยผูกบัญชี (เด้ง Popup ถามรหัสผ่าน)
-                        setLoading(false); 
-                        const { value: formValues } = await Swal.fire({
-                            title: 'เชื่อมต่อบัญชี LINE',
-                            html: `
-                                <div class="text-left mt-2">
-                                    <p class="text-sm text-gray-500 mb-4 text-center">ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้<br>กรุณากรอกรหัสนักศึกษาและรหัสผ่านเพื่อผูกบัญชี</p>
-                                    <input id="link-id" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none mb-3 font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสนักศึกษา">
-                                    <input id="link-pass" type="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสผ่าน">
-                                </div>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonText: 'ผูกบัญชีและเข้าสู่ระบบ',
-                            cancelButtonText: 'ยกเลิก',
-                            confirmButtonColor: '#00B900',
-                            customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' },
-                            preConfirm: () => {
-                                const id = document.getElementById('link-id').value;
-                                const pass = document.getElementById('link-pass').value;
-                                if(!id || !pass) {
-                                    Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
-                                    return false;
-                                }
-                                return { id, pass };
-                            }
-                        });
-
-                        if (formValues) {
-                            setLoading(true);
-                            try {
-                                const { id: u, pass: p } = formValues;
-                                const checkDoc = await db.collection('users').doc(u).get();
-                                if (!checkDoc.exists) throw new Error("ไม่พบรหัสนักศึกษาในระบบ");
-                                
-                                const userData = checkDoc.data();
-                                const email = `${u}@ptu.ac.th`;
-                                let userCred;
-                                
-                                if (userData.hasPassword) {
-                                    userCred = await auth.signInWithEmailAndPassword(email, p);
-                                } else {
-                                    if (userData.password !== p) throw new Error("รหัสผ่านไม่ถูกต้อง");
-                                    userCred = await auth.createUserWithEmailAndPassword(email, p);
-                                }
-
-                                // 🌟 บันทึกข้อมูลลง Firestore (รวมเก็บ userId ไว้เช็คสิทธิ์ด้วย)
-                                await db.collection('users').doc(u).update({ 
-                                    userId: lineProfileId, 
-                                    firebaseUid: userCred.user.uid,
-                                    hasPassword: true, 
-                                    password: firebase.firestore.FieldValue.delete()
+                            // อัปเดตชื่อให้แอดมินดูง่ายๆ
+                            if (userCred.user) {
+                                await userCred.user.updateProfile({
+                                    displayName: `${userData.name} (${userDoc.id})`
                                 });
+                            }
+                            
+                            if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                            localStorage.setItem('medtech_student_id', userDoc.id);
+                            localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
+                            
+                            setUser({ studentId: userDoc.id, ...userData });
+                            setDashboardData({});
+                            setLoading(false);
+                            setPage('dashboard');
+                            Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                            
+                        } else {
+                            // 🔴 กรณียังไม่เคยผูกบัญชี (เด้ง Popup ถามรหัสผ่าน)
+                            setLoading(false); 
+                            const { value: formValues } = await Swal.fire({
+                                title: 'เชื่อมต่อบัญชี LINE',
+                                html: `
+                                    <div class="text-left mt-2">
+                                        <p class="text-sm text-gray-500 mb-4 text-center">ไม่พบบัญชีที่เชื่อมต่อกับ LINE นี้<br>กรุณากรอกรหัสนักศึกษาและรหัสผ่านเพื่อผูกบัญชี</p>
+                                        <input id="link-id" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none mb-3 font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสนักศึกษา">
+                                        <input id="link-pass" type="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700 focus:ring-2 focus:ring-[#00B900] transition-all" placeholder="รหัสผ่าน">
+                                    </div>
+                                `,
+                                showCancelButton: true,
+                                confirmButtonText: 'ผูกบัญชีและเข้าสู่ระบบ',
+                                cancelButtonText: 'ยกเลิก',
+                                confirmButtonColor: '#00B900',
+                                customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' },
+                                preConfirm: () => {
+                                    const id = document.getElementById('link-id').value;
+                                    const pass = document.getElementById('link-pass').value;
+                                    if(!id || !pass) {
+                                        Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
+                                        return false;
+                                    }
+                                    return { id, pass };
+                                }
+                            });
 
-                                if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
-                                localStorage.setItem('medtech_student_id', u);
-                                localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
-                                
-                                setUser({ studentId: u, ...userData, userId: lineProfileId, firebaseUid: userCred.user.uid });
-                                setDashboardData({}); 
-                                setLoading(false);
-                                setPage('dashboard');
-                                Swal.fire({ icon: 'success', title: 'ผูกบัญชีสำเร็จ', text: 'ยินดีต้อนรับเข้าสู่ระบบครับ', timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-3xl' } });
-                            } catch (err) {
-                                await auth.signOut();
-                                setLoading(false);
-                                let errMsg = err.message.includes('auth/') ? "รหัสผ่านไม่ถูกต้อง" : err.message;
-                                Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: errMsg, customClass: { popup: 'rounded-3xl' } });
+                            if (formValues) {
+                                setLoading(true);
+                                try {
+                                    const { id: u, pass: p } = formValues;
+                                    const checkDoc = await db.collection('users').doc(u).get();
+                                    if (!checkDoc.exists) throw new Error("ไม่พบรหัสนักศึกษาในระบบ");
+                                    
+                                    const userData = checkDoc.data();
+                                    const email = `${u}@ptu.ac.th`;
+                                    let emailCred;
+                                    
+                                    if (userData.hasPassword) {
+                                        emailCred = await auth.signInWithEmailAndPassword(email, p);
+                                    } else {
+                                        if (userData.password !== p) throw new Error("รหัสผ่านไม่ถูกต้อง");
+                                        emailCred = await auth.createUserWithEmailAndPassword(email, p);
+                                    }
+
+                                    // อัปเดตข้อมูลลงฐานข้อมูล
+                                    await db.collection('users').doc(u).update({ 
+                                        userId: lineProfileId, 
+                                        firebaseUid: emailCred.user.uid,
+                                        hasPassword: true, 
+                                        password: firebase.firestore.FieldValue.delete()
+                                    });
+
+                                    if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
+                                    localStorage.setItem('medtech_student_id', u);
+                                    localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
+                                    
+                                    setUser({ studentId: u, ...userData, userId: lineProfileId, firebaseUid: emailCred.user.uid });
+                                    setDashboardData({}); 
+                                    setLoading(false);
+                                    setPage('dashboard');
+                                    Swal.fire({ icon: 'success', title: 'ผูกบัญชีสำเร็จ', text: 'ยินดีต้อนรับเข้าสู่ระบบครับ', timer: 2000, showConfirmButton: false, customClass: { popup: 'rounded-3xl' } });
+                                } catch (err) {
+                                    await auth.signOut();
+                                    setLoading(false);
+                                    let errMsg = err.message.includes('auth/') ? "รหัสผ่านไม่ถูกต้อง" : err.message;
+                                    Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: errMsg, customClass: { popup: 'rounded-3xl' } });
+                                }
                             }
                         }
+                    } else {
+                        throw new Error("ไม่สามารถสร้าง Token จากเซิร์ฟเวอร์ได้");
                     }
                 } catch (error) {
                     setLoading(false);
@@ -2871,22 +2865,24 @@
 
                         setAppProgress(50);
 
+                        // 🟢 3. ถ้าผู้ใช้เปิดใน LINE และล็อกอิน LIFF ค้างไว้ (Auto-Login)
                         if (liff.isLoggedIn()) {
                             try {
                                 const profile = await liff.getProfile();
-                                const lineUid = profile.userId;
+                                const lineProfileId = profile.userId;
                                 
-                                const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
-                                if (!userSnap.empty) {
-                                    const userDoc = userSnap.docs[0];
-                                    const userData = userDoc.data();
-                                    
-                                    // 🌟 แก้ตรงนี้: ส่ง firebaseUid ไปให้ GAS แทน lineUid
-                                    const targetUid = userData.firebaseUid || lineUid;
-                                    const res = await runGoogleScript('getCustomToken', { uid: targetUid });
-                                    
-                                    if (res.success && res.token) {
-                                        const userCred = await auth.signInWithCustomToken(res.token);
+                                // 🌟 1. ล็อกอิน Firebase ทันทีที่เข้าแอป (เอาสิทธิ์ก่อน)
+                                const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
+                                
+                                if (res.success && res.token) {
+                                    const userCred = await auth.signInWithCustomToken(res.token);
+
+                                    // 🌟 2. ตอนนี้มีสิทธิ์แล้ว ดึงข้อมูลโปรไฟล์สบายๆ โนสนโนแคร์ Rules
+                                    const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
+                                    if (!userSnap.empty) {
+                                        const userDoc = userSnap.docs[0];
+                                        const userData = userDoc.data();
+                                        
                                         if (userCred.user) {
                                             await userCred.user.updateProfile({
                                                 displayName: `${userData.name} (${userDoc.id})`
@@ -2900,7 +2896,7 @@
                                         setDashboardData({});
                                         setPage('dashboard');
                                         setAppProgress(null);
-                                        return; 
+                                        return; // 🛑 วาร์ปเข้าแอปสำเร็จ จบการทำงาน!
                                     }
                                 }
                             } catch (e) {
