@@ -2138,7 +2138,7 @@
                 const hasActiveOrders = activeOrders.length > 0;
 
                 return (
-                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh]">
+                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh] font-sans">
                         {/* 🔵 Header สี #1a237e (สีกรมท่าเข้ม) */}
                         <div className="bg-[#1a237e] rounded-b-[2rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-24 px-6 relative overflow-hidden shadow-sm">
                             <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
@@ -2185,9 +2185,9 @@
                         {/* 💳 การ์ดยอดค้างชำระ */}
                         <div className="mx-5 -mt-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-6 relative z-20 border border-gray-100/80 min-h-[190px]">
                             
-                            {/* Badge จำนวนบิล */}
+                            {/* 🌟 Badge จำนวนบิล สีแดงล้วน */}
                             {billCount > 0 && (
-                                <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.4)] border border-white/50 z-10 flex items-center gap-1.5 animate-[pop_0.4s_ease-out]">
+                                <div className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-[0_2px_10px_rgba(239,68,68,0.4)] border border-white/50 z-10 flex items-center gap-1.5 animate-[pop_0.4s_ease-out]">
                                     <i className="fa-solid fa-receipt"></i> มี {billCount} บิล
                                 </div>
                             )}
@@ -2201,22 +2201,24 @@
 
                             <p className="text-center text-gray-800 font-bold text-lg mb-0.5 mt-3">ยอดค้างชำระทั้งหมด</p>
                             
-                            {/* รหัสบิลที่มี */}
-                            <p className="text-center text-gray-400 text-[10px] font-medium mb-4 max-w-[85%] mx-auto truncate px-4">
-                                {billCount > 0 ? `รหัสบิล: ${billIdsString}` : 'ไม่มีบิลค้างชำระ'}
+                            {/* 🌟 แสดงไอคอนแทนคำว่า "รหัสบิล:" */}
+                            <p className="text-center text-gray-400 text-[10px] font-medium mb-4 max-w-[85%] mx-auto truncate px-4 flex justify-center items-center gap-1.5">
+                                {billCount > 0 ? (
+                                    <><i className="fa-solid fa-file-invoice text-gray-300"></i> {billIdsString}</>
+                                ) : (
+                                    'ไม่มีบิลค้างชำระ'
+                                )}
                             </p>
                             
-                            {/* 🌟 ตัวเลขยอดเงินสี #1a237e */}
                             <p className="text-center text-[2.5rem] font-black text-[#1a237e] mb-6 tracking-tight flex justify-center items-center gap-1">
                                 {formatCurrency(totalUnpaid)}
                             </p>
                             
-                            {/* 🌟 ปุ่มชำระเงินสี #1a237e */}
                             <button 
                                 onClick={() => handleTabChange('bills')} 
                                 className="w-full bg-[#1a237e] hover:bg-[#12185b] text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98]"
                             >
-                                ชำระเงิน
+                                รายละเอียดบิล
                             </button>
                             <div className="flex justify-center mt-5">
                                 <div className="w-8 h-1.5 bg-[#1a237e]/20 rounded-full"></div>
@@ -2245,7 +2247,6 @@
                                 <i className="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
                             </button>
 
-                            {/* 🌟 แจ้งเตือนสินค้าขาย */}
                             {data?.orderEnabled && hasAccess('orders') && (
                                 <button onClick={() => handleTabChange('orders')} className="w-full bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 flex justify-between items-center shadow-sm border border-blue-200 active:scale-[0.98] transition-all mt-2 relative overflow-hidden group">
                                     <div className="flex items-center gap-4 relative z-10">
