@@ -2731,31 +2731,36 @@
                     const profile = await liff.getProfile();
                     const lineProfileId = profile.userId; 
                     
-                    // 🌟 1. ขอ Token และสร้าง Firebase Auth ก่อนดึงข้อมูล! (แก้ปัญหา Permission Denied)
+                    // 🌟 1. ขอ Token และสร้าง Firebase Auth ก่อนดึงข้อมูล! 
                     const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
                     
                     if (res.success && res.token) {
-                        const userCred = await auth.signInWithCustomToken(res.token);
+                        const lineAuthCred = await auth.signInWithCustomToken(res.token);
+                        const lineFirebaseUid = lineAuthCred.user.uid; // 🌟 เก็บ UID ของ Firebase Auth ฝั่ง LINE ไว้
                         
-                        // 🌟 2. ตอนนี้มีสิทธิ์ Firebase Auth แล้ว ดึงข้อมูล Firestore ได้เลย!
+                        // 🌟 2. ตอนนี้มีสิทธิ์ Firebase Auth แล้ว ดึงข้อมูล Firestore ได้เลย
                         const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
                         
                         if (!userSnap.empty) {
+                            // 🟢 กรณีเคยผูกบัญชีไว้แล้ว
                             const userDoc = userSnap.docs[0];
                             const userData = userDoc.data();
                             
-                            // อัปเดตชื่อให้แอดมินดูง่ายๆ
-                            if (userCred.user) {
-                                await userCred.user.updateProfile({
-                                    displayName: `${userData.name} (${userDoc.id})`
-                                });
+                            // 🌟 อัปเดตชื่อใน Firebase Auth จาก "-" เป็น รหัสนักศึกษา
+                            await lineAuthCred.user.updateProfile({
+                                displayName: `${userData.name} (${userDoc.id})`
+                            });
+
+                            // บันทึก lineUid ลง Firestore (เผื่อของเก่ายังไม่มี)
+                            if (!userData.lineUid) {
+                                await db.collection('users').doc(userDoc.id).update({ lineUid: lineFirebaseUid });
                             }
                             
                             if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                             localStorage.setItem('medtech_student_id', userDoc.id);
                             localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
                             
-                            setUser({ studentId: userDoc.id, ...userData });
+                            setUser({ studentId: userDoc.id, ...userData, lineUid: lineFirebaseUid });
                             setDashboardData({});
                             setLoading(false);
                             setPage('dashboard');
@@ -2797,9 +2802,16 @@
                                     if (!checkDoc.exists) throw new Error("ไม่พบรหัสนักศึกษาในระบบ");
                                     
                                     const userData = checkDoc.data();
+                                    
+                                    // 🌟 อัปเดตชื่อบัญชี LINE ใน Firebase Auth ทันทีที่ทราบว่าเป็นใคร
+                                    await lineAuthCred.user.updateProfile({
+                                        displayName: `${userData.name} (${u})`
+                                    });
+
                                     const email = `${u}@ptu.ac.th`;
                                     let emailCred;
                                     
+                                    // สลับมาล็อกอิน Email เพื่อขอสิทธิ์เขียนข้อมูล
                                     if (userData.hasPassword) {
                                         emailCred = await auth.signInWithEmailAndPassword(email, p);
                                     } else {
@@ -2807,10 +2819,11 @@
                                         emailCred = await auth.createUserWithEmailAndPassword(email, p);
                                     }
 
-                                    // อัปเดตข้อมูลลงฐานข้อมูล
+                                    // 🌟 บันทึกข้อมูลลง Firestore (ใส่ครบทั้ง lineUid และ firebaseUid)
                                     await db.collection('users').doc(u).update({ 
                                         userId: lineProfileId, 
-                                        firebaseUid: emailCred.user.uid,
+                                        lineUid: lineFirebaseUid, // 🌟 บันทึกรหัส Auth ของ LINE
+                                        firebaseUid: emailCred.user.uid, // บันทึกรหัส Auth ของ Email
                                         hasPassword: true, 
                                         password: firebase.firestore.FieldValue.delete()
                                     });
@@ -2819,7 +2832,7 @@
                                     localStorage.setItem('medtech_student_id', u);
                                     localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
                                     
-                                    setUser({ studentId: u, ...userData, userId: lineProfileId, firebaseUid: emailCred.user.uid });
+                                    setUser({ studentId: u, ...userData, userId: lineProfileId, lineUid: lineFirebaseUid, firebaseUid: emailCred.user.uid });
                                     setDashboardData({}); 
                                     setLoading(false);
                                     setPage('dashboard');
@@ -2841,7 +2854,7 @@
                     Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', text: "เกิดข้อผิดพลาดในการดึงข้อมูลจาก LINE", customClass: { popup: 'rounded-3xl' } });
                 }
             };
-
+            
             // 🚀 3. โหลดระบบแบบ Optimistic + LIFF Init (ฉบับโคตรซิ่ง ไม่มี Firebase Auth State)
             useEffect(() => {
                 const initializeApp = async () => {
@@ -2871,32 +2884,37 @@
                                 const profile = await liff.getProfile();
                                 const lineProfileId = profile.userId;
                                 
-                                // 🌟 1. ล็อกอิน Firebase ทันทีที่เข้าแอป (เอาสิทธิ์ก่อน)
+                                // 🌟 1. ล็อกอิน Firebase ทันทีที่เข้าแอป
                                 const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
                                 
                                 if (res.success && res.token) {
-                                    const userCred = await auth.signInWithCustomToken(res.token);
+                                    const lineAuthCred = await auth.signInWithCustomToken(res.token);
+                                    const lineFirebaseUid = lineAuthCred.user.uid; // 🌟 ดึง UID ของ LINE Auth
 
-                                    // 🌟 2. ตอนนี้มีสิทธิ์แล้ว ดึงข้อมูลโปรไฟล์สบายๆ โนสนโนแคร์ Rules
+                                    // 🌟 2. ตอนนี้มีสิทธิ์แล้ว ดึงข้อมูลโปรไฟล์ได้เลย
                                     const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
                                     if (!userSnap.empty) {
                                         const userDoc = userSnap.docs[0];
                                         const userData = userDoc.data();
                                         
-                                        if (userCred.user) {
-                                            await userCred.user.updateProfile({
-                                                displayName: `${userData.name} (${userDoc.id})`
-                                            });
+                                        // 🌟 อัปเดตชื่อใน Firebase Auth จาก "-" เป็น รหัสนักศึกษา
+                                        await lineAuthCred.user.updateProfile({
+                                            displayName: `${userData.name} (${userDoc.id})`
+                                        });
+
+                                        // บันทึก lineUid ลง Firestore (เผื่อของเก่ายังไม่มี)
+                                        if (!userData.lineUid) {
+                                            await db.collection('users').doc(userDoc.id).update({ lineUid: lineFirebaseUid });
                                         }
 
                                         localStorage.setItem('medtech_student_id', userDoc.id);
                                         localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
                                         
-                                        setUser({ studentId: userDoc.id, ...userData });
+                                        setUser({ studentId: userDoc.id, ...userData, lineUid: lineFirebaseUid });
                                         setDashboardData({});
                                         setPage('dashboard');
                                         setAppProgress(null);
-                                        return; // 🛑 วาร์ปเข้าแอปสำเร็จ จบการทำงาน!
+                                        return; 
                                     }
                                 }
                             } catch (e) {
