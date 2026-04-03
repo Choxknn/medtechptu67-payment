@@ -2860,12 +2860,13 @@
                 }
             };
             
-            // 🚀 3. โหลดระบบแบบ Optimistic + LIFF Init (ฉบับโคตรซิ่ง ไม่มี Firebase Auth State)
+            // 🚀 3. โหลดระบบ (ฉบับติดตั้งเครื่องดักจับ Error ค้นหาสาเหตุโหลดค้าง)
             useEffect(() => {
                 const initializeApp = async () => {
                     setAppProgress(15); 
                     
                     try {
+                        // 1. เช็คปิดปรับปรุง
                         const configDoc = await db.collection('config').doc('system').get();
                         if (configDoc.exists && (configDoc.data().maintenance === true || configDoc.data().maintenance === 'ON')) {
                             setMaintenanceMsg(configDoc.data().maintenanceMsg || 'ขณะนี้ระบบกำลังปิดปรับปรุงชั่วคราว');
@@ -2875,46 +2876,48 @@
 
                         setAppProgress(30);
 
+                        // 2. ปลุกระบบ LIFF
                         try {
                             await liff.init({ liffId: LIFF_ID });
                         } catch (err) {
+                            Swal.fire('LIFF Error', 'โหลด LIFF ไม่สำเร็จ: ' + err.toString(), 'error');
                             console.error("LIFF Init Error:", err);
                         }
 
                         setAppProgress(50);
 
-                        // 🟢 3. ถ้าผู้ใช้เปิดใน LINE และล็อกอิน LIFF ค้างไว้ (Auto-Login)
+                        // 3. ถ้าล็อกอิน LIFF ไว้ (Auto-Login)
                         if (liff.isLoggedIn()) {
                             try {
                                 const profile = await liff.getProfile();
                                 const lineProfileId = profile.userId;
                                 
-                                // 🌟 1. ล็อกอิน Firebase ทันทีที่เข้าแอป
+                                // ขอ Custom Token
                                 const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
                                 
-                                if (res.success && res.token) {
+                                if (!res.success) {
+                                    // 🛑 ดัก Error จาก GAS
+                                    Swal.fire('GAS Error', 'ออกตั๋วไม่สำเร็จ: ' + res.message, 'error');
+                                } else if (res.success && res.token) {
                                     const lineAuthCred = await auth.signInWithCustomToken(res.token);
-                                    const lineFirebaseUid = lineAuthCred.user.uid; // 🌟 ดึง UID ของ LINE Auth
+                                    const lineFirebaseUid = lineAuthCred.user.uid;
 
-                                    // 🌟 2. ตอนนี้มีสิทธิ์แล้ว ดึงข้อมูลโปรไฟล์ได้เลย
                                     const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
+                                    
                                     if (!userSnap.empty) {
                                         const userDoc = userSnap.docs[0];
                                         const userData = userDoc.data();
                                         
-                                        // 🌟 อัปเดตชื่อใน Firebase Auth จาก "-" เป็น รหัสนักศึกษา
                                         if (lineAuthCred.user) {
                                             await lineAuthCred.user.updateProfile({
                                                 displayName: `${userData.name} (${userDoc.id})`
                                             });
                                         }
 
-                                        // 🌟 บังคับสร้าง/อัปเดตฟิลด์ lineUid ลง Firestore เสมอ
                                         await db.collection('users').doc(userDoc.id).update({ 
                                             lineUid: lineFirebaseUid 
                                         });
 
-                                        // อัปเดตข้อมูลใน Cache ด้วย
                                         userData.lineUid = lineFirebaseUid;
                                         localStorage.setItem('medtech_student_id', userDoc.id);
                                         localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
@@ -2927,12 +2930,15 @@
                                     }
                                 }
                             } catch (e) {
+                                // 🛑 ดัก Error ตอนล็อกอินหรือดึงข้อมูล Firestore
+                                Swal.fire('Firebase/Network Error', 'โหลดข้อมูลไม่สำเร็จ: ' + e.toString(), 'error');
                                 console.error("Auto LIFF Login Error:", e);
                             }
                         }
 
                         setAppProgress(70);
 
+                        // 4. เช็ค Local Storage
                         const savedId = localStorage.getItem('medtech_student_id');
                         const savedData = localStorage.getItem('medtech_user_cache');
 
@@ -2947,10 +2953,13 @@
                             } catch (e) {}
                         }
 
+                        // 5. ไม่ผ่านด่านไหนเลย ไปหน้าล็อกอิน
                         setPage('login');
                         setAppProgress(null);
 
                     } catch (error) {
+                        // 🛑 ดัก Error ภาพรวม (เช่น เน็ตหลุด หรือ Rules บล็อก)
+                        Swal.fire('System Error', 'ระบบขัดข้อง: ' + error.toString(), 'error');
                         setPage('login');
                         setAppProgress(null);
                     }
