@@ -2115,7 +2115,7 @@
                 const billCount = pendingBills.length;
                 const billIdsString = pendingBills.map(b => b.billId).join(', ');
 
-                // 🌟 หาบิลที่ด่วนที่สุด (ใกล้ครบกำหนดที่สุดและยังไม่เลยกำหนด) เพื่อเอานาฬิกามาโชว์
+                // 🌟 หาบิลที่ด่วนที่สุด (ใกล้ครบกำหนดที่สุดและยังไม่เลยกำหนด)
                 let urgentBill = null;
                 const validBills = pendingBills.filter(b => {
                     if (!b.dueDate || String(b.dueDate).includes('1899') || String(b.dueDate).includes('1970')) return false;
@@ -2138,16 +2138,16 @@
                 const hasActiveOrders = activeOrders.length > 0;
 
                 return (
-                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh] font-sans">
-                        {/* 🔵 Header สี #0066FF (ตามสีหลัก) */}
-                        <div className="bg-[#0066FF] rounded-b-[2rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-24 px-6 relative overflow-hidden shadow-sm">
+                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh]">
+                        {/* 🔵 Header สี #1a237e (สีกรมท่าเข้ม) */}
+                        <div className="bg-[#1a237e] rounded-b-[2rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-24 px-6 relative overflow-hidden shadow-sm">
                             <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
                                 <svg width="250" height="250" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
                                     <path fill="#ffffff" d="M45.7,-76.4C58.9,-69.1,69.1,-55.5,76.5,-40.8C83.9,-26.1,88.4,-10.4,87.6,5C86.7,20.4,80.5,35.4,70.9,47.8C61.3,60.2,48.2,69.9,33.5,76.4C18.8,82.9,2.6,86.2,-13.2,85.1C-29,84,-44.4,78.5,-57.4,68.9C-70.4,59.3,-80.9,45.6,-86.6,30.3C-92.3,15,-93.2,-1.8,-88.4,-16.7C-83.5,-31.6,-72.9,-44.5,-60.1,-53C-47.3,-61.5,-32.3,-65.6,-18,-68.8C-3.7,-72,10.6,-74.3,25.1,-75.9C39.6,-77.5,54.2,-78.4,45.7,-76.4Z" transform="translate(100 100) scale(1.1)" />
                                 </svg>
                             </div>
                             
-                            {/* โลโก้ และ Finance System ด้านขวา */}
+                            {/* โลโก้ และ Finance System */}
                             <div className="flex items-center gap-3 mb-6 relative z-10">
                                 <img 
                                     src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/MEDTECH-Finance%20System.png?alt=media&token=c67a5a66-eec6-4e3f-a6e7-9f24f61b8ed9" 
@@ -2182,17 +2182,17 @@
                             </div>
                         </div>
 
-                        {/* 💳 การ์ดยอดค้างชำระ (ดีไซน์ใหม่) */}
+                        {/* 💳 การ์ดยอดค้างชำระ */}
                         <div className="mx-5 -mt-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-6 relative z-20 border border-gray-100/80 min-h-[190px]">
                             
-                            {/* 🌟 ซ้ายบน: กรอบสีเหลื่อมๆ จำนวนบิล */}
+                            {/* Badge จำนวนบิล */}
                             {billCount > 0 && (
                                 <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-[0_2px_10px_rgba(245,158,11,0.4)] border border-white/50 z-10 flex items-center gap-1.5 animate-[pop_0.4s_ease-out]">
                                     <i className="fa-solid fa-receipt"></i> มี {billCount} บิล
                                 </div>
                             )}
 
-                            {/* 🌟 ขวาบน: ตัวนับถอยหลังบิลด่วนสุด */}
+                            {/* นาฬิกานับถอยหลังบิลด่วนสุด */}
                             {urgentBill && (
                                 <div className="absolute top-2 right-2 scale-[0.80] origin-top-right z-10">
                                     <BillTimer dueDate={urgentBill.dueDate} />
@@ -2201,23 +2201,25 @@
 
                             <p className="text-center text-gray-800 font-bold text-lg mb-0.5 mt-3">ยอดค้างชำระทั้งหมด</p>
                             
-                            {/* 🌟 รหัสบิลที่มี */}
+                            {/* รหัสบิลที่มี */}
                             <p className="text-center text-gray-400 text-[10px] font-medium mb-4 max-w-[85%] mx-auto truncate px-4">
                                 {billCount > 0 ? `รหัสบิล: ${billIdsString}` : 'ไม่มีบิลค้างชำระ'}
                             </p>
                             
-                            <p className="text-center text-[2.5rem] font-black text-[#0066FF] mb-6 tracking-tight flex justify-center items-center gap-1">
+                            {/* 🌟 ตัวเลขยอดเงินสี #1a237e */}
+                            <p className="text-center text-[2.5rem] font-black text-[#1a237e] mb-6 tracking-tight flex justify-center items-center gap-1">
                                 {formatCurrency(totalUnpaid)}
                             </p>
                             
+                            {/* 🌟 ปุ่มชำระเงินสี #1a237e */}
                             <button 
                                 onClick={() => handleTabChange('bills')} 
-                                className="w-full bg-[#0066FF] hover:bg-blue-700 text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98]"
+                                className="w-full bg-[#1a237e] hover:bg-[#12185b] text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98]"
                             >
                                 ชำระเงิน
                             </button>
                             <div className="flex justify-center mt-5">
-                                <div className="w-8 h-1.5 bg-[#0066FF]/20 rounded-full"></div>
+                                <div className="w-8 h-1.5 bg-[#1a237e]/20 rounded-full"></div>
                             </div>
                         </div>
 
@@ -2243,6 +2245,7 @@
                                 <i className="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
                             </button>
 
+                            {/* 🌟 แจ้งเตือนสินค้าขาย */}
                             {data?.orderEnabled && hasAccess('orders') && (
                                 <button onClick={() => handleTabChange('orders')} className="w-full bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 flex justify-between items-center shadow-sm border border-blue-200 active:scale-[0.98] transition-all mt-2 relative overflow-hidden group">
                                     <div className="flex items-center gap-4 relative z-10">
@@ -2694,54 +2697,54 @@
 
                         {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                        {/* 🌟 Bottom Navigation (แคปซูลลอย + ปุ่มบ้าน + สีหลัก #0066FF) */}
+                       {/* 🌟 Bottom Navigation (แคปซูลลอย + ปุ่มบ้านเด้งขึ้น + คำว่า หน้าหลัก อยู่ด้านล่าง) */}
                         <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-safe pt-12 px-4 mb-4 ${isSubPageOpen ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
                             {/* ไล่สีพื้นหลังให้กลืนไปกับจอ */}
                             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F4F7FB] via-[#F4F7FB]/90 to-transparent pointer-events-auto"></div>
                             
-                            <nav className="relative z-10 pointer-events-auto bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_10px_40px_-10px_rgba(0,102,255,0.2)] px-3 py-2.5 flex justify-between items-center w-full max-w-md border border-white">
+                            <nav className="relative z-10 pointer-events-auto bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_10px_40px_-10px_rgba(0,102,255,0.2)] px-3 flex justify-between items-center w-full max-w-md border border-white h-[70px]">
                                 
                                 {/* 👈 ฝั่งซ้าย 2 ปุ่ม */}
-                                <div className="flex w-[35%] justify-around items-center">
+                                <div className="flex w-[35%] justify-around items-center h-full pt-2">
                                     <button onClick={() => handleTabChange('orders')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'orders' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-[#0066FF]'}`}>
                                         <i className={`fa-solid fa-store ${tab === 'orders' ? 'text-lg' : 'text-base'} transition-all`}></i>
-                                        <span className="text-[9px] font-bold">ร้านค้า</span>
+                                        <span className="text-[10px] font-bold">ร้านค้า</span>
                                     </button>
                                     <button onClick={() => handleTabChange('finance')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-[#0066FF]'}`}>
                                         <i className={`fa-solid fa-wallet ${tab === 'finance' ? 'text-lg' : 'text-base'} transition-all`}></i>
-                                        <span className="text-[9px] font-bold">การเงิน</span>
+                                        <span className="text-[10px] font-bold">การเงิน</span>
                                     </button>
                                 </div>
 
-                                {/* 🎯 ตรงกลาง (หน้าแรก) วงกลมไอคอนบ้านลอยเด้งขึ้นมา */}
-                                <div className="w-[30%] flex justify-center relative">
+                                {/* 🎯 ตรงกลาง (หน้าหลัก) ปุ่มบ้านลอย + ข้อความด้านล่าง */}
+                                <div className="w-[30%] flex justify-center relative h-full">
                                     <button 
                                         onClick={() => handleTabChange('home')} 
-                                        className={`absolute -bottom-[35px] w-[60px] h-[60px] rounded-full flex items-center justify-center shadow-[0_4px_20px_rgba(0,102,255,0.3)] border-[4px] border-[#F4F7FB] active:scale-95 transition-all duration-300 z-50 ${tab === 'home' ? 'bg-[#0066FF] text-white' : 'bg-white text-[#0066FF]'}`}
+                                        className={`absolute -top-[24px] w-[60px] h-[60px] rounded-full flex items-center justify-center shadow-[0_-5px_20px_rgba(0,102,255,0.2)] border-[4px] border-[#F4F7FB] active:scale-95 transition-all duration-300 z-50 ${tab === 'home' ? 'bg-[#0066FF] text-white' : 'bg-white text-[#0066FF]'}`}
                                     >
-                                        <i className="fa-solid fa-house text-2xl"></i>
+                                        <i className="fa-solid fa-house text-[22px]"></i>
                                     </button>
-                                    {/* ตัวหนังสือ "หน้าแรก" ใต้วงกลม */}
-                                    <span className={`absolute bottom-[-22px] text-[9px] font-bold transition-colors ${tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400'}`}>
-                                        หน้าแรก
+                                    {/* 🌟 ข้อความ "หน้าหลัก" ให้อยู่ข้างล่างสุดของแถบ (ระนาบเดียวกับเมนูอื่น) */}
+                                    <span className={`absolute bottom-2 text-[10px] font-bold transition-colors ${tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400'}`}>
+                                        หน้าหลัก
                                     </span>
                                 </div>
 
                                 {/* 👉 ฝั่งขวา 2 ปุ่ม */}
-                                <div className="flex w-[35%] justify-around items-center">
+                                <div className="flex w-[35%] justify-around items-center h-full pt-2">
                                     <button onClick={() => handleTabChange('history')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'history' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-[#0066FF]'}`}>
                                         <i className={`fa-solid fa-clock-rotate-left ${tab === 'history' ? 'text-lg' : 'text-base'} transition-all`}></i>
-                                        <span className="text-[9px] font-bold">ประวัติ</span>
+                                        <span className="text-[10px] font-bold">ประวัติ</span>
                                     </button>
                                     <button onClick={() => handleTabChange('settings')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-[#0066FF]'}`}>
                                         <i className={`fa-regular fa-user ${tab === 'settings' ? 'text-lg' : 'text-base'} transition-all`}></i>
-                                        <span className="text-[9px] font-bold">บัญชีผู้ใช้</span>
+                                        <span className="text-[10px] font-bold">บัญชีผู้ใช้</span>
                                     </button>
                                 </div>
 
                             </nav>
                         </div>
-
+                        
                         {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
 
                     </div>
