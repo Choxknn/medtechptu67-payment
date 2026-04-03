@@ -2753,10 +2753,14 @@
                                 });
                             }
 
-                            // 🌟 บังคับสร้าง/อัปเดตฟิลด์ lineUid ลง Firestore เสมอ
-                            await db.collection('users').doc(userDoc.id).update({ 
-                                lineUid: lineFirebaseUid 
-                            });
+                            // 🌟 เช็คก่อนว่ามี lineUid หรือยัง ถ้ายังไม่มีค่อยอัปเดต (ประหยัด Write)
+                                if (!userData.lineUid) {
+                                    await db.collection('users').doc(userDoc.id).update({ 
+                                        lineUid: lineFirebaseUid 
+                                    });
+                                    // อัปเดตค่าในตัวแปร userData ด้วยเพื่อให้ Cache เป็นปัจจุบัน
+                                    userData.lineUid = lineFirebaseUid;
+                                }
                             
                             if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                             
@@ -2914,9 +2918,14 @@
                                             });
                                         }
 
-                                        await db.collection('users').doc(userDoc.id).update({ 
-                                            lineUid: lineFirebaseUid 
-                                        });
+                                        // 🌟 เช็คก่อนว่ามี lineUid หรือยัง ถ้ายังไม่มีค่อยอัปเดต (ประหยัด Write)
+                                        if (!userData.lineUid) {
+                                            await db.collection('users').doc(userDoc.id).update({ 
+                                                lineUid: lineFirebaseUid 
+                                            });
+                                            // อัปเดตค่าในตัวแปร userData ด้วยเพื่อให้ Cache เป็นปัจจุบัน
+                                            userData.lineUid = lineFirebaseUid;
+                                        }
 
                                         userData.lineUid = lineFirebaseUid;
                                         localStorage.setItem('medtech_student_id', userDoc.id);
