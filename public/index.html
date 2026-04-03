@@ -2304,74 +2304,62 @@
                             fireErrorAlert('แจ้งเตือน', 'กรุณากรอกรหัสผ่าน');
                         }
                     });
-                } else {
-                    // --- ส่วนการเริ่มเชื่อมต่อ ---
-                    Swal.fire({
-                        title: 'ยืนยันตัวตนก่อนเชื่อมต่อ',
-                        text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันตัวตน (ระบบจะเปิดหน้าต่าง LINE เพื่อเชื่อมบัญชี)',
-                        input: 'password',
-                        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
-                        showCancelButton: true,
-                        confirmButtonText: 'เชื่อมต่อ LINE',
-                        cancelButtonText: 'ยกเลิก',
-                        confirmButtonColor: '#00B900',
-                        customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600 hover:bg-gray-200' }
-                    }).then(async (res) => {
-                        if(res.isConfirmed && res.value) {
-                            setLoading(true);
-                            try {
-                                const email = `${user.studentId}@ptu.ac.th`;
-                                const pass = res.value;
+                } e} else {
+        // --- 🌟 ส่วนการเริ่มเชื่อมต่อ (ฉบับ LIFF) ---
+        Swal.fire({
+            title: 'ยืนยันตัวตนก่อนเชื่อมต่อ',
+            text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันตัวตน',
+            input: 'password',
+            inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+            showCancelButton: true,
+            confirmButtonText: 'เชื่อมต่อ LINE',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#00B900',
+            customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' }
+        }).then(async (res) => {
+            if(res.isConfirmed && res.value) {
+                setLoading(true);
+                try {
+                    const email = `${user.studentId}@ptu.ac.th`;
+                    const pass = res.value;
 
-                                // 🌟 1. เช็ครหัสผ่านก่อนว่าถูกไหม จะได้ไม่เสียเวลาเปิด LINE
-                                try {
-                                    await auth.signInWithEmailAndPassword(email, pass);
-                                } catch(e) {
-                                    throw new Error("รหัสผ่านไม่ถูกต้อง");
-                                }
+                    // 1. เช็ครหัสผ่าน
+                    await auth.signInWithEmailAndPassword(email, pass);
 
-                                // 🌟 2. เปิดหน้าต่าง LINE ล็อกอิน (Session จะเปลี่ยนเป็น LINE)
-                                const provider = new firebase.auth.OAuthProvider('oidc.line');
-                                const result = await auth.signInWithPopup(provider);
+                    // 2. ขอ ID จาก LIFF
+                    if (!liff.isLoggedIn()) {
+                        setLoading(false);
+                        liff.login(); // สั่งล็อกอิน LIFF
+                        return;
+                    }
+                    const profile = await liff.getProfile();
+                    const lineUid = profile.userId;
 
-                                const lineId = result.user.providerData[0].uid;
-                                const lineUid = result.user.uid;
+                    // 3. ตรวจสอบว่า LINE นี้มีคนอื่นใช้หรือยัง
+                    const checkDup = await db.collection('users').where('userId', '==', lineUid).get();
+                    if (!checkDup.empty && checkDup.docs[0].id !== user.studentId) {
+                        throw new Error("LINE นี้ถูกผูกกับรหัสนักศึกษาอื่นไปแล้ว");
+                    }
 
-                                // 🌟 3. ตรวจสอบว่า LINE นี้มีคนอื่นใช้หรือยัง
-                                const checkDup = await db.collection('users').where('userId', '==', lineId).get();
-                                if (!checkDup.empty && checkDup.docs[0].id !== user.studentId) {
-                                    throw new Error("LINE นี้ถูกผูกกับรหัสนักศึกษาอื่นไปแล้ว");
-                                }
-
-                                // 🌟 4. สลับ Session กลับมาเป็น Email เพื่อให้มีสิทธิ์เขียน (Write Permission) ลง Firestore!
-                                await auth.signInWithEmailAndPassword(email, pass);
-
-                                // 🌟 5. อัปเดต Firestore (ตอนนี้ใช้สิทธิ์ของ Email ซึ่งผ่าน Rules แน่นอน 100%)
-                                await db.collection('users').doc(user.studentId).update({ 
-                                    userId: lineId,
-                                    lineUid: lineUid
-                                });
-                                
-                                setUser(prev => ({ ...prev, userId: lineId, lineUid: lineUid }));
-                                Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
-
-                            } catch(e) {
-                                console.error("Connect Error:", e);
-                                // พยายามสลับกลับเป็นอีเมลเผื่อ Session ค้างที่ LINE
-                                try { await auth.signInWithEmailAndPassword(`${user.studentId}@ptu.ac.th`, res.value); } catch(err) {}
-
-                                let errMsg = e.message;
-                                if (errMsg.includes('auth/')) errMsg = 'รหัสผ่านไม่ถูกต้อง';
-                                fireErrorAlert('พบข้อผิดพลาด', errMsg);
-                            } finally {
-                                setLoading(false);
-                            }
-                        } else if (res.isConfirmed && !res.value) {
-                            fireErrorAlert('แจ้งเตือน', 'กรุณากรอกรหัสผ่าน');
-                        }
+                    // 4. อัปเดต Firestore ทันที!
+                    await db.collection('users').doc(user.studentId).update({ 
+                        userId: lineUid
                     });
+                    
+                    setUser(prev => ({ ...prev, userId: lineUid }));
+                    Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
+
+                } catch(e) {
+                    console.error("Connect Error:", e);
+                    let errMsg = e.message.includes('auth/') ? 'รหัสผ่านไม่ถูกต้อง' : e.message;
+                    fireErrorAlert('พบข้อผิดพลาด', errMsg);
+                } finally {
+                    setLoading(false);
                 }
-            };
+            }
+        });
+    }
+};
 
                 const handleContactAdmin = () => {
                     const qrImgUrl = getDirectDriveUrl('https://drive.google.com/file/d/1oYL1NI9kbsYpa4pOM0KLoBhR91FRNVuH/view?usp=drivesdk');
@@ -2734,33 +2722,27 @@
             // 🚀 2. ระบบ Login ผ่าน LINE (ใช้ LIFF + Custom Token)
             const handleLineLogin = async () => {
                 try {
-                    // ถ้ายังไม่ได้ล็อกอิน LIFF ให้มันเด้งไปขอสิทธิ์ LINE อัตโนมัติ
                     if (!liff.isLoggedIn()) {
                         liff.login();
                         return;
                     }
                     
                     setLoading(true);
-                    
-                    // 1) ขอข้อมูลจาก LIFF
                     const profile = await liff.getProfile();
                     const lineUid = profile.userId; 
                     
-                    // 2) เช็คใน Firestore ว่า LINE UID นี้เคยผูกกับนักศึกษาคนไหนไว้ไหม?
                     const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
                     
                     if (!userSnap.empty) {
-                        // 🟢 กรณี A: เคยผูกบัญชีไว้แล้ว -> ขอ Custom Token จาก GAS
                         const userDoc = userSnap.docs[0];
                         const userData = userDoc.data();
                         
                         try {
-                            // 🌟 วิ่งไปขอตั๋ววิเศษ (Custom Token) จากเซิร์ฟเวอร์ GAS
-                            // คุณต้องสร้างฟังก์ชัน 'getCustomToken' ใน GAS ที่รับค่า lineUid ไปสร้าง token กลับมา
-                            const res = await runGoogleScript('getCustomToken', { lineId: lineUid });
+                            // 🌟 แก้ตรงนี้: ส่ง firebaseUid ไปให้ GAS แทน lineUid
+                            const targetUid = userData.firebaseUid || lineUid;
+                            const res = await runGoogleScript('getCustomToken', { uid: targetUid });
                             
                             if (res.success && res.token) {
-                                // ได้ตั๋วมาแล้ว! เอาไปล็อกอินเข้า Firebase เลย
                                 await auth.signInWithCustomToken(res.token);
                                 
                                 if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
@@ -2782,7 +2764,7 @@
                         }
 
                     } else {
-                        // 🔴 กรณี B: "ยังไม่เคยผูกบัญชี" -> เด้ง Popup ถามรหัสนักศึกษา/รหัสผ่าน
+                        // ... (โค้ด Popup กรอกรหัสผ่าน กรณีลงทะเบียนครั้งแรก เหมือนเดิม) ...
                         setLoading(false); 
                         const { value: formValues } = await Swal.fire({
                             title: 'เชื่อมต่อบัญชี LINE',
@@ -2820,7 +2802,6 @@
                                 const email = `${u}@ptu.ac.th`;
                                 let userCred;
                                 
-                                // ล็อกอินด้วย Email/Pass เพื่อให้มีสิทธิ์ Firebase Auth ก่อน
                                 if (userData.hasPassword) {
                                     userCred = await auth.signInWithEmailAndPassword(email, p);
                                 } else {
@@ -2828,9 +2809,8 @@
                                     userCred = await auth.createUserWithEmailAndPassword(email, p);
                                 }
 
-                                // บันทึกข้อมูล LINE ลง Firestore (ผูกติดกัน)
                                 await db.collection('users').doc(u).update({ 
-                                    userId: lineUid, // บันทึก LINE UID ของ LIFF 
+                                    userId: lineUid, 
                                     firebaseUid: userCred.user.uid,
                                     hasPassword: true, 
                                     password: firebase.firestore.FieldValue.delete()
@@ -2860,13 +2840,12 @@
                 }
             };
 
-            /// 🚀 2. โหลดระบบแบบ Optimistic + LIFF Init (ฉบับโคตรซิ่ง ไม่มี Firebase Auth State)
+            // 🚀 3. โหลดระบบแบบ Optimistic + LIFF Init (ฉบับโคตรซิ่ง ไม่มี Firebase Auth State)
             useEffect(() => {
                 const initializeApp = async () => {
                     setAppProgress(15); 
                     
                     try {
-                        // 🚧 1. เช็คปิดปรับปรุง
                         const configDoc = await db.collection('config').doc('system').get();
                         if (configDoc.exists && (configDoc.data().maintenance === true || configDoc.data().maintenance === 'ON')) {
                             setMaintenanceMsg(configDoc.data().maintenanceMsg || 'ขณะนี้ระบบกำลังปิดปรับปรุงชั่วคราว');
@@ -2876,7 +2855,6 @@
 
                         setAppProgress(30);
 
-                        // 🚀 2. ปลุกระบบ LIFF ให้ตื่น
                         try {
                             await liff.init({ liffId: LIFF_ID });
                         } catch (err) {
@@ -2885,7 +2863,6 @@
 
                         setAppProgress(50);
 
-                        // 🟢 3. ถ้าผู้ใช้เปิดใน LINE และล็อกอิน LIFF ค้างไว้ (Auto-Login)
                         if (liff.isLoggedIn()) {
                             try {
                                 const profile = await liff.getProfile();
@@ -2896,8 +2873,10 @@
                                     const userDoc = userSnap.docs[0];
                                     const userData = userDoc.data();
                                     
-                                    // ขอ Custom Token จาก GAS
-                                    const res = await runGoogleScript('getCustomToken', { lineId: lineUid });
+                                    // 🌟 แก้ตรงนี้: ส่ง firebaseUid ไปให้ GAS แทน lineUid
+                                    const targetUid = userData.firebaseUid || lineUid;
+                                    const res = await runGoogleScript('getCustomToken', { uid: targetUid });
+                                    
                                     if (res.success && res.token) {
                                         await auth.signInWithCustomToken(res.token);
 
@@ -2908,7 +2887,7 @@
                                         setDashboardData({});
                                         setPage('dashboard');
                                         setAppProgress(null);
-                                        return; // 🛑 วาร์ปเข้าแอปสำเร็จ จบการทำงาน!
+                                        return; 
                                     }
                                 }
                             } catch (e) {
@@ -2918,7 +2897,6 @@
 
                         setAppProgress(70);
 
-                        // ⚡ 4. Fallback เช็ค Cache ในเครื่อง (ถ้านอก LINE หรือ LIFF ไม่สำเร็จ)
                         const savedId = localStorage.getItem('medtech_student_id');
                         const savedData = localStorage.getItem('medtech_user_cache');
 
@@ -2929,11 +2907,10 @@
                                 setDashboardData({});
                                 setPage('dashboard');
                                 setAppProgress(null);
-                                return; // 🛑 วาร์ปเข้าแอปสำเร็จ จบการทำงาน!
+                                return; 
                             } catch (e) {}
                         }
 
-                        // 🔴 5. ถ้าไม่ผ่านด่านไหนเลย พาไปหน้า Login ทันที! (ไม่ต้องรอ Firebase เช็ค)
                         setPage('login');
                         setAppProgress(null);
 
