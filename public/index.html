@@ -2138,7 +2138,7 @@
                 const hasActiveOrders = activeOrders.length > 0;
 
                 return (
-                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh] font-sans">
+                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh]">
                         {/* 🔵 Header สี #1a237e (สีกรมท่าเข้ม) */}
                         <div className="bg-[#1a237e] rounded-b-[2rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-24 px-6 relative overflow-hidden shadow-sm">
                             <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
@@ -2210,15 +2210,17 @@
                                 )}
                             </p>
                             
+                            {/* ตัวเลขยอดเงินสี #1a237e */}
                             <p className="text-center text-[2.5rem] font-black text-[#1a237e] mb-6 tracking-tight flex justify-center items-center gap-1">
                                 {formatCurrency(totalUnpaid)}
                             </p>
                             
+                            {/* ปุ่มชำระเงินสี #1a237e */}
                             <button 
                                 onClick={() => handleTabChange('bills')} 
                                 className="w-full bg-[#1a237e] hover:bg-[#12185b] text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98]"
                             >
-                                รายละเอียดบิล
+                                ชำระเงิน
                             </button>
                             <div className="flex justify-center mt-5">
                                 <div className="w-8 h-1.5 bg-[#1a237e]/20 rounded-full"></div>
@@ -2247,6 +2249,7 @@
                                 <i className="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
                             </button>
 
+                            {/* แจ้งเตือนสินค้าขาย */}
                             {data?.orderEnabled && hasAccess('orders') && (
                                 <button onClick={() => handleTabChange('orders')} className="w-full bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 flex justify-between items-center shadow-sm border border-blue-200 active:scale-[0.98] transition-all mt-2 relative overflow-hidden group">
                                     <div className="flex items-center gap-4 relative z-10">
