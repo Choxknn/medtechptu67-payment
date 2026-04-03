@@ -2729,21 +2729,28 @@
                     
                     setLoading(true);
                     const profile = await liff.getProfile();
-                    const lineUid = profile.userId; 
+                    const lineProfileId = profile.userId; // รหัส LINE ID (Uxxxx...)
                     
-                    const userSnap = await db.collection('users').where('userId', '==', lineUid).get();
+                    const userSnap = await db.collection('users').where('userId', '==', lineProfileId).get();
                     
                     if (!userSnap.empty) {
                         const userDoc = userSnap.docs[0];
                         const userData = userDoc.data();
                         
                         try {
-                            // 🌟 แก้ตรงนี้: ส่ง firebaseUid ไปให้ GAS แทน lineUid
-                            const targetUid = userData.firebaseUid || lineUid;
+                            // 🌟 แก้ตรงนี้: ส่ง firebaseUid ไปให้ GAS แทน (ถ้ามี) ถ้าไม่มีก็ใช้ lineProfileId
+                            const targetUid = userData.firebaseUid || lineProfileId;
                             const res = await runGoogleScript('getCustomToken', { uid: targetUid });
                             
                             if (res.success && res.token) {
-                                await auth.signInWithCustomToken(res.token);
+                                const userCred = await auth.signInWithCustomToken(res.token);
+                                
+                                // 🌟 อัปเดตชื่อให้แอดมินดูง่ายๆ ในหน้า Firebase Auth
+                                if (userCred.user) {
+                                    await userCred.user.updateProfile({
+                                        displayName: `${userData.name} (${userDoc.id})`
+                                    });
+                                }
                                 
                                 if(!userData.permissions) userData.permissions = ['home', 'bills', 'orders', 'history', 'finance', 'settings'];
                                 localStorage.setItem('medtech_student_id', userDoc.id);
@@ -2764,7 +2771,7 @@
                         }
 
                     } else {
-                        // ... (โค้ด Popup กรอกรหัสผ่าน กรณีลงทะเบียนครั้งแรก เหมือนเดิม) ...
+                        // 🔴 กรณียังไม่เคยผูกบัญชี (เด้ง Popup ถามรหัสผ่าน)
                         setLoading(false); 
                         const { value: formValues } = await Swal.fire({
                             title: 'เชื่อมต่อบัญชี LINE',
@@ -2809,8 +2816,9 @@
                                     userCred = await auth.createUserWithEmailAndPassword(email, p);
                                 }
 
+                                // 🌟 บันทึกข้อมูลลง Firestore (รวมเก็บ userId ไว้เช็คสิทธิ์ด้วย)
                                 await db.collection('users').doc(u).update({ 
-                                    userId: lineUid, 
+                                    userId: lineProfileId, 
                                     firebaseUid: userCred.user.uid,
                                     hasPassword: true, 
                                     password: firebase.firestore.FieldValue.delete()
@@ -2820,7 +2828,7 @@
                                 localStorage.setItem('medtech_student_id', u);
                                 localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
                                 
-                                setUser({ studentId: u, ...userData, userId: lineUid, firebaseUid: userCred.user.uid });
+                                setUser({ studentId: u, ...userData, userId: lineProfileId, firebaseUid: userCred.user.uid });
                                 setDashboardData({}); 
                                 setLoading(false);
                                 setPage('dashboard');
@@ -2878,7 +2886,12 @@
                                     const res = await runGoogleScript('getCustomToken', { uid: targetUid });
                                     
                                     if (res.success && res.token) {
-                                        await auth.signInWithCustomToken(res.token);
+                                        const userCred = await auth.signInWithCustomToken(res.token);
+                                        if (userCred.user) {
+                                            await userCred.user.updateProfile({
+                                                displayName: `${userData.name} (${userDoc.id})`
+                                            });
+                                        }
 
                                         localStorage.setItem('medtech_student_id', userDoc.id);
                                         localStorage.setItem('medtech_user_cache', JSON.stringify(userData));
@@ -2923,7 +2936,6 @@
                 initializeApp();
             }, []);
 
-            // 🚀 4. ล็อกอินปกติด้วยรหัสผ่าน
             const handleLogin = async (u, p) => {
                 if(!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 setLoginProgress(1);
