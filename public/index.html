@@ -1655,11 +1655,11 @@
                     const diffTime = today.getTime() - dueDateObj.getTime();
                     daysLate = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                     
-                    // 🌟 แปลงเป็นตัวเลขเผื่อข้อมูลในฐานข้อมูลเป็น String
-                    const dailyFine = Number(bill.dailyFine) || 0;
+                    // 🌟 เปลี่ยนมาใช้ finePerDay ตามที่ฐานข้อมูลของคุณระบุ
+                    const finePerDay = Number(bill.finePerDay) || 0;
                     const maxFine = Number(bill.maxFine) || 0;
 
-                    fine = daysLate * dailyFine;
+                    fine = daysLate * finePerDay;
                     
                     // เช็คเพดานค่าปรับสูงสุด (ถ้ามีการตั้งไว้)
                     if (maxFine > 0 && fine > maxFine) fine = maxFine;
