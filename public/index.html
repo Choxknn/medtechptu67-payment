@@ -1642,7 +1642,10 @@
                 let dueDateObj;
                 if(String(bill.dueDate).includes('/')) {
                     const parts = String(bill.dueDate).split('/');
-                    dueDateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                    let year = parseInt(parts[2], 10);
+                    // 🌟 ดักจับ: ถ้าปีมากกว่า 2500 ให้ลบ 543 เพื่อแปลง พ.ศ. เป็น ค.ศ.
+                    if (year > 2500) year -= 543; 
+                    dueDateObj = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
                 } else {
                     dueDateObj = new Date(bill.dueDate);
                 }
@@ -1651,13 +1654,19 @@
                 if (today.getTime() > dueDateObj.getTime()) {
                     const diffTime = today.getTime() - dueDateObj.getTime();
                     daysLate = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    fine = daysLate * (bill.dailyFine || 0);
-                    if (bill.maxFine > 0 && fine > bill.maxFine) fine = bill.maxFine;
+                    
+                    // 🌟 แปลงเป็นตัวเลขเผื่อข้อมูลในฐานข้อมูลเป็น String
+                    const dailyFine = Number(bill.dailyFine) || 0;
+                    const maxFine = Number(bill.maxFine) || 0;
+
+                    fine = daysLate * dailyFine;
+                    
+                    // เช็คเพดานค่าปรับสูงสุด (ถ้ามีการตั้งไว้)
+                    if (maxFine > 0 && fine > maxFine) fine = maxFine;
                 }
             }
             
             const total = (Number(bill.amount) - Number(bill.discount || 0)) + fine;
-            // 🌟 บังคับแปลง total ให้เป็น String เพื่อให้จับคู่กับ Key ใน qrMap ได้ชัวร์ๆ
             const strTotal = String(total);
             const selectedQr = qrMap && qrMap[strTotal] ? qrMap[strTotal] : defaultQr;
             
