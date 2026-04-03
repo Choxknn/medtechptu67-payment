@@ -2107,7 +2107,7 @@
             };
 
            const renderHomeContent = () => {
-                // 🌟 จัดการตัดคำนำหน้าชื่อ
+                // 🌟 ตัดคำนำหน้าชื่อ (นาย, นางสาว ฯลฯ) ออก
                 const formattedName = user?.name ? user.name.replace(/^(นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.)\s*/, '') : 'นักศึกษา';
                 
                 // 🌟 คำนวณยอดค้างชำระทั้งหมด
@@ -2118,81 +2118,95 @@
                 const hasActiveOrders = activeOrders.length > 0;
 
                 return (
-                    <div className="w-full pb-10 relative bg-[#F0F4F8] min-h-full">
-                        {/* 🔵 Header สีน้ำเงินเข้ม */}
-                        <div className="bg-[#1C2C54] rounded-b-[2.5rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-20 px-6 relative overflow-hidden">
-                            {/* โลโก้ */}
+                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh] font-sans">
+                        {/* 🔵 Header สีน้ำเงินเข้มขอบโค้ง */}
+                        <div className="bg-[#213359] rounded-b-[2rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-24 px-6 relative overflow-hidden shadow-sm">
+                            {/* ลายกราฟิก Background */}
+                            <div className="absolute right-[-20%] top-[-10%] opacity-20 pointer-events-none">
+                                <svg width="250" height="250" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="#ffffff" d="M45.7,-76.4C58.9,-69.1,69.1,-55.5,76.5,-40.8C83.9,-26.1,88.4,-10.4,87.6,5C86.7,20.4,80.5,35.4,70.9,47.8C61.3,60.2,48.2,69.9,33.5,76.4C18.8,82.9,2.6,86.2,-13.2,85.1C-29,84,-44.4,78.5,-57.4,68.9C-70.4,59.3,-80.9,45.6,-86.6,30.3C-92.3,15,-93.2,-1.8,-88.4,-16.7C-83.5,-31.6,-72.9,-44.5,-60.1,-53C-47.3,-61.5,-32.3,-65.6,-18,-68.8C-3.7,-72,10.6,-74.3,25.1,-75.9C39.6,-77.5,54.2,-78.4,45.7,-76.4Z" transform="translate(100 100) scale(1.1)" />
+                                </svg>
+                            </div>
+                            
+                            {/* โลโก้แบบไม่มีพื้นหลังยาวๆ */}
                             <img 
                                 src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/MEDTECH-Finance%20System.png?alt=media&token=d458ff22-1805-41fe-bb11-43fe2e29b353" 
                                 alt="Logo" 
-                                className="h-7 md:h-9 mb-6 relative z-10 object-contain"
+                                className="h-6 mb-6 relative z-10 object-contain"
                             />
 
                             <div className="flex justify-between items-center relative z-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-white text-[#1C2C54] rounded-full flex items-center justify-center font-bold text-xl shadow-md border-2 border-white/20">
+                                    {/* ไอคอนโปรไฟล์ U */}
+                                    <div className="w-[52px] h-[52px] bg-white text-[#213359] rounded-full flex items-center justify-center font-bold text-2xl shadow-md border-2 border-white/20 pb-1">
                                         {formattedName.charAt(0)}
                                     </div>
                                     <div className="text-white">
-                                        <p className="text-sm font-light opacity-90">สวัสดี</p>
-                                        <p className="font-bold text-lg">คุณ {formattedName}</p>
+                                        <p className="text-sm font-light opacity-90 leading-tight">สวัสดี</p>
+                                        <p className="font-bold text-lg leading-tight">คุณ {formattedName}</p>
                                     </div>
                                 </div>
 
-                                {/* ปุ่มประกาศ */}
-                                <button onClick={() => setShowAnnouncement(true)} className="bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white rounded-full px-4 py-1.5 flex items-center gap-2 text-xs transition-all shadow-sm active:scale-95">
-                                    <i className="fa-solid fa-bullhorn"></i> ประกาศ
+                                {/* ปุ่มดูประกาศ (Glassmorphism) */}
+                                <button onClick={() => setShowAnnouncement(true)} className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white rounded-full px-4 py-2 flex items-center gap-2 text-sm transition-all shadow-sm active:scale-95">
+                                    <i className="fa-regular fa-bell text-lg"></i> ประกาศ
                                 </button>
                             </div>
                         </div>
 
-                        {/* 💳 การ์ดยอดค้างชำระ */}
-                        <div className="mx-5 -mt-12 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-6 relative z-20 border border-gray-100">
-                            <p className="text-center text-gray-600 font-bold mb-1 text-sm">ยอดบิลที่ต้องชำระ</p>
-                            <p className="text-center text-4xl font-black text-[#3B5998] mb-6 tracking-tight">
+                        {/* 💳 การ์ดยอดค้างชำระ (ลอยทับ Header) */}
+                        <div className="mx-5 -mt-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-6 relative z-20 border border-gray-100/80">
+                            <p className="text-center text-gray-800 font-bold text-lg mb-0.5">ยอดบิลที่ต้องชำระ</p>
+                            <p className="text-center text-gray-400 text-xs mb-4">{user.studentId}</p>
+                            
+                            <p className="text-center text-[2.5rem] font-bold text-[#4665A2] mb-6 tracking-tight flex justify-center items-center gap-1">
                                 {formatCurrency(totalUnpaid)}
                             </p>
                             
                             <button 
                                 onClick={() => handleTabChange('bills')} 
-                                className="w-full bg-[#42619B] hover:bg-[#2C4A7C] text-white rounded-xl py-3.5 font-bold text-sm transition-all shadow-md active:scale-[0.98]"
+                                className="w-full bg-[#4665A2] hover:bg-[#345187] text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98]"
                             >
-                                ชำระเงิน
+                                แตะเพื่อดูรายละเอียดบิล
                             </button>
                             <div className="flex justify-center mt-5">
-                                <div className="w-8 h-1.5 bg-gray-200 rounded-full"></div>
+                                <div className="w-8 h-1.5 bg-[#4665A2]/20 rounded-full"></div>
                             </div>
                         </div>
 
-                        {/* 📋 รายการเมนูด้านล่าง */}
+                        {/* 📋 รายการเมนูด้านล่างการ์ด */}
                         <div className="px-5 mt-6 space-y-3">
-                            {/* แถบติดตามสินค้า (ซ่อนถ้าไม่มีของ) */}
+                            {/* แถบติดตามสินค้า (แสดงเฉพาะตอนมีของ) */}
                             {hasActiveOrders && (
                                 <button 
                                     onClick={() => setTrackingOrder(activeOrders[0])} 
-                                    className="w-full bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm border border-gray-100 active:scale-[0.98] transition-all"
+                                    className="w-full bg-white rounded-xl p-4 flex justify-between items-center shadow-sm border border-gray-100 active:scale-[0.98] transition-all hover:border-blue-100"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <i className="fa-solid fa-box-open text-xl text-gray-400 w-6 text-center"></i>
-                                        <span className="font-bold text-gray-700 text-sm">ติดตามสินค้า</span>
+                                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-800">
+                                            <i className="fa-solid fa-box text-base"></i>
+                                        </div>
+                                        <span className="font-bold text-gray-800 text-base">ติดตามสินค้า</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-100 px-2.5 py-1 rounded-md font-bold">{activeOrders[0]?.status}</span>
-                                        <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                        <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-100 px-2.5 py-1 rounded-md font-bold shadow-sm">{activeOrders[0]?.status}</span>
+                                        <i className="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
                                     </div>
                                 </button>
                             )}
 
-                            {/* แถบรายการสินเชื่อ -> เปลี่ยนเป็นรายการประวัติแทน */}
+                            {/* แถบรายการประวัติ */}
                             <button 
                                 onClick={() => handleTabChange('history')} 
-                                className="w-full bg-white rounded-2xl p-4 flex justify-between items-center shadow-sm border border-gray-100 active:scale-[0.98] transition-all"
+                                className="w-full bg-white rounded-xl p-4 flex justify-between items-center shadow-sm border border-gray-100 active:scale-[0.98] transition-all hover:border-blue-100"
                             >
                                 <div className="flex items-center gap-4">
-                                    <i className="fa-solid fa-list-ul text-xl text-gray-400 w-6 text-center"></i>
-                                    <span className="font-bold text-gray-700 text-sm">รายการประวัติ</span>
+                                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-800">
+                                        <i className="fa-solid fa-clipboard-list text-lg"></i>
+                                    </div>
+                                    <span className="font-bold text-gray-800 text-base">ประวัติทำรายการ</span>
                                 </div>
-                                <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                <i className="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
                             </button>
                         </div>
                     </div>
@@ -2484,8 +2498,12 @@
                             </div>
                         </header>
 
-                       <main className="flex-1 w-full relative overflow-hidden">
-                        <div className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-5 pt-[calc(env(safe-area-inset-top)+75px)]'}`}>
+                       <main className="flex-1 w-full relative overflow-hidden bg-[#F4F7FB]">
+                            <div className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-5 pt-[calc(env(safe-area-inset-top)+75px)]'}`}>
+                                
+                                {/* 🌟 ตรงนี้คือจุดที่ทำให้จอขาว เพราะโค้ดบรรทัดนี้เคยหายไปครับ */}
+                                {tab === 'home' && hasAccess('home') && renderHomeContent()}
+
                                 {tab === 'finance' && hasAccess('finance') && renderFinanceContent()}
                                 
                                 {tab === 'bills' && hasAccess('bills') && (
@@ -2621,39 +2639,43 @@
 
                         {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                        {/* 🌟 Bottom Navigation (แบบใหม่ 5 ปุ่ม) */}
+                        {/* 🌟 Bottom Navigation (แบบใหม่ 5 ปุ่ม วงกลมลอยตรงกลาง) */}
                         <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out pointer-events-none ${isSubPageOpen || tab === 'finance' ? 'translate-y-32 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                            <div className="bg-white rounded-t-[1.5rem] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] border-t border-gray-100 w-full flex justify-between items-end px-2 pb-safe pt-2 h-[75px] pointer-events-auto relative">
+                            <div className="bg-white shadow-[0_-5px_25px_rgba(0,0,0,0.08)] border-t border-gray-100 w-full flex justify-between items-center px-3 pb-safe h-[65px] pointer-events-auto relative">
                                 
                                 {/* 2 ปุ่มด้านซ้าย */}
-                                <div className="flex w-2/5 justify-around items-center h-full pb-1">
-                                    <button onClick={() => handleTabChange('orders')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'orders' ? 'text-[#1C2C54]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                        <i className="fa-solid fa-store text-xl"></i>
-                                        <span className="text-[9px] font-bold">ร้านค้า</span>
+                                <div className="flex w-[40%] justify-around items-center h-full pt-1">
+                                    <button onClick={() => handleTabChange('orders')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'orders' ? 'text-[#213359]' : 'text-gray-400 hover:text-gray-600'}`}>
+                                        <i className="fa-solid fa-store text-xl mb-0.5"></i>
+                                        <span className="text-[10px] font-bold">ร้านค้า</span>
                                     </button>
-                                    <button onClick={() => handleTabChange('finance')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'finance' ? 'text-[#1C2C54]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                        <i className="fa-solid fa-wallet text-xl"></i>
-                                        <span className="text-[9px] font-bold">การเงิน</span>
+                                    <button onClick={() => handleTabChange('finance')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'finance' ? 'text-[#213359]' : 'text-gray-400 hover:text-gray-600'}`}>
+                                        <i className="fa-solid fa-wallet text-xl mb-0.5"></i>
+                                        <span className="text-[10px] font-bold">การเงิน</span>
                                     </button>
                                 </div>
 
                                 {/* ปุ่มตรงกลาง (หน้าแรก) ลอยขึ้นมา */}
-                                <div className="w-1/5 flex justify-center relative">
-                                    <button onClick={() => handleTabChange('home')} className={`absolute bottom-2 w-16 h-16 bg-[#1C2C54] text-white rounded-full flex flex-col items-center justify-center shadow-lg shadow-[#1C2C54]/30 border-[4px] border-[#F0F4F8] active:scale-95 transition-transform z-50`}>
+                                <div className="w-[20%] flex justify-center relative">
+                                    <button 
+                                        onClick={() => handleTabChange('home')} 
+                                        className={`absolute -bottom-6 w-14 h-14 bg-[#213359] text-white rounded-full flex flex-col items-center justify-center shadow-lg shadow-[#213359]/30 border-[3px] border-[#F4F7FB] active:scale-95 transition-transform z-50`}
+                                    >
                                         <i className="fa-solid fa-house text-xl"></i>
-                                        <span className="text-[8px] font-bold mt-0.5">หน้าแรก</span>
                                     </button>
+                                    {/* ตัวหนังสือ "หน้าแรก" ซ่อนอยู่ใต้ปุ่มลอย */}
+                                    <span className={`absolute bottom-[-16px] text-[9px] font-bold transition-colors ${tab === 'home' ? 'text-[#213359]' : 'text-gray-400'}`}>หน้าแรก</span>
                                 </div>
 
                                 {/* 2 ปุ่มด้านขวา */}
-                                <div className="flex w-2/5 justify-around items-center h-full pb-1">
-                                    <button onClick={() => handleTabChange('history')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'history' ? 'text-[#1C2C54]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                        <i className="fa-solid fa-clock-rotate-left text-xl"></i>
-                                        <span className="text-[9px] font-bold">ประวัติ</span>
+                                <div className="flex w-[40%] justify-around items-center h-full pt-1">
+                                    <button onClick={() => handleTabChange('history')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'history' ? 'text-[#213359]' : 'text-gray-400 hover:text-gray-600'}`}>
+                                        <i className="fa-solid fa-clock-rotate-left text-xl mb-0.5"></i>
+                                        <span className="text-[10px] font-bold">ประวัติ</span>
                                     </button>
-                                    <button onClick={() => handleTabChange('settings')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'settings' ? 'text-[#1C2C54]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                        <i className="fa-solid fa-gear text-xl"></i>
-                                        <span className="text-[9px] font-bold">ตั้งค่า</span>
+                                    <button onClick={() => handleTabChange('settings')} className={`flex flex-col items-center gap-1 transition-colors ${tab === 'settings' ? 'text-[#213359]' : 'text-gray-400 hover:text-gray-600'}`}>
+                                        <i className="fa-regular fa-user text-xl mb-0.5"></i>
+                                        <span className="text-[10px] font-bold">บัญชีผู้ใช้</span>
                                     </button>
                                 </div>
                             </div>
