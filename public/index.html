@@ -2115,30 +2115,38 @@
                 const billCount = pendingBills.length;
                 const billIdsString = pendingBills.map(b => b.billId).join(', ');
 
+                // 🌟 เช็คบิลที่เลยกำหนดชำระ
+                const overdueBills = pendingBills.filter(b => b.daysLate > 0 && b.status !== 'รอตรวจสอบ');
+                const hasOverdue = overdueBills.length > 0;
+                // หาจำนวนวันที่เลยกำหนดมากที่สุดมาแสดง
+                const maxDaysLate = hasOverdue ? Math.max(...overdueBills.map(b => b.daysLate)) : 0;
+
                 // 🌟 หาบิลที่ด่วนที่สุด (ใกล้ครบกำหนดที่สุดและยังไม่เลยกำหนด)
                 let urgentBill = null;
-                const validBills = pendingBills.filter(b => {
-                    if (!b.dueDate || String(b.dueDate).includes('1899') || String(b.dueDate).includes('1970')) return false;
-                    if (b.status === 'รอตรวจสอบ' || b.daysLate > 0) return false; 
-                    return true;
-                });
-                if (validBills.length > 0) {
-                    urgentBill = validBills.sort((a, b) => {
-                        const getTime = (d) => {
-                            if(String(d).includes('/')) {
-                                const p = String(d).split('/'); return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime();
-                            }
-                            return new Date(d).getTime();
-                        };
-                        return getTime(a.dueDate) - getTime(b.dueDate);
-                    })[0];
+                if (!hasOverdue) { // ถ้ามีบิลเลยกำหนดแล้ว จะซ่อนนาฬิกาแล้วโชว์ป้ายแดงแทน
+                    const validBills = pendingBills.filter(b => {
+                        if (!b.dueDate || String(b.dueDate).includes('1899') || String(b.dueDate).includes('1970')) return false;
+                        if (b.status === 'รอตรวจสอบ' || b.daysLate > 0) return false; 
+                        return true;
+                    });
+                    if (validBills.length > 0) {
+                        urgentBill = validBills.sort((a, b) => {
+                            const getTime = (d) => {
+                                if(String(d).includes('/')) {
+                                    const p = String(d).split('/'); return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime();
+                                }
+                                return new Date(d).getTime();
+                            };
+                            return getTime(a.dueDate) - getTime(b.dueDate);
+                        })[0];
+                    }
                 }
 
                 const activeOrders = data?.orders ? data.orders.filter(o => o.status?.trim() !== 'รับแล้ว' && o.status?.trim() !== 'ยกเลิก') : [];
                 const hasActiveOrders = activeOrders.length > 0;
 
                 return (
-                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh]">
+                    <div className="w-full pb-20 relative bg-[#F4F7FB] min-h-[100dvh] font-sans">
                         {/* 🔵 Header สี #1a237e (สีกรมท่าเข้ม) */}
                         <div className="bg-[#1a237e] rounded-b-[2rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-24 px-6 relative overflow-hidden shadow-sm">
                             <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
@@ -2182,8 +2190,8 @@
                             </div>
                         </div>
 
-                        {/* 💳 การ์ดยอดค้างชำระ */}
-                        <div className="mx-5 -mt-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-6 relative z-20 border border-gray-100/80 min-h-[190px]">
+                        {/* 💳 การ์ดยอดค้างชำระ (กรอบจะเปลี่ยนสีถ้ามีบิลเลยกำหนด) */}
+                        <div className={`mx-5 -mt-16 bg-white rounded-2xl p-6 relative z-20 min-h-[190px] transition-all duration-300 ${hasOverdue ? 'border-2 border-red-500 shadow-[0_8px_30px_rgba(239,68,68,0.15)] ring-4 ring-red-50' : 'shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/80'}`}>
                             
                             {/* 🌟 Badge จำนวนบิล สีแดงล้วน */}
                             {billCount > 0 && (
@@ -2192,12 +2200,16 @@
                                 </div>
                             )}
 
-                            {/* นาฬิกานับถอยหลังบิลด่วนสุด */}
-                            {urgentBill && (
+                            {/* 🌟 นาฬิกานับถอยหลัง หรือ แจ้งเตือนเลยกำหนด */}
+                            {hasOverdue ? (
+                                <div className="absolute top-4 right-4 bg-red-50 text-red-600 text-[10px] font-bold px-3 py-1.5 rounded-full border border-red-200 flex items-center gap-1.5 animate-pulse shadow-sm z-10">
+                                    <i className="fa-solid fa-triangle-exclamation"></i> เลยกำหนด {maxDaysLate} วัน
+                                </div>
+                            ) : urgentBill ? (
                                 <div className="absolute top-2 right-2 scale-[0.80] origin-top-right z-10">
                                     <BillTimer dueDate={urgentBill.dueDate} />
                                 </div>
-                            )}
+                            ) : null}
 
                             <p className="text-center text-gray-800 font-bold text-lg mb-0.5 mt-3">ยอดค้างชำระทั้งหมด</p>
                             
@@ -2210,20 +2222,20 @@
                                 )}
                             </p>
                             
-                            {/* ตัวเลขยอดเงินสี #1a237e */}
-                            <p className="text-center text-[2.5rem] font-black text-[#1a237e] mb-6 tracking-tight flex justify-center items-center gap-1">
+                            {/* ตัวเลขยอดเงินสี #1a237e (หรือสีแดงถ้าเลยกำหนด) */}
+                            <p className={`text-center text-[2.5rem] font-black mb-6 tracking-tight flex justify-center items-center gap-1 ${hasOverdue ? 'text-red-500' : 'text-[#1a237e]'}`}>
                                 {formatCurrency(totalUnpaid)}
                             </p>
                             
-                            {/* ปุ่มชำระเงินสี #1a237e */}
+                            {/* ปุ่มชำระเงิน (เป็นสีแดงถ้าเลยกำหนด) */}
                             <button 
                                 onClick={() => handleTabChange('bills')} 
-                                className="w-full bg-[#1a237e] hover:bg-[#12185b] text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98]"
+                                className={`w-full text-white rounded-xl py-3.5 font-bold text-base transition-all shadow-md active:scale-[0.98] ${hasOverdue ? 'bg-red-500 hover:bg-red-600 shadow-red-200' : 'bg-[#1a237e] hover:bg-[#12185b]'}`}
                             >
                                 ชำระเงิน
                             </button>
                             <div className="flex justify-center mt-5">
-                                <div className="w-8 h-1.5 bg-[#1a237e]/20 rounded-full"></div>
+                                <div className={`w-8 h-1.5 rounded-full ${hasOverdue ? 'bg-red-500/20' : 'bg-[#1a237e]/20'}`}></div>
                             </div>
                         </div>
 
