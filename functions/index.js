@@ -22,10 +22,9 @@ const STUDENT_LINE_ACCESS_TOKEN = process.env.STUDENT_LINE_ACCESS_TOKEN;
 // ==========================================
 // 📂 ตั้งค่าการเชื่อมต่อ Google Drive
 // ==========================================
-const SERVICE_ACCOUNT_EMAIL = process.env.SERVICE_ACCOUNT_EMAIL;
-// แปลง \n กลับเป็นขึ้นบรรทัดใหม่ เพื่อให้ระบบอ่านกุญแจได้ถูกต้อง
-const SERVICE_ACCOUNT_KEY = process.env.SERVICE_ACCOUNT_KEY.replace(/\\n/g, '\n');
-const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
+const SERVICE_ACCOUNT_EMAIL = process.env.SERVICE_ACCOUNT_EMAIL || "";
+const SERVICE_ACCOUNT_KEY = (process.env.SERVICE_ACCOUNT_KEY || "").replace(/\\n/g, '\n');
+const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID || "";
 
 const auth = new google.auth.JWT(
     SERVICE_ACCOUNT_EMAIL, null, SERVICE_ACCOUNT_KEY,
