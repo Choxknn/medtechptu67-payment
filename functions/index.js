@@ -118,30 +118,28 @@ async function uploadToDriveCore(fileData, fileName, mimeType) {
         throw new Error("ไม่พบอีเมลหรือคีย์ของ Service Account ในระบบ");
     }
 
-    // 2. 🌟 คลีนกุญแจ (ลบฟันหนูที่อาจติดมา และบังคับแปลง \n ให้ขึ้นบรรทัดใหม่จริงๆ)
+    // 2. คลีนกุญแจ (ลบฟันหนูที่อาจติดมา และบังคับแปลง \n ให้ขึ้นบรรทัดใหม่จริงๆ)
     key = key.replace(/"/g, '').replace(/\\n/g, '\n').trim();
 
-    // 3. ดักจับถ้ารูปแบบกุญแจผิด
     if (!key.includes('BEGIN PRIVATE KEY')) {
-        throw new Error("รูปแบบกุญแจ SERVICE_ACCOUNT_KEY ไม่ถูกต้อง (ไม่พบคำว่า BEGIN PRIVATE KEY)");
+        throw new Error("รูปแบบกุญแจ SERVICE_ACCOUNT_KEY ไม่ถูกต้อง");
     }
 
-    // 4. สร้างตัวเชื่อมต่อ
-    const auth = new google.auth.JWT(
-        email.trim(),
-        null,
-        key,
-        ['https://www.googleapis.com/auth/drive']
-    );
+    // 🌟 3. แก้ไขตรงนี้! ส่งตัวแปรเป็น Object {} (วิธีมาตรฐานของไลบรารีรุ่นใหม่)
+    const auth = new google.auth.JWT({
+        email: email.trim(),
+        key: key,
+        scopes: ['https://www.googleapis.com/auth/drive']
+    });
 
-    // 5. 🌟 บังคับเทสต์กุญแจก่อนทำอย่างอื่น! (ถ้ากุญแจผิด มันจะ Error ตรงนี้ทันที)
+    // 4. บังคับเทสต์กุญแจก่อนอัปโหลดจริง
     try {
         await auth.authorize();
     } catch (authErr) {
         throw new Error("ยืนยันตัวตน Google Drive ไม่ผ่าน (กุญแจอาจผิด): " + authErr.message);
     }
 
-    // 6. ถ้าผ่านด่านข้างบนมาได้ แปลว่ากุญแจถูกต้อง 100% เริ่มอัปโหลดได้
+    // 5. เริ่มกระบวนการอัปโหลด
     const drive = google.drive({ version: 'v3', auth });
 
     const buffer = Buffer.from(fileData, 'base64');
@@ -165,7 +163,7 @@ async function uploadToDriveCore(fileData, fileName, mimeType) {
         fields: 'id, webViewLink'
     });
 
-    // 7. เปิดสิทธิ์ให้คนอื่นดูรูปได้
+    // 6. เปิดสิทธิ์ให้คนอื่นดูรูปได้
     await drive.permissions.create({
         fileId: driveFile.data.id,
         requestBody: { role: 'reader', type: 'anyone' }
