@@ -1,0 +1,34 @@
+name: Deploy Firebase Functions
+
+# สั่งให้ทำงานเมื่อมีการ Push โค้ดเข้าสาขา main (หรือแก้เป็น master ถ้าโปรเจกต์คุณใช้ master)
+on:
+  push:
+    branches:
+      - main
+    # 🌟 ทำงานเฉพาะเมื่อมีการแก้ไขไฟล์ในโฟลเดอร์ functions เท่านั้น จะได้ไม่เปลืองโควต้า
+    paths:
+      - 'functions/**'
+
+jobs:
+  deploy_functions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # ใช้ Node.js เวอร์ชั่น 18 (หรือ 20 ตามที่คุณติดตั้ง)
+
+      - name: 📦 Install Dependencies
+        run: npm install
+        working-directory: ./functions
+
+      - name: 🔥 Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: 🚀 Deploy to Firebase
+        # ดึงรหัส FIREBASE_TOKEN จากตู้เซฟที่เราเพิ่งใส่ไว้มาใช้งาน
+        run: firebase deploy --only functions --token ${{ secrets.FIREBASE_TOKEN }}
