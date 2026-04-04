@@ -2869,7 +2869,7 @@
                     const lineProfileId = profile.userId; 
                     
                     // 🌟 1. ขอ Token และสร้าง Firebase Auth ก่อนดึงข้อมูล! 
-                    const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
+                    const res = await runGoogleScript('getCustomToken', [{ uid: lineProfileId }]);
                     
                     if (res.success && res.token) {
                         const lineAuthCred = await auth.signInWithCustomToken(res.token);
@@ -3034,7 +3034,7 @@
                                 const lineProfileId = profile.userId;
                                 
                                 // ขอ Custom Token
-                                const res = await runGoogleScript('getCustomToken', { uid: lineProfileId });
+                                const res = await runGoogleScript('getCustomToken', [{ uid: lineProfileId }]);
                                 
                                 if (!res.success) {
                                     // 🛑 ดัก Error จาก GAS
