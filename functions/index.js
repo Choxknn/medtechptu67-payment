@@ -26,6 +26,10 @@ const STUDENT_LINE_ACCESS_TOKEN = process.env.STUDENT_LINE_ACCESS_TOKEN;
 // ==========================================
 const SERVICE_ACCOUNT_EMAIL = process.env.SERVICE_ACCOUNT_EMAIL || "";
 const SERVICE_ACCOUNT_KEY = (process.env.SERVICE_ACCOUNT_KEY || "").replace(/\\n/g, '\n');
+
+console.log("CHECK EMAIL:", SERVICE_ACCOUNT_EMAIL ? "มีอีเมล" : "ไม่มีอีเมล!!");
+console.log("CHECK KEY:", SERVICE_ACCOUNT_KEY.includes("PRIVATE KEY") ? "มีคีย์" : "ไม่มีคีย์!!");
+
 const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID || "";
 
 const auth = new google.auth.JWT(
