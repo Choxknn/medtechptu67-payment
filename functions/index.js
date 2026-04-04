@@ -10,49 +10,22 @@ admin.initializeApp();
 
 
 // ==========================================
-// ⚙️ ตั้งค่าระบบ (สามารถเปลี่ยนเป็น process.env ได้ในอนาคต)
+// ⚙️ ตั้งค่าระบบ (ดึงจากไฟล์ .env)
 // ==========================================
-const TARGET_EWALLET = '006660001474178';
-const SLIPOK_API_URL = 'https://api.slipok.com/api/line/apikey/59163';
-const SLIPOK_API_KEY = 'SLIPOKQJVL7FG';
-const LINE_ACCESS_TOKEN = 'GVsZhlNp+re8i7iWcPBjD4BGOthDD1V9Q2AsNpmLvvp1uuztLPIPf3f4XWsJYWVV/FiFv5sXWGMTnt4XhE2nubXCuijEZ/awddwU5IBxcUQcMAHu1SqsF1d3R09Ur4761apoydRkXCeb+ZuuVOPVywdB04t89/1O/w1cDnyilFU=';
-const LINE_TARGET_ID = 'U767d1df05484691cf55fa71ae3a03864';
-const STUDENT_LINE_ACCESS_TOKEN = '65mW7nqsWymHbam4aENna+joMPJgJvudd3Hhpz4KeDwh8DAyuZNBHhGb8KGsdIBRMaRZ618eGja4LEa9kMOX1uTC2uvQ5n6uZIQKyIhKLQajSq2OUqCvRzTCJOUoFiHVx6o+2BGAxxv7+9CPwVs5YgdB04t89/1O/w1cDnyilFU=';
+const TARGET_EWALLET = process.env.TARGET_EWALLET;
+const SLIPOK_API_URL = process.env.SLIPOK_API_URL;
+const SLIPOK_API_KEY = process.env.SLIPOK_API_KEY;
+const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
+const LINE_TARGET_ID = process.env.LINE_TARGET_ID;
+const STUDENT_LINE_ACCESS_TOKEN = process.env.STUDENT_LINE_ACCESS_TOKEN;
 
 // ==========================================
 // 📂 ตั้งค่าการเชื่อมต่อ Google Drive
 // ==========================================
-const SERVICE_ACCOUNT_EMAIL = "drive-uploader@medtechptu67-payment.iam.gserviceaccount.com";
-const SERVICE_ACCOUNT_KEY = `-----BEGIN PRIVATE KEY-----
-MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDHZbr60IsITRmj
-/BjXeTkl7Sgqq+eaRKvcuWomprvWWACppNu2Xv9YmHIt1SdQVQLDd6cbc6kxHf5A
-cJ17oxZLBweK1WsJNzzXUaX3n2cftzaZzZl3zrvGDwtTeWkqq5BphUELEXhzFj+2
-8GM24cUcwYrmmkRacTAE0THz/lU+sZl79IOqcceBBoSSIaGjBjzoXoHJjirZ/0I4
-yVX6aYaGLvsfrdJKiBwJqI094b9dQ2V5dkgNIZNz7SnTv57rzPiGwieMl1mZiJmV
-U+zoJRx60oDZ1+9ZPn9KbclUxH7d0j4aWsLUGE0OYGFdTzbWdauhe33QZAEwVs2d
-/s/HEgTXAgMBAAECggEASoi244FnrxMu5fLakFTSbWBgds7qVGqd+XRffxItPZqI
-qOEkdd+9wC6/42z9dJRKY6mK0AKkeGU3QHw4Cdq0/xeiFJ3hFEFPH0d4a/7sS9ku
-8j/9wWCIJSlDeRD1pEscQK1cWlhN92sWJvplg8LR7QVVuAxrR4luwyY1b3ifAb81
-bk2uqzxfCXzKehXlFWGnIQ1YrSTar2bN6NedPiLwZrjEnaKQXAIH/eww365qHK3d
-tGo4CodO2BKylBM9w/uqIMgtvSbWWVZ1G37WM0EZ0dcbJOvOxwGE+MRrVL+wM858
-e7eKawXh7ZPVEISVvU6xy2EjE3n6/2vPGi8CJJJwOQKBgQDkiADwB84Z8LCbiWl3
-fM9t8bIDLjI1CyDR4ssMGoU66ZwGsjf9i6OulwPJJSsLmazRXy0f/JF+LNn3Hsmn
-WXOpyyPNvf6MBYE+6W7C0e4yV5dlLkyHqkvy4Ks9fyKFw9mXrHa07zHbxUW7bG0x
-94UzrH3PnQcsNiQO6v1gi5cr2QKBgQDfXUQO2ke8UhzScpRnH1XjA9tW+E6MoYQM
-Qm+Q8VYTN10TeG+pDE1Z6XVvRQYqoIijrkZfPQTWa/6cInFOLz3JQ/UEnrl0RonW
-2Y/9P/mXzA6wuVrTbjd+LrE0Dr30HJJF8R32OAmfhFkQmdUa9UmV4+/rENRxhSIz
-xsKgVhW4LwKBgDva90vm729R4B/MvMfj87xbGoHEvrev43e1i/Lum0iT2R7T3OBW
-i5d1zDMJvh16sY3g/MOs9jpy6t/Tu4NOZYHqR8ViZuIrqu9cWntCWr3qvSduGfNK
-gjvp5k/kFZmtczdLn4fCQm/KWno9atg0eTnQit8uxKsqvwT9PUHlLcH5AoGAPTAO
-cccn+ZXA4YGT18AExiCLWILC+dFRHA6jA2CpRLBY5fmLFRMSqXvDuMx+yPSbGcOm
-8XYEujxxThI9Wb6lPVpJZ4+XnBuqrNmCkUySMhwrNgxArkS2HPHrhyg2rwWYqGJJ
-4+Yr9K/Lujl54F2rX81GLu24VLS0ztw2+rc6Ue8CgYAbu4DKKcP/3OdDdoxfE2nB
-4QO7DaL2g2or2Mm4DUKYwBZOF7drhOOQh6lOA6cAjPA9Anu+sSgP94RmtXZ0viy7
-TS9/EUcRHW3z8q36ND00L7TO5QaIBs1svFlA9WsKvtPbF36JQU75m8bqJEJBUFQV
-VUl+u5H17lKLhUt0y6lb5w==
------END PRIVATE KEY-----`;
-
-const DRIVE_FOLDER_ID = "10dnFf5nTo_EOrgqSZ2SncGaVVtvyHfIx";
+const SERVICE_ACCOUNT_EMAIL = process.env.SERVICE_ACCOUNT_EMAIL;
+// แปลง \n กลับเป็นขึ้นบรรทัดใหม่ เพื่อให้ระบบอ่านกุญแจได้ถูกต้อง
+const SERVICE_ACCOUNT_KEY = process.env.SERVICE_ACCOUNT_KEY.replace(/\\n/g, '\n');
+const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
 
 const auth = new google.auth.JWT(
     SERVICE_ACCOUNT_EMAIL, null, SERVICE_ACCOUNT_KEY,
