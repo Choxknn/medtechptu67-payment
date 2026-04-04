@@ -32,65 +32,93 @@ const auth = new google.auth.JWT(
 );
 const drive = google.drive({ version: 'v3', auth });
 
-// ==========================================
-// 🚀 API ROUTER (รับคำสั่งจาก React + Firebase)
-// ==========================================
-exports.apiRouter = functions.https.onRequest(async (req, res) => {
-    // ปลดล็อค CORS
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
-    }
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const cors = require('cors')({ origin: true }); // จำเป็นต้องมีสำหรับเรียกจากหน้าเว็บ
 
-    try {
-    let params;
-    if (e.parameter && e.parameter.data) {
-        params = JSON.parse(e.parameter.data);
-    } else {
-        params = JSON.parse(e.postData.contents);
-    }
-        
-        const action = params.action;
-        const args = params.args || [];
-        
-        let result = {};
+// ตรวจสอบการ Initialize (หากยังไม่ได้ทำ)
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
 
-        if (action === 'submitPaymentViaFirebase') { result = await submitPaymentViaFirebase(args[0]); }
-        else if (action === 'submitOrderWithSlipViaFirebase') { result = await submitOrderWithSlipViaFirebase(args[0]); }
-        else if (action === 'sendRecoveryLineMessage') { result = await sendRecoveryLineMessage(args[0]); }
-        else if (action === 'uploadToDrive') { result = await uploadToDriveAPI(args[0]); }
-        else if (action === 'notifyPayment') { result = await notifyPayment(args[0]); }
-        else if (action === 'notifyOrder') { result = await notifyOrder(args[0]); }
-        else if (action === 'getCustomToken') { result = await getCustomToken(args); }
-        else {
-            result = { success: false, message: 'ไม่พบคำสั่ง (Action) นี้ในระบบ' };
+// 🌟 ตัวแปร apiRouter (ชื่อฟังก์ชันจะตรงกับ URL ที่หน้าเว็บคุณเรียก)
+exports.apiRouter = functions.https.onRequest((req, res) => {
+    // ห่อด้วย cors เพื่ออนุญาตให้เรียกข้าม Origin ได้
+    cors(req, res, async () => {
+        
+        // รับเฉพาะ Method POST เท่านั้น
+        if (req.method !== 'POST') {
+            return res.status(405).json({ success: false, message: 'Method Not Allowed' });
         }
 
-        res.status(200).json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.toString() });
-    }
+        try {
+            let params;
+            
+            // หน้าเว็บส่งมาแบบ URLSearchParams (req.body.data) 
+            // หรือส่งมาเป็น JSON payload โดยตรง (req.body)
+            if (req.body && req.body.data) {
+                params = JSON.parse(req.body.data);
+            } else if (typeof req.body === 'object') {
+                params = req.body;
+            } else {
+                params = JSON.parse(req.body);
+            }
+
+            const action = params.action;
+            const args = params.args || [];
+            let result = {};
+
+            // 🌟 สำคัญ: ใน Node.js การดึงฐานข้อมูล/API ต้องใช้ await
+            if (action === 'submitPaymentViaFirebase') { 
+                result = await submitPaymentViaFirebase(args[0]); 
+            }
+            else if (action === 'submitOrderWithSlipViaFirebase') { 
+                result = await submitOrderWithSlipViaFirebase(args[0]); 
+            }
+            else if (action === 'sendRecoveryLineMessage') { 
+                result = await sendRecoveryLineMessage(args[0]); 
+            }
+            else if (action === 'uploadToDrive') { 
+                result = await uploadToDrive(args); 
+            }
+            else if (action === 'notifyPayment') { 
+                result = await notifyPayment(args[0]); 
+            }
+            else if (action === 'notifyOrder') { 
+                result = await notifyOrder(args[0]); 
+            }
+            else if (action === 'getCustomToken') { 
+                result = await getCustomToken(args); 
+            }
+            else {
+                return res.status(400).json({ success: false, message: 'ไม่พบคำสั่ง (Action) นี้ในระบบ' });
+            }
+
+            // ส่งข้อมูลกลับไปที่หน้าเว็บ (เทียบเท่า ContentService ของ GAS)
+            return res.status(200).json(result);
+
+        } catch (error) {
+            console.error("API Router Error:", error);
+            return res.status(500).json({ success: false, error: error.toString() });
+        }
+    });
 });
 
 // ==========================================
-// 🔑 ฟังก์ชันสร้าง Firebase Custom Token
+// 💡 พื้นที่สำหรับสร้างฟังก์ชันย่อย (ต้องเขียนเป็น Node.js)
 // ==========================================
-async function getCustomToken(args) {
-    try {
-        const uid = args.uid || args.lineId || args[0]?.uid || args[0]?.lineId;
-        if (!uid) return { success: false, message: 'ไม่พบ UID ที่ส่งมา' };
 
-        // ใน Node.js เราสามารถใช้ Firebase Admin สร้าง Token ได้ในบรรทัดเดียว (แทนการเข้ารหัส 50 บรรทัดแบบ GAS)
-        const customToken = await admin.auth().createCustomToken(String(uid));
-        
+async function getCustomToken(args) {
+    // ตัวอย่างการเขียนฟังก์ชันใน Node.js
+    const uid = args.uid;
+    try {
+        const customToken = await admin.auth().createCustomToken(uid);
         return { success: true, token: customToken };
-    } catch (e) {
-        console.error("Token Generation Error:", e);
-        return { success: false, message: "สร้าง Token ไม่สำเร็จ: " + e.toString() };
+    } catch (error) {
+        throw error;
     }
 }
+
 
 // ==========================================
 // 🌟 สร้างฟังก์ชันสำหรับรับคำสั่งส่ง LINE
