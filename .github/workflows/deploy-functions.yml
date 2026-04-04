@@ -29,6 +29,18 @@ jobs:
       - name: 🔥 Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: 📝 สร้างไฟล์ .env สำหรับใช้งาน
+        working-directory: ./functions
+        run: |
+          echo "TARGET_EWALLET=${{ secrets.TARGET_EWALLET }}" >> .env
+          echo "SLIPOK_API_URL=${{ secrets.SLIPOK_API_URL }}" >> .env
+          echo "SLIPOK_API_KEY=${{ secrets.SLIPOK_API_KEY }}" >> .env
+          echo "LINE_ACCESS_TOKEN=${{ secrets.LINE_ACCESS_TOKEN }}" >> .env
+          echo "LINE_TARGET_ID=${{ secrets.LINE_TARGET_ID }}" >> .env
+          echo "STUDENT_LINE_ACCESS_TOKEN=${{ secrets.STUDENT_LINE_ACCESS_TOKEN }}" >> .env
+          echo "SERVICE_ACCOUNT_EMAIL=${{ secrets.SERVICE_ACCOUNT_EMAIL }}" >> .env
+          echo "SERVICE_ACCOUNT_KEY=${{ secrets.SERVICE_ACCOUNT_KEY }}" >> .env
+          echo "DRIVE_FOLDER_ID=${{ secrets.DRIVE_FOLDER_ID }}" >> .env
+
       - name: 🚀 Deploy to Firebase
-        # ดึงรหัส FIREBASE_TOKEN จากตู้เซฟที่เราเพิ่งใส่ไว้มาใช้งาน
         run: firebase deploy --only functions --token ${{ secrets.FIREBASE_TOKEN }}
