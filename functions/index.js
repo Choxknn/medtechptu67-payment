@@ -4,10 +4,12 @@ const { google } = require('googleapis');
 const { Readable } = require('stream');
 const axios = require('axios');
 const FormData = require('form-data');
+const cors = require('cors')({ origin: true });
 
-// เริ่มต้น Firebase Admin
-admin.initializeApp();
-
+// ตรวจสอบและเริ่มต้น Firebase Admin แค่ครั้งเดียว
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
 
 // ==========================================
 // ⚙️ ตั้งค่าระบบ (ดึงจากไฟล์ .env)
@@ -32,30 +34,17 @@ const auth = new google.auth.JWT(
 );
 const drive = google.drive({ version: 'v3', auth });
 
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-const cors = require('cors')({ origin: true }); // จำเป็นต้องมีสำหรับเรียกจากหน้าเว็บ
-
-// ตรวจสอบการ Initialize (หากยังไม่ได้ทำ)
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-
-// 🌟 ตัวแปร apiRouter (ชื่อฟังก์ชันจะตรงกับ URL ที่หน้าเว็บคุณเรียก)
+// ==========================================
+// 🌟 API Router หลัก
+// ==========================================
 exports.apiRouter = functions.https.onRequest((req, res) => {
-    // ห่อด้วย cors เพื่ออนุญาตให้เรียกข้าม Origin ได้
     cors(req, res, async () => {
-        
-        // รับเฉพาะ Method POST เท่านั้น
         if (req.method !== 'POST') {
             return res.status(405).json({ success: false, message: 'Method Not Allowed' });
         }
 
         try {
             let params;
-            
-            // หน้าเว็บส่งมาแบบ URLSearchParams (req.body.data) 
-            // หรือส่งมาเป็น JSON payload โดยตรง (req.body)
             if (req.body && req.body.data) {
                 params = JSON.parse(req.body.data);
             } else if (typeof req.body === 'object') {
@@ -68,7 +57,6 @@ exports.apiRouter = functions.https.onRequest((req, res) => {
             const args = params.args || [];
             let result = {};
 
-            // 🌟 สำคัญ: ใน Node.js การดึงฐานข้อมูล/API ต้องใช้ await
             if (action === 'submitPaymentViaFirebase') { 
                 result = await submitPaymentViaFirebase(args[0]); 
             }
@@ -79,7 +67,7 @@ exports.apiRouter = functions.https.onRequest((req, res) => {
                 result = await sendRecoveryLineMessage(args[0]); 
             }
             else if (action === 'uploadToDrive') { 
-                result = await uploadToDrive(args); 
+                result = await uploadToDriveAPI(args[0]); // แก้ให้ตรงกับชื่อฟังก์ชันที่สร้างไว้
             }
             else if (action === 'notifyPayment') { 
                 result = await notifyPayment(args[0]); 
@@ -88,13 +76,12 @@ exports.apiRouter = functions.https.onRequest((req, res) => {
                 result = await notifyOrder(args[0]); 
             }
             else if (action === 'getCustomToken') { 
-                result = await getCustomToken(args); 
+                result = await getCustomToken(args[0]); // ส่งอาร์กิวเมนต์ตัวแรกเข้าไป
             }
             else {
                 return res.status(400).json({ success: false, message: 'ไม่พบคำสั่ง (Action) นี้ในระบบ' });
             }
 
-            // ส่งข้อมูลกลับไปที่หน้าเว็บ (เทียบเท่า ContentService ของ GAS)
             return res.status(200).json(result);
 
         } catch (error) {
@@ -105,11 +92,10 @@ exports.apiRouter = functions.https.onRequest((req, res) => {
 });
 
 // ==========================================
-// 💡 พื้นที่สำหรับสร้างฟังก์ชันย่อย (ต้องเขียนเป็น Node.js)
+// 💡 ฟังก์ชันย่อยทั้งหมด
 // ==========================================
 
 async function getCustomToken(args) {
-    // ตัวอย่างการเขียนฟังก์ชันใน Node.js
     const uid = args.uid;
     try {
         const customToken = await admin.auth().createCustomToken(uid);
@@ -119,22 +105,16 @@ async function getCustomToken(args) {
     }
 }
 
-
-// ==========================================
-// 🌟 สร้างฟังก์ชันสำหรับรับคำสั่งส่ง LINE
-// ==========================================
 async function notifyPayment(data) {
     await sendPaymentNotification(data.payload, data.status, data.slipUrl, data.isUnderpaid, data.actualAmount, data.isOverpaid, data.message);
     return { success: true };
 }
+
 async function notifyOrder(data) {
     await sendOrderNotification(data.payload, data.orderId, data.slipUrl, data.actualAmount);
     return { success: true };
 }
 
-// ==========================================
-// 📦 ฟังก์ชันแกนหลักสำหรับอัปโหลดรูปลง Google Drive
-// ==========================================
 async function uploadToDriveCore(fileData, fileName, mimeType) {
     const buffer = Buffer.from(fileData, 'base64');
     const stream = new Readable();
@@ -164,9 +144,6 @@ async function uploadToDriveCore(fileData, fileName, mimeType) {
     return { slipUrl: driveFile.data.webViewLink, buffer: buffer };
 }
 
-// ==========================================
-// 1️⃣ ฟังก์ชันตรวจสอบสลิปจ่ายบิล 
-// ==========================================
 async function submitPaymentViaFirebase(payload) {
     try {
         const expectedTotal = Number(payload.total);
@@ -198,9 +175,6 @@ async function submitPaymentViaFirebase(payload) {
     }
 }
 
-// ==========================================
-// 2️⃣ ฟังก์ชันตรวจสอบสลิปสั่งซื้อสินค้า 
-// ==========================================
 async function submitOrderWithSlipViaFirebase(payload) {
     try {
         const expectedTotal = Number(payload.total);
@@ -224,9 +198,6 @@ async function submitOrderWithSlipViaFirebase(payload) {
     }
 }
 
-// ==========================================
-// 3️⃣ ฟังก์ชันส่ง LINE กู้คืนรหัสผ่าน
-// ==========================================
 async function sendRecoveryLineMessage(payload) {
     try {
         const recoveryFlex = createRecoveryFlex(payload);
@@ -242,9 +213,6 @@ async function sendRecoveryLineMessage(payload) {
     }
 }
 
-// ==========================================
-// 📦 ฟังก์ชันสำหรับรับไฟล์ Base64 เซฟลง Google Drive (Direct URL)
-// ==========================================
 async function uploadToDriveAPI(data) {
     try {
         const { slipUrl } = await uploadToDriveCore(data.fileData, data.fileName, data.mimeType);
@@ -254,9 +222,6 @@ async function uploadToDriveAPI(data) {
     }
 }
 
-// ==========================================
-// 🔍 ระบบตรวจสลิป (SlipOK Core Logic)
-// ==========================================
 async function checkSlipWithSlipOK(buffer, expectedAmount) {
     try {
         const form = new FormData();
@@ -313,9 +278,6 @@ function isAccountMatch(slipValue, targetValue) {
     return false;
 }
 
-// ==========================================
-// 💬 ระบบส่ง LINE Notifications
-// ==========================================
 async function sendPaymentNotification(payload, status, fileUrl, isUnderpaid, actualAmount, isOverpaid, note) {
     const formattedTotal = Number(payload.total).toLocaleString('th-TH', {minimumFractionDigits: 2});
     const actualFmt = Number(actualAmount).toLocaleString('th-TH', {minimumFractionDigits: 2});
