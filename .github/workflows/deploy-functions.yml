@@ -40,7 +40,7 @@ jobs:
           LINE_TARGET_ID=${{ secrets.LINE_TARGET_ID }}
           STUDENT_LINE_ACCESS_TOKEN=${{ secrets.STUDENT_LINE_ACCESS_TOKEN }}
           SERVICE_ACCOUNT_EMAIL=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
-          SERVICE_ACCOUNT_KEY=${{ secrets.SERVICE_ACCOUNT_KEY }}
+          SERVICE_ACCOUNT_KEY="${{ secrets.SERVICE_ACCOUNT_KEY }}"
           DRIVE_FOLDER_ID=${{ secrets.DRIVE_FOLDER_ID }}
           EOF
           
