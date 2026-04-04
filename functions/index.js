@@ -108,23 +108,42 @@ async function notifyOrder(data) {
     return { success: true };
 }
 
-// ✅ เอาโค้ดชุดนี้ไปวางทับฟังก์ชัน uploadToDriveCore ตัวเดิม
 async function uploadToDriveCore(fileData, fileName, mimeType) {
-    // 1. ดึงค่าตัวแปร "ณ วินาทีที่ฟังก์ชันทำงาน"
     const email = process.env.SERVICE_ACCOUNT_EMAIL;
-    const key = (process.env.SERVICE_ACCOUNT_KEY || "").replace(/\\n/g, '\n');
+    let key = process.env.SERVICE_ACCOUNT_KEY;
     const folderId = process.env.DRIVE_FOLDER_ID;
 
-    // 2. ดักจับ Error ถ้าตัวแปรว่างเปล่า (จะช่วยให้เรารู้ว่า GitHub Secrets พังไหม)
-    if (!email || email.trim() === "" || !key || key.trim() === "") {
-        throw new Error("ระบบหลังบ้านตั้งค่า Google Drive ไม่สมบูรณ์ (ดึงค่า Email หรือ Key จาก GitHub Secrets ไม่สำเร็จ)");
+    // 1. ดักจับถ้าไม่มีค่าเลย
+    if (!email || !key) {
+        throw new Error("ไม่พบอีเมลหรือคีย์ของ Service Account ในระบบ");
     }
 
-    // 3. เริ่มเชื่อมต่อ Google Drive
-    const auth = new google.auth.JWT(email, null, key, ['https://www.googleapis.com/auth/drive']);
+    // 2. 🌟 คลีนกุญแจ (ลบฟันหนูที่อาจติดมา และบังคับแปลง \n ให้ขึ้นบรรทัดใหม่จริงๆ)
+    key = key.replace(/"/g, '').replace(/\\n/g, '\n').trim();
+
+    // 3. ดักจับถ้ารูปแบบกุญแจผิด
+    if (!key.includes('BEGIN PRIVATE KEY')) {
+        throw new Error("รูปแบบกุญแจ SERVICE_ACCOUNT_KEY ไม่ถูกต้อง (ไม่พบคำว่า BEGIN PRIVATE KEY)");
+    }
+
+    // 4. สร้างตัวเชื่อมต่อ
+    const auth = new google.auth.JWT(
+        email.trim(),
+        null,
+        key,
+        ['https://www.googleapis.com/auth/drive']
+    );
+
+    // 5. 🌟 บังคับเทสต์กุญแจก่อนทำอย่างอื่น! (ถ้ากุญแจผิด มันจะ Error ตรงนี้ทันที)
+    try {
+        await auth.authorize();
+    } catch (authErr) {
+        throw new Error("ยืนยันตัวตน Google Drive ไม่ผ่าน (กุญแจอาจผิด): " + authErr.message);
+    }
+
+    // 6. ถ้าผ่านด่านข้างบนมาได้ แปลว่ากุญแจถูกต้อง 100% เริ่มอัปโหลดได้
     const drive = google.drive({ version: 'v3', auth });
 
-    // 4. จัดการไฟล์และอัปโหลด
     const buffer = Buffer.from(fileData, 'base64');
     const stream = new Readable();
     stream.push(buffer);
@@ -132,8 +151,9 @@ async function uploadToDriveCore(fileData, fileName, mimeType) {
 
     const fileMetadata = {
         name: fileName || "file.jpg",
-        parents: [folderId]
+        parents: [folderId.trim()]
     };
+    
     const media = {
         mimeType: mimeType || 'image/jpeg',
         body: stream
@@ -145,6 +165,7 @@ async function uploadToDriveCore(fileData, fileName, mimeType) {
         fields: 'id, webViewLink'
     });
 
+    // 7. เปิดสิทธิ์ให้คนอื่นดูรูปได้
     await drive.permissions.create({
         fileId: driveFile.data.id,
         requestBody: { role: 'reader', type: 'anyone' }
