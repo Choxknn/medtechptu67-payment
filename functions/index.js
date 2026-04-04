@@ -25,18 +25,7 @@ const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 const LINE_TARGET_ID = process.env.LINE_TARGET_ID;
 const STUDENT_LINE_ACCESS_TOKEN = process.env.STUDENT_LINE_ACCESS_TOKEN;
 
-// ==========================================
-// 📂 ตั้งค่าการเชื่อมต่อ Google Drive
-// ==========================================
-const SERVICE_ACCOUNT_EMAIL = process.env.SERVICE_ACCOUNT_EMAIL || "";
-const SERVICE_ACCOUNT_KEY = (process.env.SERVICE_ACCOUNT_KEY || "").replace(/\\n/g, '\n');
-const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID || "";
 
-const auth = new google.auth.JWT(
-    SERVICE_ACCOUNT_EMAIL, null, SERVICE_ACCOUNT_KEY,
-    ['https://www.googleapis.com/auth/drive']
-);
-const drive = google.drive({ version: 'v3', auth });
 
 // ==========================================
 // 🌟 API Router หลัก
@@ -119,7 +108,23 @@ async function notifyOrder(data) {
     return { success: true };
 }
 
+// ✅ เอาโค้ดชุดนี้ไปวางทับฟังก์ชัน uploadToDriveCore ตัวเดิม
 async function uploadToDriveCore(fileData, fileName, mimeType) {
+    // 1. ดึงค่าตัวแปร "ณ วินาทีที่ฟังก์ชันทำงาน"
+    const email = process.env.SERVICE_ACCOUNT_EMAIL;
+    const key = (process.env.SERVICE_ACCOUNT_KEY || "").replace(/\\n/g, '\n');
+    const folderId = process.env.DRIVE_FOLDER_ID;
+
+    // 2. ดักจับ Error ถ้าตัวแปรว่างเปล่า (จะช่วยให้เรารู้ว่า GitHub Secrets พังไหม)
+    if (!email || email.trim() === "" || !key || key.trim() === "") {
+        throw new Error("ระบบหลังบ้านตั้งค่า Google Drive ไม่สมบูรณ์ (ดึงค่า Email หรือ Key จาก GitHub Secrets ไม่สำเร็จ)");
+    }
+
+    // 3. เริ่มเชื่อมต่อ Google Drive
+    const auth = new google.auth.JWT(email, null, key, ['https://www.googleapis.com/auth/drive']);
+    const drive = google.drive({ version: 'v3', auth });
+
+    // 4. จัดการไฟล์และอัปโหลด
     const buffer = Buffer.from(fileData, 'base64');
     const stream = new Readable();
     stream.push(buffer);
@@ -127,7 +132,7 @@ async function uploadToDriveCore(fileData, fileName, mimeType) {
 
     const fileMetadata = {
         name: fileName || "file.jpg",
-        parents: [DRIVE_FOLDER_ID]
+        parents: [folderId]
     };
     const media = {
         mimeType: mimeType || 'image/jpeg',
