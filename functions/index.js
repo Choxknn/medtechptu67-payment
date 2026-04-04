@@ -45,15 +45,12 @@ exports.apiRouter = functions.https.onRequest(async (req, res) => {
     }
 
     try {
-        // 🌟 แก้ไขตรงนี้: ดักจับข้อมูลที่ส่งมาจากหน้าเว็บให้เหมือนตอนใช้ GAS
-        let params;
-        if (typeof req.body === 'string') {
-            params = JSON.parse(req.body);
-        } else if (req.body && req.body.data) {
-            params = JSON.parse(req.body.data);
-        } else {
-            params = req.body;
-        }
+    let params;
+    if (e.parameter && e.parameter.data) {
+        params = JSON.parse(e.parameter.data);
+    } else {
+        params = JSON.parse(e.postData.contents);
+    }
         
         const action = params.action;
         const args = params.args || [];
