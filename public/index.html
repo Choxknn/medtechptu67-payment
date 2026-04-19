@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <title>MedTech 67 Finance</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MedTech 67">
 
     <link rel="icon" type="image/png" href="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f">
     <link rel="apple-touch-icon" href="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f">
@@ -2168,7 +2172,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )}
 
-                       {billCount > 0 ? (
+                        {billCount > 0 ? (
                             <div className="flex justify-between items-stretch">
                                 <div className="flex-[1.4] pr-4 flex flex-col justify-between">
                                     <div>
@@ -2634,15 +2638,16 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
         </div>
     );
 
-    return (
-        <div className="h-[100dvh] w-full md:bg-[#E2E8F0] md:flex md:items-center md:justify-center md:py-6">
+   return (
+        // 🌟 ปรับเอาการเว้นระยะ (py-6) ออก เพื่อให้ชิดขอบจอเสมอ
+        <div className="h-[100dvh] w-full flex items-center justify-center bg-[#F0F4F8]">
             {loading && <Loading text="กำลังโหลดข้อมูล..." />}
 
-            <div className="flex flex-col w-full h-[100dvh] md:h-[95vh] max-w-md md:max-w-3xl lg:max-w-5xl mx-auto bg-[#F0F4F8] relative overflow-hidden md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] md:border-[6px] border-white/80">
+            {/* 🌟 ปลดล็อกความกว้าง (max-w-none) บนจอ iPad และให้ความสูงเต็ม 100dvh เสมอ */}
+            <div className="flex flex-col w-full h-[100dvh] max-w-none lg:max-w-6xl mx-auto bg-[#F0F4F8] relative overflow-hidden shadow-2xl">
                 {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
                 <main className="flex-1 w-full relative overflow-hidden bg-[#F4F7FB]">
-                    {/* 🌟 ปรับ pt-0 และใส่ id ให้จับ Scroll ได้ */}
                     <div id="main-scroll-area" className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-4 pt-0'}`}>
                         
                         <style>{`
