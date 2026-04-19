@@ -939,11 +939,14 @@
             );
         };
         
-        const PaymentModal = ({ bill, user, onClose, onSuccess }) => {
+       const PaymentModal = ({ bill, user, onClose, onSuccess }) => {
             const [file, setFile] = useState(null);
             const [preview, setPreview] = useState(null);
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [progress, setProgress] = useState(0); 
+            
+            // 🌟 State สำหรับปุ่มสลับวิธีชำระเงิน
+            const [paymentMethod, setPaymentMethod] = useState('qr'); // 'qr' หรือ 'account'
 
             const handleFile = (e) => {
                 const f = e.target.files[0];
@@ -951,7 +954,17 @@
                 else { fireErrorAlert('ไฟล์ขนาดใหญ่เกินไป', 'กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 5MB'); }
             };
 
-           const submit = async () => {
+            // 🌟 ฟังก์ชันคัดลอกเลขบัญชี
+            const handleCopy = () => {
+                navigator.clipboard.writeText("006660001474178");
+                Swal.fire({
+                    toast: true, position: 'top', icon: 'success', 
+                    title: 'คัดลอกหมายเลขแล้ว', showConfirmButton: false, timer: 1500,
+                    customClass: { popup: 'rounded-2xl shadow-lg border border-gray-100' }
+                });
+            };
+
+            const submit = async () => {
                 if(!file) return;
                 setIsSubmitting(true); setProgress(30);
             
@@ -976,13 +989,13 @@
                             const slipDoc = await db.collection('transRefs').doc(transRef).get();
                             if (slipDoc.exists) throw new Error('สลิปนี้ถูกใช้งานไปแล้วในระบบ ห้ามใช้ซ้ำเด็ดขาด');
                             
-                            // 🌟 บันทึกรหัสอ้างอิง พร้อมระบุว่าใครเป็นคนใช้ (รหัส และ ชื่อ)
+                            // บันทึกรหัสอ้างอิง พร้อมระบุว่าใครเป็นคนใช้ (รหัส และ ชื่อ)
                             await db.collection('transRefs').doc(transRef).set({
                                 status: "used", 
                                 type: "Success", 
                                 usedAt: new Date().toISOString(), 
-                                usedBy: String(user.studentId),    // เก็บระหัสนักศึกษา
-                                usedByName: user.name              // เก็บชื่อนักศึกษาด้วย แอดมินจะได้ดูง่าย
+                                usedBy: String(user.studentId),    
+                                usedByName: user.name              
                             });
                         }
                         
@@ -1006,7 +1019,7 @@
                         
                         setProgress(90);
 
-                        // 3. จัดการประวัติ (ปรับปรุงฟิลด์ให้ตรงตามรูปฐานข้อมูล)
+                        // 3. จัดการประวัติ 
                         const historyRef = db.collection('users').doc(user.studentId).collection('history');
                         const historySnapshot = await historyRef.where('billId', '==', bill.billId).get();
 
@@ -1019,7 +1032,6 @@
                             accumulatedTotal += Number(oldDoc.data().total || 0); 
                         }
 
-                        // โครงสร้างข้อมูลประวัติ
                         const historyData = {
                             amount: accumulatedTotal,           
                             billId: bill.billId,
@@ -1047,16 +1059,15 @@
                         }]);
                         
                         setProgress(100);
-                        onClose(); // ปิดหน้าต่างโหลด
+                        onClose(); 
 
-                        // 🌟 สร้างตัวแปรแยกข้อความป๊อปอัปให้สวยงาม
+                        // แสดงป๊อปอัป
                         let popupIcon = 'success';
                         let popupTitle = 'ชำระเงินเรียบร้อย!';
                         let popupHtml = `<p class="text-sm text-gray-500 mt-2">ระบบตรวจสอบสลิปถูกต้อง และบันทึกข้อมูลสำเร็จแล้ว</p>`;
-                        let btnColor = '#0066FF'; // สีปุ่มปกติ (น้ำเงิน)
+                        let btnColor = '#0066FF'; 
 
                         if (res.isUnderpaid) {
-                            // กรณีที่ 1: โอนเงินมา "ขาด" (ยอดไม่ครบ)
                             popupIcon = 'warning'; 
                             popupTitle = 'ยอดเงินไม่ครบ';
                             popupHtml = `
@@ -1075,10 +1086,9 @@
                                         </p>
                                     </div>
                                 </div>`;
-                            btnColor = '#F59E0B'; // สีปุ่มส้ม
+                            btnColor = '#F59E0B'; 
                         } 
                         else if (res.isOverpaid) {
-                            // กรณีที่ 2: โอนเงินมา "เกิน"
                             popupIcon = 'info';
                             popupTitle = 'โอนยอดเกิน';
                             popupHtml = `
@@ -1097,10 +1107,9 @@
                                         </p>
                                     </div>
                                 </div>`;
-                            btnColor = '#0EA5E9'; // สีปุ่มฟ้า
+                            btnColor = '#0EA5E9'; 
                         } 
                         else if (res.status === 'รอตรวจสอบ') {
-                            // กรณีที่ 3: ระบบ SlipOK ล่ม (โอนไปโหมดรอตรวจสอบแบบ Manual)
                             popupIcon = 'info';
                             popupTitle = 'ส่งข้อมูลสำเร็จ';
                             popupHtml = `
@@ -1115,7 +1124,6 @@
                             btnColor = '#0EA5E9';
                         }
 
-                        // แสดง Popup กรณีอัปโหลดและประมวลผลผ่าน
                         Swal.fire({
                             icon: popupIcon,
                             title: `<span class="text-xl font-black text-gray-800 tracking-tight">${popupTitle}</span>`,
@@ -1128,18 +1136,16 @@
                                 htmlContainer: 'm-0 p-0'
                             }
                         }).then(() => {
-                            onSuccess(); // รีเฟรชหน้าเว็บหลังจากกดปุ่มตกลง
+                            onSuccess(); 
                         });
 
                     } else {
-                        // 🌟 ดึงข้อความแจ้งเตือนจากระบบหลังบ้านมาเช็ค
                         let errorMsg = res.message || res.error || 'สลิปไม่ถูกต้อง';
                         let errTitle = 'ตรวจสอบสลิปไม่ผ่าน';
                         let errIcon = 'error';
                         let errColor = '#EF4444';
                         let errHtml = '';
 
-                        // 🔍 แยกประเภท Error ให้ชัดเจนตามคำที่เจอ
                         if (errorMsg.includes('บัญชีปลายทาง')) {
                             errTitle = 'โอนเงินผิดบัญชี!';
                             errHtml = `
@@ -1173,7 +1179,6 @@
                                 </div>`;
                         }
 
-                        // แสดง Popup แจ้งเตือนแบบแยกเคส
                         Swal.fire({
                             icon: errIcon,
                             title: `<span class="text-xl font-black text-gray-800 tracking-tight">${errTitle}</span>`,
@@ -1188,7 +1193,6 @@
                         });
                     }
                 } catch(err) { 
-                    // 🌟 กรณีที่ 5: ป๊อปอัปแจ้งเตือน "สลิปซ้ำ" (ที่ตรวจเจอจากฝั่งหน้าเว็บ) หรือเน็ตหลุด
                     Swal.fire({
                         icon: 'error',
                         title: `<span class="text-xl font-black text-gray-800 tracking-tight">พบข้อผิดพลาด</span>`,
@@ -1197,7 +1201,7 @@
                                 <p class="text-sm font-semibold text-gray-800"><i class="fa-solid fa-circle-exclamation text-red-500 mr-2"></i>${err.message || err.toString()}</p>
                             </div>
                         `,
-                        confirmButtonColor: '#111827', // ใช้สีดำ/เทาเข้ม
+                        confirmButtonColor: '#111827', 
                         confirmButtonText: 'ปิดหน้าต่าง',
                         customClass: {
                             popup: 'rounded-[2rem] shadow-2xl border border-gray-100',
@@ -1221,22 +1225,111 @@
                             <h2 className="font-bold text-xl ml-3 text-gray-800">ชำระเงินบิล</h2>
                         </div>
                         <div className="px-5">
-                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
-                                <div className="mb-5">
-                                    <span className="text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 shadow-sm animate-pulse">
-                                        <i className="fa-solid fa-arrow-down mr-1"></i> กรุณาแนบหลักฐานด้านล่าง
-                                    </span>
+
+                            {/* 🌟 1. กล่องรายละเอียดบิลที่ต้องชำระ */}
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-4">
+                                <div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
+                                    <div className="w-10 h-10 bg-blue-50 text-[#0066FF] rounded-xl flex items-center justify-center shadow-inner shrink-0">
+                                        <i className="fa-solid fa-file-invoice-dollar text-lg"></i>
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <h3 className="font-bold text-gray-800 text-base truncate">{bill.item}</h3>
+                                        <p className="text-[10px] font-bold text-gray-400 tracking-wider">REF: {bill.billId}</p>
+                                    </div>
                                 </div>
-                                <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-blue-100 inline-block shadow-sm relative mb-4">
-                                    <img src={getDirectDriveUrl(bill.qrCode)} className="w-52 h-52 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://placehold.co/200'} />
-                                    <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#0066FF] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-md tracking-wider">SCAN ME</div>
+                                <div className="space-y-2.5 text-sm">
+                                    <div className="flex justify-between items-center text-gray-600">
+                                        <span>ยอดเรียกเก็บเดิม</span>
+                                        <span className="font-semibold">{formatCurrency(bill.amount)}</span>
+                                    </div>
+                                    {bill.discount > 0 && (
+                                        <div className="flex justify-between items-center text-green-600">
+                                            <span>หักยอดคงเหลือ / ส่วนลด</span>
+                                            <span className="font-bold">-{formatCurrency(bill.discount)}</span>
+                                        </div>
+                                    )}
+                                    {bill.fine > 0 && (
+                                        <div className="flex justify-between items-center text-red-500">
+                                            <span>ค่าปรับล่าช้า ({bill.daysLate} วัน)</span>
+                                            <span className="font-bold">+{formatCurrency(bill.fine)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center pt-3 mt-1 border-t border-dashed border-gray-200">
+                                        <span className="font-extrabold text-gray-800">ยอดที่ต้องโอน</span>
+                                        <span className="font-black text-[#0066FF] text-2xl">{formatCurrency(bill.total)}</span>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">ยอดที่ต้องชำระ</p>
-                                <p className="text-4xl font-extrabold text-[#0066FF] leading-tight">{formatCurrency(bill.total)}</p>
-                                <p className="text-sm font-bold text-gray-500 mt-2 bg-gray-50 inline-block px-4 py-1.5 rounded-xl border border-gray-100">{bill.item}</p>
                             </div>
+
+                            {/* 🌟 2. กล่องแสดงวิธีชำระเงิน */}
+                            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
+                                {/* ปุ่ม Toggle เลือกวิธีชำระ */}
+                                <div className="flex p-1 bg-gray-100 rounded-2xl mb-6 shadow-inner">
+                                    <button 
+                                        onClick={() => setPaymentMethod('qr')} 
+                                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 ${paymentMethod === 'qr' ? 'bg-white text-[#0066FF] shadow-sm ring-1 ring-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        <i className="fa-solid fa-qrcode mr-1"></i> สแกน QR
+                                    </button>
+                                    <button 
+                                        onClick={() => setPaymentMethod('account')} 
+                                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-300 ${paymentMethod === 'account' ? 'bg-white text-[#0066FF] shadow-sm ring-1 ring-gray-200/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        <i className="fa-solid fa-building-columns mr-1"></i> เลขบัญชี
+                                    </button>
+                                </div>
+
+                                {/* โชว์ QR Code */}
+                                {paymentMethod === 'qr' && (
+                                    <div className="animate-pop">
+                                        <div className="bg-white p-3 rounded-3xl border-2 border-dashed border-blue-200 inline-block shadow-sm relative mb-2">
+                                            <img src={getDirectDriveUrl(bill.qrCode)} className="w-48 h-48 md:w-52 md:h-52 object-contain mx-auto rounded-xl" onError={e=>e.target.src='https://placehold.co/200'} />
+                                            <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#0066FF] text-white text-[10px] px-4 py-1.5 rounded-full font-bold shadow-md tracking-wider">SCAN ME</div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 font-medium mt-6">สแกนเพื่อชำระเงินผ่านแอปธนาคาร</p>
+                                    </div>
+                                )}
+
+                                {/* โชว์ เลขบัญชี G-Wallet */}
+                                {paymentMethod === 'account' && (
+                                    <div className="animate-pop text-left bg-gradient-to-br from-blue-50 to-indigo-50/50 p-5 rounded-2xl border border-blue-100/70 shadow-sm">
+                                        <h4 className="font-extrabold text-gray-800 mb-4 text-sm flex items-center">
+                                            <i className="fa-solid fa-money-bill-transfer text-[#0066FF] mr-2"></i>ขั้นตอนการโอนผ่านแอปธนาคาร
+                                        </h4>
+                                        <div className="space-y-3 mb-5 pl-1">
+                                            <div className="flex items-start gap-3">
+                                                <span className="w-5 h-5 rounded-full bg-blue-200 text-[#0066FF] flex items-center justify-center font-black shrink-0 text-xs mt-0.5">1</span> 
+                                                <p className="text-xs text-gray-600 font-medium leading-relaxed">เข้าแอปธนาคาร เลือกเมนู <strong className="text-gray-800 font-bold">"เติมเงิน"</strong></p>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <span className="w-5 h-5 rounded-full bg-blue-200 text-[#0066FF] flex items-center justify-center font-black shrink-0 text-xs mt-0.5">2</span> 
+                                                <p className="text-xs text-gray-600 font-medium leading-relaxed">เลือก <strong className="text-gray-800 font-bold">e-Wallet</strong> <br/><span className="text-gray-400 mt-1 inline-block">➜ เลือก พร้อมเพย์ อี-วอลเล็ต (หรือ G-Wallet)</span></p>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <span className="w-5 h-5 rounded-full bg-blue-200 text-[#0066FF] flex items-center justify-center font-black shrink-0 text-xs mt-0.5">3</span> 
+                                                <p className="text-xs text-gray-600 font-medium leading-relaxed">คัดลอกหมายเลขด้านล่าง และโอนยอดให้ตรง <strong className="text-red-500 font-bold">{bill.total} บาท</strong></p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider mb-1">หมายเลข G-Wallet (เป๋าตัง)</p>
+                                                <p className="font-mono text-lg font-black text-[#0066FF] tracking-wider leading-none mb-1">006-66000147-4178</p>
+                                                <p className="text-[11px] font-bold text-gray-500">ชื่อบัญชี: <span className="text-gray-800">ภานุมาศ นกไทย</span></p>
+                                            </div>
+                                            <button onClick={handleCopy} className="w-11 h-11 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-full flex items-center justify-center transition-colors shadow-inner shrink-0 active:scale-90 border border-blue-100">
+                                                <i className="fa-regular fa-copy text-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 🌟 3. กล่องอัปโหลดสลิป */}
                             <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
-                                <label className="block text-sm font-extrabold text-gray-800 mb-3"><i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน</label>
+                                <label className="block text-sm font-extrabold text-gray-800 mb-3">
+                                    <i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน
+                                </label>
                                 <div className="group flex justify-center px-6 py-8 border-2 border-gray-200 border-dashed rounded-3xl hover:bg-blue-50 hover:border-blue-400 transition-all cursor-pointer relative bg-gray-50 overflow-hidden">
                                     <input type="file" accept="image/*" onChange={handleFile} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                                     <div className="text-center relative z-0 w-full">
@@ -1247,13 +1340,14 @@
                                             </>
                                         ) : (
                                             <div className="relative inline-block w-full px-4">
-                                                <img src={preview} className="max-h-64 mx-auto object-contain rounded-xl shadow-sm border bg-white" />
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div>
+                                                <img src={preview} className="max-h-64 mx-auto object-contain rounded-xl shadow-sm border bg-white p-1" />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl mx-4 backdrop-blur-sm"><span className="text-white font-bold bg-black/50 px-4 py-2 rounded-full"><i className="fa-solid fa-pen mr-2"></i> เปลี่ยนรูป</span></div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
+                            
                             <button onClick={submit} disabled={!file || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
                                 ยืนยันการชำระเงิน <i className="fa-solid fa-paper-plane ml-2"></i>
                             </button>
