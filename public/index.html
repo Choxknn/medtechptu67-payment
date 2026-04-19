@@ -1024,21 +1024,25 @@
                         
                         setProgress(90);
 
-                        // 3. จัดการประวัติ 
+                        // 3. จัดการประวัติ (เขียนทับเอกสารเดิม แต่บวกยอด total ทบกัน)
                         const historyRef = db.collection('users').doc(user.studentId).collection('history');
                         const historySnapshot = await historyRef.where('billId', '==', bill.billId).get();
 
-                        let accumulatedTotal = Number(res.actualAmount);
+                        let newTotal = Number(res.actualAmount);
                         let historyDocId = null;
 
                         if (!historySnapshot.empty) {
                             const oldDoc = historySnapshot.docs[0];
                             historyDocId = oldDoc.id;
-                            accumulatedTotal += Number(oldDoc.data().total || 0); 
+                            
+                            // 🌟 ดึงยอด total เก่า มาบวกกับยอดโอนครั้งใหม่
+                            const oldTotal = Number(oldDoc.data().total || 0);
+                            newTotal = oldTotal + Number(res.actualAmount);
                         }
 
+                        // ข้อมูลประวัติที่จะบันทึก
                         const historyData = {
-                            amount: accumulatedTotal,           
+                            amount: Number(res.actualAmount),   // ยอดโอนของสลิปล่าสุด
                             billId: bill.billId,
                             item: bill.item,
                             name: user.name,                    
@@ -1046,13 +1050,15 @@
                             slipUrl: res.slipUrl,
                             status: res.status,
                             studentId: String(user.studentId),  
-                            total: accumulatedTotal,            
+                            total: newTotal,                    // 🌟 ยอดรวมสะสม (เก่า + ใหม่)
                             timestamp: Date.now()               
                         };
 
                         if (historyDocId) {
-                            await historyRef.doc(historyDocId).update(historyData);
+                            // 🟢 ถ้าเจอประวัติเดิม -> เขียนทับ (Set) ด้วยข้อมูลใหม่และยอดสะสม
+                            await historyRef.doc(historyDocId).set(historyData); 
                         } else {
+                            // 🔴 ถ้าไม่เจอประวัติเดิม -> สร้างใหม่ (Add)
                             await historyRef.add(historyData);
                         }
 
