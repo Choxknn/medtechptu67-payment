@@ -1012,7 +1012,6 @@
                             status: res.isUnderpaid ? "" : res.status, // ถ้ายอดขาด ให้สถานะหน้าบิลว่างไว้
                             slipUrl: res.slipUrl, 
                             payDate: payIsoDate
-                            transRef: res.transRef
                         };
                         
                         // ถ้ายอดไม่ครบ นำไปทบเป็นส่วนลด
@@ -1053,7 +1052,6 @@
                             studentId: String(user.studentId),  
                             total: newTotal,                    // 🌟 ยอดรวมสะสม (เก่า + ใหม่)
                             timestamp: Date.now() 
-                            transRef: res.transRef
                         };
 
                         if (historyDocId) {
