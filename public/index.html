@@ -1823,6 +1823,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
     useEffect(() => {
         const studentId = user.studentId;
+        const cohort = String(studentId).substring(0, 2); // 🌟 ดึงรหัสชั้นปี 2 ตัวแรก (เช่น "67")
         setLoading(true);
         const unsubscribes = [];
 
@@ -1849,17 +1850,29 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
             return 0;
         };
 
+        // 🌟 1. ดึง System Config (ประกาศ & ร้านค้า แยกตามชั้นปี)
         unsubscribes.push(db.collection('config').doc('system').onSnapshot(doc => {
             if (doc.exists) {
                 const d = doc.data();
-                setData(prev => ({ ...prev, announcement: d.announcement, orderEnabled: d.orderSystem === 'ON' || d.orderSystem === true }));
+                
+                // ประกาศ: ดึงกลางก่อน ถ้าว่างค่อยดึงชั้นปี
+                const announcement = d.announcement ? d.announcement : (d[`announcement_${cohort}`] || null);
+                
+                // ร้านค้า: ดึงกลางก่อน ถ้าไม่มีคีย์กลางค่อยดึงชั้นปี
+                const isGlobalOrderOn = d.orderSystem === 'ON' || d.orderSystem === true;
+                const isCohortOrderOn = d[`orderSystem_${cohort}`] === 'ON' || d[`orderSystem_${cohort}`] === true;
+                const orderEnabled = d.orderSystem !== undefined ? isGlobalOrderOn : isCohortOrderOn;
+
+                setData(prev => ({ ...prev, announcement, orderEnabled }));
             }
         }));
 
+        // 🌟 2. ดึง QR Code (qrMap_ตามด้วยชั้นปี)
         unsubscribes.push(db.collection('config').doc('qrMap').onSnapshot(doc => {
             if (doc.exists) {
                 const data = doc.data();
-                const codesArray = data.codes || []; 
+                // ดึง qrMap_ชั้นปี ก่อน ถ้าไม่มีค่อยดึง codes กลาง
+                const codesArray = data[`qrMap_${cohort}`] || data.codes || []; 
                 const newQrMap = {};
                 let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
                 codesArray.forEach(item => {
@@ -1873,6 +1886,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
             }
         }));
 
+        // 🌟 บิล, ออเดอร์, ประวัติ (ดึงตาม user.studentId อยู่แล้ว)
         unsubscribes.push(db.collection('users').doc(studentId).collection('bills').onSnapshot(snap => {
             const billsArray = snap.docs.map(doc => ({ billId: doc.id, ...doc.data() })).filter(bill => bill.status !== 'ชำระแล้ว'); 
             setData(prev => {
@@ -1893,6 +1907,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
             setData(prev => ({ ...prev, history: sortedHistory }));
         }));
 
+        // 🌟 3. สินค้าร้านค้า (กรองตาม cohort: 'ALL' หรือ ตรงรุ่น)
         unsubscribes.push(db.collection('products').onSnapshot(snap => {
             const prodArray = snap.docs.map(doc => {
                 const prodData = doc.data();
@@ -1901,12 +1916,17 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                 const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
                 for (let i = 2; i <= 5; i++) if (prodData[`sizeChart${i}`]) sizeChartGallery.push(prodData[`sizeChart${i}`]);
                 return { id: doc.id, ...prodData, productGallery, sizeChartGallery };
-            });
+            }).filter(p => !p.cohort || p.cohort === 'ALL' || p.cohort === cohort); // กรองชั้นปี
+
             setData(prev => ({ ...prev, products: prodArray }));
         }));
         
+        // 🌟 4. การเงิน (กรองตาม cohort: 'ALL' หรือ ตรงรุ่น)
         unsubscribes.push(db.collection('finance').doc('summary').collection('logs').onSnapshot(snap => {
-            const logsArray = snap.docs.map(doc => doc.data());
+            // กรองเอาเฉพาะข้อมูลชั้นปีตัวเอง หรือ ALL
+            const logsArray = snap.docs.map(doc => doc.data())
+                .filter(log => !log.cohort || log.cohort === 'ALL' || log.cohort === cohort);
+
             const groupedProjects = {};
             let totalIncome = 0, totalExpense = 0;
             
@@ -1937,7 +1957,15 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
-        setSelectedBill(null); setSelectedProduct(null); setPendingOrder(null); setSelectedProject(null); setTrackingOrder(null);
+        setSelectedBill(null);
+        setSelectedProduct(null);
+        setPendingOrder(null);
+        setSelectedProject(null);
+        setTrackingOrder(null);
+        
+        // 🌟 เพิ่มคำสั่งให้เลื่อนหน้าจอกลับไปบนสุดเสมอเมื่อเปลี่ยนหน้า
+        const scrollArea = document.getElementById('main-scroll-area');
+        if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleOpenPayment = (bill) => {
@@ -1956,9 +1984,20 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
     useEffect(() => { if (data?.announcement) setShowAnnouncement(true); }, [data?.announcement]);
 
-    const hasAccess = (menuId) => {
-        if (!user?.permissions || !Array.isArray(user.permissions)) return true;
-        return user.permissions.includes(menuId);
+    // ✅ เก็บตัวนี้ไว้ตัวเดียวครับ
+    const hasAccess = (page) => {
+        if (!user || !user.permissions) return false;
+
+        if (typeof user.permissions === 'string') {
+            const permissionsArray = user.permissions.split(',').map(p => p.trim());
+            return permissionsArray.includes(page);
+        }
+        
+        if (Array.isArray(user.permissions)) {
+            return user.permissions.includes(page);
+        }
+
+        return false;
     };
 
     const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
@@ -2059,11 +2098,11 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
         const billIdsString = pendingBills.map(b => b.billId).join(', ');
         const overdueBills = pendingBills.filter(b => b.daysLate > 0 && b.status !== 'รอตรวจสอบ');
         const hasOverdue = overdueBills.length > 0;
-        const maxDaysLate = hasOverdue ? Math.max(...overdueBills.map(b => b.daysLate)) : 0;
-        const activeOrders = data?.orders ? data.orders.filter(o => o.status?.trim() !== 'รับแล้ว' && o.status?.trim() !== 'ยกเลิก') : [];
+        
+        // 🌟 ปรับตรงนี้: ดึงออเดอร์มาแสดง "ทั้งหมด" โดยไม่ซ่อนสถานะ 'รับแล้ว' หรือ 'ยกเลิก'
+        const activeOrders = data?.orders || [];
         const hasActiveOrders = activeOrders.length > 0;
         
-        // 🌟 ดึงประวัติแค่ 5 รายการล่าสุด
         const recentHistory = (data?.history || []).slice(0, 5);
 
         return (
@@ -2082,72 +2121,116 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f" alt="Profile" className="w-[52px] h-[52px] bg-white rounded-full object-cover shadow-lg border-2 border-white/40" />
                             <div className="text-white"><p className="text-sm font-medium opacity-90 leading-tight">สวัสดี</p><p className="font-bold text-lg leading-tight">คุณ {formattedName}</p></div>
                         </div>
-                        {/* 🌟 ปรับกระดิ่งให้กระพริบจุดแดงเมื่อมีประกาศ (กดที่กระดิ่งเพื่ออ่านได้เลย) */}
-                        <div onClick={() => data?.announcement ? setShowAnnouncement(true) : null} className={`w-11 h-11 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30 relative shadow-sm ${data?.announcement ? 'cursor-pointer active:scale-95' : ''}`}>
-                            <i className="fa-regular fa-bell text-lg"></i>
-                            {data?.announcement && (
-                                <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1a237e] animate-pulse shadow-sm"></span>
-                            )}
+                        
+                        <div className="flex items-center gap-2">
+                            {/* กระดิ่งแจ้งเตือนประกาศแบบจุดกระพริบ */}
+                            <div onClick={() => data?.announcement ? setShowAnnouncement(true) : null} className={`w-11 h-11 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30 relative shadow-sm ${data?.announcement ? 'cursor-pointer active:scale-95' : ''}`}>
+                                <i className="fa-regular fa-bell text-lg"></i>
+                                {data?.announcement && (
+                                    <span className="absolute top-0 right-0 flex h-3.5 w-3.5 -mt-0.5 -mr-0.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-[#1a237e]"></span>
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 💳 การ์ดยอดค้างชำระ */}
-                <div className="mx-4 -mt-10 bg-white rounded-[2rem] p-5 relative z-20 shadow-[0_15px_40px_rgba(0,0,0,0.12)] border border-gray-200">
-                    {billCount > 0 ? (
-                        <div className="flex justify-between items-stretch">
-                            <div className="flex-[1.4] pr-4 flex flex-col justify-between">
-                                <div>
-                                    <span className="font-bold text-gray-800 text-sm">ยอดค้างชำระ</span>
-                                    <div className="flex items-baseline gap-1 mt-1">
-                                        <span className={`text-4xl font-black tracking-tight ${hasOverdue ? 'text-red-500' : 'text-[#1a237e]'}`}>{formatCurrency(totalUnpaid).replace('฿','').trim()}</span>
-                                        <span className="text-xs font-bold text-gray-400">บาท</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse shadow-sm shadow-orange-200"></span> {billCount} รายการที่รอชำระ</p>
+                {/* 🌟 โซนการ์ดซ้อน (แจ้งเตือน + ยอดค้าง) */}
+                <div className="relative z-20 mx-4 -mt-10 space-y-3">
+                    
+                    {/* แจ้งเตือนสินค้าใหม่ */}
+                    {data?.orderEnabled && hasAccess('orders') && (
+                        <div onClick={() => handleTabChange('orders')} className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[1.25rem] p-3 shadow-lg shadow-indigo-500/30 flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-indigo-400">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white shrink-0 animate-pulse shadow-inner border border-white/30">
+                                    <i className="fa-solid fa-gift text-sm"></i>
                                 </div>
-                                <button onClick={() => handleTabChange('bills')} className={`w-fit mt-4 px-4 py-2.5 rounded-full text-[11px] font-bold text-white shadow-md active:scale-95 transition-transform flex items-center gap-1.5 ${hasOverdue ? 'bg-red-500 hover:bg-red-600 shadow-red-200' : 'bg-[#0066FF] hover:bg-blue-700 shadow-blue-200'}`}>
-                                    จัดการชำระเงิน <i className="fa-solid fa-arrow-right text-[9px]"></i>
-                                </button>
+                                <div>
+                                    <p className="text-white font-black text-xs leading-tight">มีสินค้าใหม่วางจำหน่าย!</p>
+                                    <p className="text-indigo-100 font-medium text-[9px] mt-0.5">แตะเพื่อไปที่ร้านค้าสวัสดิการ</p>
+                                </div>
                             </div>
-                            <div className="w-[1px] bg-gray-200 my-1"></div>
-                            <div className="flex-[1] pl-4 flex flex-col gap-3 justify-center">
-                                <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 shadow-sm"><p className="text-[9px] text-gray-500 mb-0.5 font-bold uppercase tracking-wider"><i className="fa-solid fa-receipt text-yellow-500"></i> รหัสบิล</p><p className="font-black text-gray-800 text-[10px] truncate leading-tight">{billIdsString}</p></div>
-                                <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 shadow-sm"><p className="text-[9px] text-gray-500 mb-0.5 font-bold uppercase tracking-wider"><i className="fa-solid fa-circle-exclamation text-red-500"></i> สถานะ</p><p className={`font-black text-[10px] truncate leading-tight ${hasOverdue ? 'text-red-500' : 'text-blue-600'}`}>{hasOverdue ? `เลยกำหนด ${maxDaysLate} วัน` : 'รอชำระเงิน'}</p></div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex justify-between items-center py-2">
-                            <div><span className="font-bold text-gray-800 text-sm">ยอดค้างชำระ</span><div className="flex items-baseline gap-1 mt-1"><span className="text-4xl font-black tracking-tight text-[#1a237e]">0</span><span className="text-xs font-bold text-gray-400">บาท</span></div><p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-200"></span> ไม่มีรายการค้างชำระ</p></div>
-                            <div className="w-14 h-14 bg-green-50 text-green-500 rounded-full flex items-center justify-center shadow-inner border border-green-100 shrink-0"><i className="fa-solid fa-check-double text-2xl"></i></div>
+                            <div className="bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-white shrink-0"><i className="fa-solid fa-chevron-right text-[10px]"></i></div>
                         </div>
                     )}
+
+                    {/* 💳 การ์ดยอดค้างชำระ */}
+                    <div className="bg-white rounded-[2rem] p-5 shadow-[0_15px_40px_rgba(0,0,0,0.12)] border border-gray-200">
+                        {/* แจ้งเตือนเมื่อเกินกำหนด */}
+                        {hasOverdue && (
+                            <div className="bg-red-700 border border-red-800 rounded-xl p-3 mb-4 flex items-center gap-3 text-white shadow-lg shadow-red-700/20">
+                                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shrink-0 shadow-sm border border-red-400 animate-[pulse_1s_ease-in-out_infinite]">
+                                    <i className="fa-solid fa-exclamation text-lg"></i>
+                                </div>
+                                <span className="text-xs font-bold leading-tight">มียอดค้างชำระเกินกำหนด!<br/><span className="text-[10px] font-medium text-red-200">กรุณาดำเนินการชำระเงินทันที</span></span>
+                            </div>
+                        )}
+
+                        {billCount > 0 ? (
+                            <div className="flex justify-between items-stretch">
+                                <div className="flex-[1.4] pr-4 flex flex-col justify-between">
+                                    <div>
+                                        <span className="font-bold text-gray-800 text-sm">ยอดค้างชำระ</span>
+                                        <div className="flex items-baseline gap-1 mt-1">
+                                            <span className={`text-4xl font-black tracking-tight ${hasOverdue ? 'text-red-600' : 'text-[#1a237e]'}`}>{formatCurrency(totalUnpaid).replace('฿','').trim()}</span>
+                                            <span className="text-xs font-bold text-gray-400">บาท</span>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse shadow-sm shadow-orange-200"></span> {billCount} รายการที่รอชำระ</p>
+                                    </div>
+                                    <button onClick={() => handleTabChange('bills')} className={`w-fit mt-4 px-4 py-2.5 rounded-full text-[11px] font-bold text-white shadow-md active:scale-95 transition-transform flex items-center gap-1.5 ${hasOverdue ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-[#0066FF] hover:bg-blue-700 shadow-blue-200'}`}>
+                                        จัดการชำระเงิน <i className="fa-solid fa-arrow-right text-[9px]"></i>
+                                    </button>
+                                </div>
+                                <div className="w-[1px] bg-gray-200 my-1"></div>
+                                <div className="flex-[1] pl-4 flex flex-col gap-3 justify-center">
+                                    <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 shadow-sm"><p className="text-[9px] text-gray-500 mb-0.5 font-bold uppercase tracking-wider"><i className="fa-solid fa-receipt text-yellow-500"></i> รหัสบิล</p><p className="font-black text-gray-800 text-[10px] truncate leading-tight">{billIdsString}</p></div>
+                                    <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 shadow-sm"><p className="text-[9px] text-gray-500 mb-0.5 font-bold uppercase tracking-wider"><i className="fa-solid fa-circle-exclamation text-red-500"></i> สถานะ</p><p className={`font-black text-[10px] truncate leading-tight ${hasOverdue ? 'text-red-600' : 'text-blue-600'}`}>{hasOverdue ? `เลยกำหนด` : 'รอชำระเงิน'}</p></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex justify-between items-center py-2">
+                                <div><span className="font-bold text-gray-800 text-sm">ยอดค้างชำระ</span><div className="flex items-baseline gap-1 mt-1"><span className="text-4xl font-black tracking-tight text-[#1a237e]">0</span><span className="text-xs font-bold text-gray-400">บาท</span></div><p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-200"></span> ไม่มีรายการค้างชำระ</p></div>
+                                <div className="w-14 h-14 bg-green-50 text-green-500 rounded-full flex items-center justify-center shadow-inner border border-green-100 shrink-0"><i className="fa-solid fa-check-double text-2xl"></i></div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* 🌟 Quick Actions (เรียงใหม่และตัดติดตามสินค้าออก) */}
-                <div className="pl-4 mt-7 flex gap-3 overflow-x-auto no-scrollbar snap-x pb-4 pr-4">
-                    {/* 1. บิล */}
-                    <button onClick={() => handleTabChange('bills')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                        <i className="fa-solid fa-file-invoice-dollar text-3xl text-[#0066FF] drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">รายการบิล</span>
-                    </button>
+                {/* 🌟 Quick Actions (ซ่อนปุ่มอัตโนมัติตามสิทธิ์) */}
+                <div className="ml-4 mt-7 flex gap-3 overflow-x-auto no-scrollbar snap-x pb-4 pr-4">
                     
-                    {/* 2. การเงิน */}
-                    <button onClick={() => handleTabChange('finance')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                        <i className="fa-solid fa-wallet text-3xl text-emerald-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">การเงิน</span>
-                    </button>
+                    {/* เช็คสิทธิ์ 'bills' */}
+                    {hasAccess('bills') && (
+                        <button onClick={() => handleTabChange('bills')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
+                            <i className="fa-solid fa-file-invoice-dollar text-3xl text-[#0066FF] drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">รายการบิล</span>
+                        </button>
+                    )}
+                    
+                    {/* เช็คสิทธิ์ 'finance' */}
+                    {hasAccess('finance') && (
+                        <button onClick={() => handleTabChange('finance')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
+                            <i className="fa-solid fa-wallet text-3xl text-emerald-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">การเงิน</span>
+                        </button>
+                    )}
 
-                    {/* 3. ร้านค้า (โชว์เมื่อเปิดระบบ) */}
+                    {/* เช็คสิทธิ์ 'orders' */}
                     {data?.orderEnabled && hasAccess('orders') && (
-                        <button onClick={() => handleTabChange('orders')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
+                        <button onClick={() => handleTabChange('orders')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group relative">
+                            <span className="absolute top-1.5 right-1.5 flex items-center justify-center bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-pulse border border-white z-10">NEW</span>
                             <i className="fa-solid fa-store text-3xl text-amber-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">ร้านค้า</span>
                         </button>
                     )}
 
-                    {/* 4. จัดการบัญชี */}
-                    <button onClick={() => handleTabChange('settings')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                        <i className="fa-solid fa-user-gear text-3xl text-slate-600 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">จัดการบัญชี</span>
-                    </button>
+                    {/* เช็คสิทธิ์ 'settings' */}
+                    {hasAccess('settings') && (
+                        <button onClick={() => handleTabChange('settings')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
+                            <i className="fa-solid fa-user-gear text-3xl text-slate-600 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">จัดการบัญชี</span>
+                        </button>
+                    )}
 
-                    {/* 5. บริการทั้งหมด */}
+                    {/* ปุ่มบริการทั้งหมด (โชว์เสมอเป็นตัวศูนย์กลาง แต่เนื้อหาข้างในจะถูกซ่อน) */}
                     <button onClick={() => handleTabChange('services')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
                         <i className="fa-solid fa-layer-group text-3xl text-indigo-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">บริการทั้งหมด</span>
                     </button>
@@ -2168,7 +2251,6 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             <div className="space-y-3">
                                 {recentHistory.length > 0 ? (
                                     recentHistory.map((hist, i) => (
-                                        // 🌟 ครอบ onClick ไว้ที่ตัวการ์ดเลย
                                         <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-100 rounded-2xl p-4 shadow-sm relative transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -2179,9 +2261,12 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                                             </div>
                                             <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-medium">
                                                 <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
-                                                <span className="text-emerald-500 font-bold"><i className="fa-solid fa-check-circle"></i> สำเร็จ</span>
+                                                {hist.status === 'ยอดไม่ครบ' ? (
+                                                    <span className="text-orange-500 font-bold"><i className="fa-solid fa-triangle-exclamation"></i> ยอดไม่ครบ</span>
+                                                ) : (
+                                                    <span className="text-emerald-500 font-bold"><i className="fa-solid fa-check-circle"></i> สำเร็จ</span>
+                                                )}
                                             </div>
-                                            {/* 🌟 ข้อความบอกให้แตะเพื่อดู */}
                                             {hist.slipUrl && (
                                                 <div className="mt-3 pt-2 border-t border-gray-50 text-center">
                                                     <span className="text-[10px] font-bold text-[#0066FF]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูสลิปหลักฐาน</span>
@@ -2192,44 +2277,108 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                                 ) : (
                                     <div className="text-center py-6 text-gray-400"><div className="text-3xl mb-2 opacity-30"><i className="fa-solid fa-receipt"></i></div><p className="text-xs font-bold">ไม่มีประวัติทำรายการ</p></div>
                                 )}
-                                
                                 {data?.history?.length > 5 && ( 
                                     <button onClick={() => handleTabChange('history')} className="w-full text-center text-[11px] font-bold text-[#0066FF] mt-2 py-3 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                                        ดูประวัติทั้งหมด <i className="fa-solid fa-arrow-right ml-1"></i>
+                                        ดูรายการเพิ่มเติม <i className="fa-solid fa-arrow-right ml-1"></i>
                                     </button> 
                                 )}
                             </div>
                         ) : (
                             <div className="space-y-3 px-1">
                                 {hasActiveOrders ? (
-                                    activeOrders.map((order, index) => (
-                                        // 🌟 ครอบ onClick ไว้ที่ตัวการ์ดออเดอร์
-                                        <div key={order.id || index} onClick={() => setTrackingOrder(order)} className="bg-white border border-rose-100 rounded-2xl p-4 shadow-sm relative cursor-pointer hover:border-rose-300 hover:shadow-md transition-all active:scale-95">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center shrink-0">
-                                                        <i className="fa-solid fa-box text-sm"></i>
-                                                    </div>
-                                                    <div className="overflow-hidden pr-2">
-                                                        <p className="font-bold text-gray-800 text-sm line-clamp-1">{order.productName || order.name || order.item || 'รายการสั่งซื้อสวัสดิการ'}</p>
-                                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ID: {order.id}</p>
+                                    activeOrders.map((order, index) => {
+                                        // 🌟 ดึงชื่อสินค้าแบบครอบจักรวาล (รองรับ String, JSON String, Array, Object)
+                                        let itemName = 'รายการสั่งซื้อสวัสดิการ';
+                                        try {
+                                            const sourceItems = order.items || order.cart;
+                                            
+                                            if (sourceItems) {
+                                                if (typeof sourceItems === 'string') {
+                                                    // ลองเช็คว่าเป็น JSON String หรือไม่
+                                                    if (sourceItems.trim().startsWith('[') || sourceItems.trim().startsWith('{')) {
+                                                        const parsed = JSON.parse(sourceItems);
+                                                        if (Array.isArray(parsed)) {
+                                                            itemName = parsed.map(i => i.name || i.productName || i.item || i.title || 'สินค้า').join(', ');
+                                                        } else {
+                                                            itemName = parsed.name || parsed.productName || parsed.item || parsed.title || 'สินค้า';
+                                                        }
+                                                    } else {
+                                                        // ถ้าเป็นข้อความธรรมดาพิมพ์มาเลย
+                                                        itemName = sourceItems;
+                                                    }
+                                                } else if (Array.isArray(sourceItems)) {
+                                                    // ถ้าเป็น Array
+                                                    itemName = sourceItems.map(i => i?.name || i?.productName || i?.item || i?.title || (typeof i === 'string' ? i : 'สินค้า')).join(', ');
+                                                } else if (typeof sourceItems === 'object') {
+                                                    // ถ้าเป็น Object เดี่ยวๆ
+                                                    itemName = sourceItems.name || sourceItems.productName || sourceItems.item || sourceItems.title || 'สินค้า';
+                                                }
+                                            } else if (order.name || order.productName || order.item || order.title) {
+                                                // ถ้าฟิลด์อยู่ชั้นนอกสุด
+                                                itemName = order.name || order.productName || order.item || order.title;
+                                            }
+                                        } catch (error) {
+                                            console.error("Error parsing order items:", error);
+                                            // ถ้าพังก็ให้ใช้ชื่อเริ่มต้น
+                                            itemName = 'รายการสั่งซื้อ (ข้อผิดพลาดในการอ่านข้อมูล)';
+                                        }
+
+                                        // 🌟 อัปเดตสีตามสถานะออเดอร์
+                                        let statusColor = "text-gray-600 bg-gray-100 border-gray-200";
+                                        const st = order.status?.trim();
+                                        let displayStatus = st || 'รอดำเนินการ';
+                                        let isReadyToPickup = false;
+
+                                        if (st === 'รอตรวจสอบ') statusColor = "text-yellow-600 bg-yellow-50 border-yellow-200";
+                                        else if (st === 'ชำระแล้ว') statusColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
+                                        else if (st === 'อยู่ระหว่างสั่งซื้อ') statusColor = "text-blue-600 bg-blue-50 border-blue-200";
+                                        else if (st === 'อยู่ระหว่างผลิต') statusColor = "text-indigo-600 bg-indigo-50 border-indigo-200";
+                                        else if (st === 'รอรับของ') {
+                                            statusColor = "text-orange-600 bg-orange-100 border-orange-300";
+                                            displayStatus = "พร้อมรับสินค้า";
+                                            isReadyToPickup = true;
+                                        }
+                                        else if (st === 'รับแล้ว') statusColor = "text-green-600 bg-green-50 border-green-200";
+                                        else if (st === 'ยกเลิก') statusColor = "text-red-500 bg-red-50 border-red-200";
+
+                                        return (
+                                            <div key={order.id || index} onClick={() => setTrackingOrder(order)} className={`bg-white border rounded-2xl p-4 shadow-sm relative cursor-pointer hover:shadow-md transition-all active:scale-95 ${isReadyToPickup ? 'border-orange-200 hover:border-orange-400' : 'border-rose-100 hover:border-rose-300'}`}>
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isReadyToPickup ? 'bg-orange-50 text-orange-500' : 'bg-rose-50 text-rose-500'}`}>
+                                                            <i className={`fa-solid ${isReadyToPickup ? 'fa-box-open' : 'fa-box'} text-sm`}></i>
+                                                        </div>
+                                                        <div className="overflow-hidden pr-2">
+                                                            <p className="font-bold text-gray-800 text-sm line-clamp-1">{itemName}</p>
+                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ID: {order.id}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center border border-gray-100">
+                                                    <span className="text-[11px] font-bold text-gray-500">สถานะปัจจุบัน:</span>
+                                                    <span className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm border ${statusColor}`}>
+                                                        {displayStatus}
+                                                    </span>
+                                                </div>
+                                                
+                                                {isReadyToPickup ? (
+                                                    <div className="mt-3 pt-3 border-t border-orange-100 flex flex-col gap-2">
+                                                        <button className="w-full py-2.5 bg-orange-500 text-white text-[11px] font-bold rounded-xl shadow-md shadow-orange-200 flex items-center justify-center gap-2">
+                                                            <i className="fa-solid fa-qrcode text-sm"></i> แสดง QR Code เพื่อรับสินค้า
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-3 pt-2 border-t border-rose-50 text-center">
+                                                        <span className="text-[10px] font-bold text-[#1a237e]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูรายละเอียดการจัดส่ง</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center border border-gray-100">
-                                                <span className="text-[11px] font-bold text-gray-500">สถานะปัจจุบัน:</span>
-                                                <span className="text-[11px] font-black text-orange-500 bg-orange-100 border border-orange-200 px-3 py-1 rounded-full shadow-sm">{order.status}</span>
-                                            </div>
-                                            {/* 🌟 ข้อความบอกให้แตะเพื่อดู */}
-                                            <div className="mt-3 pt-2 border-t border-rose-50 text-center">
-                                                <span className="text-[10px] font-bold text-rose-500"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูรายละเอียดการจัดส่ง</span>
-                                            </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <div className="text-center py-8 text-gray-400">
                                         <div className="text-3xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>
-                                        <p className="text-xs font-bold text-gray-500">ไม่มีรายการสั่งซื้อที่กำลังดำเนินการ</p>
+                                        <p className="text-xs font-bold text-gray-500">ไม่มีรายการสั่งซื้อ</p>
                                     </div>
                                 )}
                             </div>
@@ -2251,57 +2400,109 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
         </button>
     );
 
-    // 🌟 หน้าบริการทั้งหมด (Services Hub)
+   // 🌟 หน้าบริการทั้งหมด (Services Hub) - ซ่อนเมนูตามสิทธิ์อัตโนมัติ
     const renderServicesContent = () => {
-        const activeOrders = data?.orders ? data.orders.filter(o => o.status?.trim() !== 'รับแล้ว' && o.status?.trim() !== 'ยกเลิก') : [];
+        // ดึงออเดอร์ที่ยังไม่เสร็จสิ้นมาเตรียมไว้สำหรับเมนู "ติดตามสินค้า"
+        const activeOrders = data?.orders || [];
+        
+        // เช็คว่าต้องโชว์หมวดหมู่ไหนบ้าง (ถ้าไม่มีสิทธิ์ในหมวดนั้นเลย จะซ่อนทั้งหมวด)
+        const showFinanceGroup = hasAccess('bills') || hasAccess('history') || hasAccess('finance');
+        const showStoreGroup = hasAccess('orders');
+        const showAccountGroup = hasAccess('settings') || true; // "ติดต่อแอดมิน" ให้โชว์เสมอ
+
         return (
-            <div className="animate-window-slide pt-2 w-full pb-8">
-                <div className="mb-6 px-1">
-                    <h2 className="text-2xl font-black text-gray-800 tracking-tight">บริการทั้งหมด</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">เมนูฟังก์ชันการใช้งานในระบบ</p>
-                </div>
-
-                <div className="space-y-6">
-                    {/* หมวดการเงิน */}
+            <div className="space-y-6 pb-6">
+                
+                {/* 💳 หมวดการเงิน & ชำระเงิน */}
+                {showFinanceGroup && (
                     <div>
-                        <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2">การเงิน & ชำระเงิน</h3>
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                            {renderServiceItem('bills', 'fa-file-invoice-dollar', 'รายการบิลของคุณ', 'ตรวจสอบและชำระค่าใช้จ่าย', 'text-blue-600', 'bg-blue-50')}
-                            {renderServiceItem('history', 'fa-clock-rotate-left', 'ประวัติทำรายการ', 'ดูประวัติการชำระเงินย้อนหลัง', 'text-indigo-500', 'bg-indigo-50')}
-                            {renderServiceItem('finance', 'fa-wallet', 'สรุปการเงินชั้นปี', 'ภาพรวมรายรับ-รายจ่ายของรุ่น', 'text-emerald-500', 'bg-emerald-50')}
+                        <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2 pl-3">การเงิน & ชำระเงิน</h3>
+                        <div className="bg-white rounded-[1.5rem] shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+                            {hasAccess('bills') && (
+                                <button onClick={() => handleTabChange('bills')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0066FF] shrink-0"><i className="fa-solid fa-file-invoice-dollar text-sm"></i></div>
+                                        <div><span className="text-sm font-bold text-gray-800 block">รายการบิลของคุณ</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">ตรวจสอบและชำระค่าใช้จ่าย</span></div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+                                </button>
+                            )}
+                            {hasAccess('history') && (
+                                <button onClick={() => handleTabChange('history')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0"><i className="fa-solid fa-clock-rotate-left text-sm"></i></div>
+                                        <div><span className="text-sm font-bold text-gray-800 block">ประวัติทำรายการ</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">ดูประวัติการชำระเงินย้อนหลัง</span></div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+                                </button>
+                            )}
+                            {hasAccess('finance') && (
+                                <button onClick={() => handleTabChange('finance')} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100 text-left">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0"><i className="fa-solid fa-wallet text-sm"></i></div>
+                                        <div><span className="text-sm font-bold text-gray-800 block">สรุปการเงินชั้นปี</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">ภาพรวมรายรับ-รายจ่ายของรุ่น</span></div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+                                </button>
+                            )}
                         </div>
                     </div>
+                )}
 
-                    {/* หมวดร้านค้า */}
+                {/* 🛒 หมวดร้านค้าสวัสดิการ */}
+                {showStoreGroup && (
                     <div>
-                        <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2">สวัสดิการ & สั่งซื้อ</h3>
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                            {renderServiceItem('orders', 'fa-store', 'ร้านค้าสวัสดิการ', 'สั่งซื้อเสื้อและสินค้าต่างๆ', 'text-amber-500', 'bg-amber-50')}
-                            <button onClick={() => activeOrders.length > 0 ? setTrackingOrder(activeOrders[0]) : Swal.fire({icon: 'info', title: 'ไม่มีออเดอร์', text: 'คุณยังไม่มีรายการสั่งซื้อที่กำลังดำเนินการครับ', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500"><i className="fa-solid fa-box text-sm"></i></div>
-                                    <div><span className="text-sm font-bold text-gray-800 block">ติดตามสินค้า</span><span className="text-[10px] text-gray-400 font-medium">เช็คสถานะการจัดส่ง</span></div>
-                                </div>
-                                <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                            </button>
+                        <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2 pl-3">สวัสดิการ & สั่งซื้อ</h3>
+                        <div className="bg-white rounded-[1.5rem] shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+                            {hasAccess('orders') && data?.orderEnabled && (
+                                <button onClick={() => handleTabChange('orders')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"><i className="fa-solid fa-store text-sm"></i></div>
+                                        <div><span className="text-sm font-bold text-gray-800 block">ร้านค้าสวัสดิการ</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">สั่งซื้อและดูรายการสินค้า</span></div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+                                </button>
+                            )}
+                            {hasAccess('orders') && (
+                                <button onClick={() => {
+                                    if (activeOrders.length > 0) setTrackingOrder(activeOrders[0]);
+                                    else Swal.fire({icon: 'info', title: 'ไม่มีออเดอร์', text: 'คุณยังไม่มีรายการสั่งซื้อที่กำลังดำเนินการครับ', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}});
+                                }} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100 text-left">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0"><i className="fa-solid fa-box-open text-sm"></i></div>
+                                        <div><span className="text-sm font-bold text-gray-800 block">ติดตามสถานะสินค้า</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">เช็คสถานะการจัดส่งออเดอร์</span></div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+                                </button>
+                            )}
                         </div>
                     </div>
+                )}
 
-                    {/* หมวดตั้งค่า */}
+                {/* ⚙️ หมวดบัญชีและช่วยเหลือ */}
+                {showAccountGroup && (
                     <div>
-                        <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2">บัญชี & ช่วยเหลือ</h3>
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                            {renderServiceItem('settings', 'fa-user-gear', 'จัดการบัญชี', 'เปลี่ยนรหัสผ่าน / เชื่อมต่อ LINE', 'text-slate-600', 'bg-slate-100')}
+                        <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2 pl-3">บัญชี & ช่วยเหลือ</h3>
+                        <div className="bg-white rounded-[1.5rem] shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+                            {hasAccess('settings') && (
+                                <button onClick={() => handleTabChange('settings')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0"><i className="fa-solid fa-user-gear text-sm"></i></div>
+                                        <div><span className="text-sm font-bold text-gray-800 block">จัดการบัญชีผู้ใช้</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">แก้ไขข้อมูลส่วนตัว / เปลี่ยนรหัส</span></div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+                                </button>
+                            )}
                             <button onClick={handleContactAdmin} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100 text-left">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500"><i className="fa-solid fa-headset text-sm"></i></div>
-                                    <div><span className="text-sm font-bold text-gray-800 block">ติดต่อแอดมิน</span><span className="text-[10px] text-gray-400 font-medium">แจ้งปัญหา / สอบถามข้อมูล</span></div>
+                                    <div className="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-500 shrink-0"><i className="fa-solid fa-headset text-sm"></i></div>
+                                    <div><span className="text-sm font-bold text-gray-800 block">ติดต่อทีมแอดมิน</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">แจ้งปัญหา / สอบถามข้อมูลเพิ่มเติม</span></div>
                                 </div>
-                                <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
                             </button>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         );
     };
@@ -2405,23 +2606,24 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                     </button>
                 </div>
 
-                <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v3.0 (Firestore)</p><p>🖥️ Develop by CHOKUN</p></div>
+                <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v2.0.1</p><p>🖥️ Develop by CHOKUN</p></div>
             </div>
         );
     };
 
-    // 🌟 ฟังก์ชันสร้างหัวข้อหน้าย่อยแบบปักหมุด (Sticky Header) ล็อกติดขอบบนสุด
+    // 🌟 ฟังก์ชันสร้างหัวข้อหน้าย่อยแบบปักหมุด (Sticky Header) ชิดขอบบนสุดเป๊ะ
     const renderSubPageHeader = (title, subtitle) => (
-        <div className="sticky top-0 z-40 bg-[#F4F7FB]/95 backdrop-blur-xl pt-[calc(env(safe-area-inset-top)+20px)] pb-4 px-5 -mx-4 mb-5 flex items-center gap-3 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] border-b border-white/60 transition-all">
+        <div className="sticky top-0 z-40 bg-[#F4F7FB]/95 backdrop-blur-xl pt-[calc(env(safe-area-inset-top)+20px)] pb-4 px-5 -mx-4 mb-5 flex items-center gap-3 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] border-b border-white/60 transition-all">
             <button onClick={() => handleTabChange('home')} className="w-10 h-10 shrink-0 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100">
                 <i className="fa-solid fa-chevron-left"></i>
             </button>
             <div>
-                <h2 className="text-2xl font-black text-gray-800 tracking-tight leading-tight">{title}</h2>
+                <h2 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight leading-tight">{title}</h2>
                 {subtitle && <p className="text-[10px] font-bold text-[#0066FF] uppercase tracking-widest mt-0.5">{subtitle}</p>}
             </div>
         </div>
     );
+
     return (
         <div className="h-[100dvh] w-full md:bg-[#E2E8F0] md:flex md:items-center md:justify-center md:py-6">
             {loading && <Loading text="กำลังโหลดข้อมูล..." />}
@@ -2430,9 +2632,9 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                 {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
 
                 <main className="flex-1 w-full relative overflow-hidden bg-[#F4F7FB]">
-                    <div id="main-scroll-area" className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-4 pt-[calc(env(safe-area-inset-top)+10px)]'}`}>
+                    {/* 🌟 ปรับ pt-0 และใส่ id ให้จับ Scroll ได้ */}
+                    <div id="main-scroll-area" className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-4 pt-0'}`}>
                         
-                        {/* 🌟 ย้าย Style แอนิเมชันเลื่อนจากขวามาไว้ตรงนี้ เพื่อให้ใช้ได้กับทุกหน้า */}
                         <style>{`
                             @keyframes slideInWindowRight { 0% { transform: translateX(100%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
                             .animate-window-slide { animation: slideInWindowRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
@@ -2441,15 +2643,14 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                         {/* หน้าแรก */}
                         {tab === 'home' && hasAccess('home') && renderHomeContent()}
 
-                        {/* หน้าการเงิน */}
+                        {/* หน้าย่อยต่างๆ */}
                         {tab === 'finance' && hasAccess('finance') && (
-                            <div className="animate-pop">
+                            <div className="animate-pop w-full">
                                 {renderSubPageHeader("สรุปการเงินชั้นปี", "ภาพรวมรายรับรายจ่าย")}
                                 <div className="px-1">{renderFinanceContent()}</div>
                             </div>
                         )}
                         
-                        {/* 🌟 หน้าบิล (เลื่อนจากขวา) */}
                         {tab === 'bills' && hasAccess('bills') && (
                             <div className="animate-window-slide w-full">
                                 {renderSubPageHeader("รายการบิลของคุณ", "ตรวจสอบและชำระเงินค้างชำระ")}
@@ -2498,7 +2699,6 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )} 
 
-                        {/* 🌟 หน้าบริการทั้งหมด (เลื่อนจากขวา) */}
                         {tab === 'services' && (
                             <div className="animate-window-slide w-full pb-8">
                                 {renderSubPageHeader("บริการทั้งหมด", "ศูนย์รวมเมนูและฟังก์ชัน")}
@@ -2506,7 +2706,6 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )}
 
-                        {/* 🌟 หน้าร้านค้า (เลื่อนจากขวา) */}
                         {tab === 'orders' && hasAccess('orders') && (
                             <div className="animate-window-slide w-full">
                                 {renderSubPageHeader("ร้านค้า", "รายการสินค้าจัดจำหน่าย")}
@@ -2532,9 +2731,8 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )}
 
-                        {/* หน้าประวัติ */}
                         {tab === 'history' && hasAccess('history') && (
-                            <div className="animate-pop">
+                            <div className="animate-pop w-full">
                                 {renderSubPageHeader("ประวัติทำรายการ", "การชำระเงินย้อนหลังของคุณ")}
                                 <div className="px-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {(data?.history || []).map((hist, i) => (
@@ -2546,9 +2744,15 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                                                 </div>
                                                 <span className="text-[#00B900] font-black text-sm shrink-0 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100">{formatCurrency(hist.total)}</span>
                                             </div>
+                                            
+                                            {/* 🌟 แสดงยอดไม่ครบ สีส้ม */}
                                             <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-medium">
                                                 <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
-                                                <span className="text-emerald-500 font-bold"><i className="fa-solid fa-check-circle"></i> สำเร็จ</span>
+                                                {hist.status === 'ยอดไม่ครบ' ? (
+                                                    <span className="text-orange-500 font-bold"><i className="fa-solid fa-triangle-exclamation"></i> ยอดไม่ครบ</span>
+                                                ) : (
+                                                    <span className="text-emerald-500 font-bold"><i className="fa-solid fa-check-circle"></i> สำเร็จ</span>
+                                                )}
                                             </div>
                                             {hist.slipUrl && (
                                                 <div className="mt-3 pt-2 border-t border-gray-50 text-center">
@@ -2562,16 +2766,14 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )}
                         
-                        {/* หน้าตั้งค่าบัญชี */}
                         {tab === 'settings' && hasAccess('settings') && (
-                            <div className="animate-pop">
+                            <div className="animate-pop w-full">
                                 {renderSubPageHeader("การตั้งค่าบัญชี", "จัดการข้อมูลและความปลอดภัย")}
                                 <div className="px-1">{renderSettingsContent()}</div>
                             </div>
                         )}
                     </div>
 
-                    {/* Modals & Subpages */}
                     {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null);}} />}
                     {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
                     {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); }} />}
@@ -2581,33 +2783,57 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
                 {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                {/* 🌟 Bottom Navigation */}
-                <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-safe pt-12 px-4 mb-4 ${(isSubPageOpen || !showBottomNav) ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-auto'}`}>
+                {/* 🌟 Bottom Navigation (โชว์แค่ตอนอยู่หน้า การเงิน, หน้าหลัก, บัญชี / ล็อกปุ่มสีเทาถ้าไม่มีสิทธิ์) */}
+                <div className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-500 ease-in-out flex justify-center pb-safe pt-12 px-4 mb-4 ${(isSubPageOpen || !showBottomNav || !['home', 'finance', 'settings'].includes(tab)) ? 'translate-y-40 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-auto'}`}>
                     <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F4F7FB] via-[#F4F7FB]/90 to-transparent pointer-events-none"></div>
                     
                     <nav className="relative z-10 bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_10px_40px_-10px_rgba(0,102,255,0.2)] p-1.5 flex items-center w-full max-w-md border border-white h-[75px]">
-                        
                         <div className="w-full h-full relative flex">
+                            
+                            {/* กรอบสีฟ้าพื้นหลังเลื่อน (ไม่เลื่อนไปหาปุ่มที่ถูกล็อก) */}
                             <div className={`absolute top-0 bottom-0 w-1/3 rounded-3xl transition-all duration-300 ease-out z-0 flex items-center justify-center
-                                ${tab === 'finance' ? 'translate-x-0 bg-blue-50' : 
-                                  tab === 'home' ? 'translate-x-[100%] border-[2.5px] border-[#0066FF] shadow-[0_0_10px_rgba(0,102,255,0.15)] bg-white' : 
-                                  tab === 'settings' ? 'translate-x-[200%] bg-blue-50' : 'opacity-0'}`}
+                                ${tab === 'finance' && hasAccess('finance') ? 'translate-x-0 bg-blue-50' : 
+                                  tab === 'home' && hasAccess('home') ? 'translate-x-[100%] border-[2.5px] border-[#0066FF] shadow-[0_0_10px_rgba(0,102,255,0.15)] bg-white' : 
+                                  tab === 'settings' && hasAccess('settings') ? 'translate-x-[200%] bg-blue-50' : 'opacity-0'}`}
                             ></div>
 
-                            <button onClick={() => handleTabChange('finance')} className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                <i className={`fa-solid fa-wallet ${tab === 'finance' ? 'text-xl' : 'text-lg'} transition-all`}></i>
+                            {/* 1. ปุ่มการเงิน (เช็กล็อก) */}
+                            <button 
+                                onClick={() => hasAccess('finance') ? handleTabChange('finance') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงเมนูการเงิน', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
+                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('finance') ? 'text-gray-300 cursor-not-allowed' : tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <div className="relative">
+                                    <i className={`fa-solid fa-wallet ${tab === 'finance' && hasAccess('finance') ? 'text-xl' : 'text-lg'} transition-all`}></i>
+                                    {/* ไอคอนแม่กุญแจเล็กๆ ถ้าไม่มีสิทธิ์ */}
+                                    {!hasAccess('finance') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
+                                </div>
                                 <span className="text-[10px] font-bold">การเงิน</span>
                             </button>
                             
-                            <button onClick={() => handleTabChange('home')} className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                <i className={`fa-solid fa-house ${tab === 'home' ? 'text-xl' : 'text-lg'} transition-all`}></i>
+                            {/* 2. ปุ่มหน้าหลัก (เช็กล็อก) */}
+                            <button 
+                                onClick={() => hasAccess('home') ? handleTabChange('home') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงหน้าหลัก', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
+                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('home') ? 'text-gray-300 cursor-not-allowed' : tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <div className="relative">
+                                    <i className={`fa-solid fa-house ${tab === 'home' && hasAccess('home') ? 'text-xl' : 'text-lg'} transition-all`}></i>
+                                    {!hasAccess('home') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
+                                </div>
                                 <span className="text-[10px] font-bold">หน้าหลัก</span>
                             </button>
                             
-                            <button onClick={() => handleTabChange('settings')} className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}>
-                                <i className={`fa-regular fa-user ${tab === 'settings' ? 'text-xl' : 'text-lg'} transition-all`}></i>
+                            {/* 3. ปุ่มบัญชี (เช็กล็อก) */}
+                            <button 
+                                onClick={() => hasAccess('settings') ? handleTabChange('settings') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงบัญชี', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
+                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('settings') ? 'text-gray-300 cursor-not-allowed' : tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <div className="relative">
+                                    <i className={`fa-regular fa-user ${tab === 'settings' && hasAccess('settings') ? 'text-xl' : 'text-lg'} transition-all`}></i>
+                                    {!hasAccess('settings') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
+                                </div>
                                 <span className="text-[10px] font-bold">บัญชี</span>
                             </button>
+
                         </div>
                     </nav>
                 </div>
@@ -2948,79 +3174,102 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                 initializeApp();
             }, []);
 
-           const handleLogin = async (u, p) => {
-    if (!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
-    
-    setLoginProgress(1);
-    const progressInterval = setInterval(() => setLoginProgress(old => Math.min(90, old + 10)), 250);
-
-    try {
-        const email = `${u.trim()}@ptu.ac.th`; // ใช้ trim() กันช่องว่าง
-        let userCred;
-        
-        try {
-            // พยายามล็อกอินด้วยระบบปกติก่อน
-            userCred = await auth.signInWithEmailAndPassword(email, p);
-        } catch (authError) {
-            // 🌟 จุดสำคัญ: ถ้าไม่พบผู้ใช้ หรือรหัสผิด (Error 400 จะถูกดักที่นี่)
-            const isUserNotFound = [
-                'auth/user-not-found', 
-                'auth/invalid-credential', 
-                'auth/invalid-login-credentials'
-            ].includes(authError.code);
-
-            if (isUserNotFound) {
-                // วิ่งไปเช็คใน Firestore ว่าเป็นเด็กใหม่ที่ยังไม่เคยสร้างรหัสผ่านใน Auth หรือเปล่า
-                const userDoc = await db.collection('users').doc(u).get();
+           // 🌟 4. ล็อกอินด้วยรหัสผ่าน (ระบบตรวจสอบความถูกต้องแม่นยำสูง)
+            const handleLogin = async (u, p) => {
+                if (!u || !p) return Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบ', 'warning');
                 
-                if (userDoc.exists && userDoc.data().password === p) {
-                    // ถ้ารหัสใน Firestore ตรงกัน ให้สร้างบัญชีใน Auth ให้ทันที (Auto-Registration)
-                    try {
-                        userCred = await auth.createUserWithEmailAndPassword(email, p);
-                    } catch (createErr) {
-                        // ถ้าซ้ำ (แปลว่ามีคนสร้างตัดหน้า) ให้ล็อกอินใหม่อีกที
-                        if (createErr.code === 'auth/email-already-in-use') {
-                            userCred = await auth.signInWithEmailAndPassword(email, p);
-                        } else { throw createErr; }
+                setLoginProgress(1);
+                const progressInterval = setInterval(() => setLoginProgress(old => Math.min(90, old + 10)), 250);
+
+                try {
+                    const studentIdTrimmed = u.trim();
+                    const email = `${studentIdTrimmed}@ptu.ac.th`;
+                    
+                    // 🔍 1. เช็คข้อมูลใน Firestore ก่อนว่ามีรหัสนักศึกษานี้ไหม
+                    const userDocRef = db.collection('users').doc(studentIdTrimmed);
+                    const userDoc = await userDocRef.get();
+
+                    if (!userDoc.exists) {
+                        throw new Error('ไม่พบรหัสนักศึกษานี้ในระบบ');
                     }
-                } else {
-                    throw new Error('รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง');
+
+                    const userData = userDoc.data();
+                    let userCred;
+
+                    // 🔍 2. ตรวจสอบสถานะรหัสผ่าน
+                    if (userData.hasPassword || userData.firebaseUid) {
+                        // 🟢 กรณีที่ 1: เปลี่ยนมาใช้ระบบ Firebase Auth แล้ว -> ล็อกอินปกติ
+                        try {
+                            userCred = await auth.signInWithEmailAndPassword(email, p);
+                        } catch (authErr) {
+                            if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(authErr.code)) {
+                                throw new Error('รหัสผ่านไม่ถูกต้อง');
+                            }
+                            throw authErr;
+                        }
+                    } else if (userData.password) {
+                        // 🟡 กรณีที่ 2: เป็นบัญชีเก่า (Legacy) ที่มีรหัสผ่านใน Firestore แต่ยังไม่ย้ายเข้า Auth
+                        if (userData.password !== p) {
+                            throw new Error('รหัสผ่านไม่ถูกต้อง');
+                        }
+                        // ถ้ารหัสผ่านถูก ให้ย้าย (Migrate) เข้า Auth อัตโนมัติ
+                        try {
+                            userCred = await auth.createUserWithEmailAndPassword(email, p);
+                            await userDocRef.update({
+                                hasPassword: true,
+                                firebaseUid: userCred.user.uid,
+                                password: firebase.firestore.FieldValue.delete()
+                            });
+                        } catch (createErr) {
+                            if (createErr.code === 'auth/email-already-in-use') {
+                                userCred = await auth.signInWithEmailAndPassword(email, p);
+                                await userDocRef.update({
+                                    hasPassword: true,
+                                    firebaseUid: userCred.user.uid,
+                                    password: firebase.firestore.FieldValue.delete()
+                                });
+                            } else {
+                                throw createErr;
+                            }
+                        }
+                    } else {
+                        // 🔴 กรณีที่ 3: ไม่มีรหัสผ่านในระบบเลย (รหัสใหม่)
+                        clearInterval(progressInterval);
+                        setLoginProgress(null);
+                        
+                        return Swal.fire({
+                            icon: 'info',
+                            title: '<span class="text-xl font-black text-gray-800">ยังไม่ได้ตั้งรหัสผ่าน</span>',
+                            html: '<p class="text-sm text-gray-500 mt-2">บัญชีนี้ยังไม่มีรหัสผ่านในระบบ<br/>กรุณาสร้างรหัสผ่านใหม่เพื่อเริ่มใช้งานครับ</p>',
+                            confirmButtonText: 'ไปหน้าสร้างรหัสผ่าน <i class="fa-solid fa-arrow-right ml-1"></i>',
+                            confirmButtonColor: '#0066FF',
+                            customClass: { 
+                                popup: 'rounded-3xl',
+                                confirmButton: 'rounded-xl px-6 py-2.5 font-bold shadow-md'
+                            }
+                        }).then(() => {
+                            setPage('register'); // นำทางไปหน้าสร้างรหัสอัตโนมัติ
+                        });
+                    }
+
+                    // ✅ ล็อกอินสำเร็จ เข้าสู่หน้า Dashboard
+                    if (userCred) {
+                        clearInterval(progressInterval);
+                        setLoginProgress(100);
+                        
+                        setTimeout(() => {
+                            setUser({ studentId: studentIdTrimmed, ...userData, hasPassword: true });
+                            setPage('dashboard');
+                            setLoginProgress(null);
+                        }, 600);
+                    }
+
+                } catch (e) {
+                    clearInterval(progressInterval);
+                    setLoginProgress(null);
+                    fireErrorAlert('เข้าสู่ระบบไม่สำเร็จ', e.message);
                 }
-            } else {
-                throw authError;
-            }
-        }
-
-        // ถ้าผ่านด่านมาได้ (userCred ไม่ว่าง)
-        if (userCred) {
-            const checkDoc = await db.collection('users').doc(u).get();
-            // อัปเดตสถานะให้ Firestore รู้ว่าคนนี้ย้ายมาใช้ระบบ Auth แล้ว
-            if (checkDoc.exists && !checkDoc.data().firebaseUid) {
-                await db.collection('users').doc(u).update({ 
-                    hasPassword: true, 
-                    firebaseUid: userCred.user.uid, 
-                    password: firebase.firestore.FieldValue.delete() 
-                });
-            }
-            
-            // จบกระบวนการและเข้าหน้า Dashboard
-            clearInterval(progressInterval);
-            setLoginProgress(100);
-            const userData = (await db.collection('users').doc(u).get()).data();
-            
-            setTimeout(() => {
-                setUser({ studentId: u, ...userData });
-                setPage('dashboard');
-                setLoginProgress(null);
-            }, 600);
-        }
-
-    } catch (e) { 
-        clearInterval(progressInterval);
-        setLoginProgress(null);
-        fireErrorAlert('เข้าสู่ระบบไม่สำเร็จ', e.message.includes('auth/') ? 'รหัสผ่านไม่ถูกต้อง' : e.message);
-    }
-};
+            };
             
             const handleRegisterSuccess = (u) => { setPage('login'); };
 
