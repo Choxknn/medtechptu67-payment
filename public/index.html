@@ -3254,6 +3254,10 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
                     // ✅ ล็อกอินสำเร็จ เข้าสู่หน้า Dashboard
                     if (userCred) {
+                        // 🌟 บันทึก Session ลง Local Storage ของเครื่อง เพื่อให้เว็บจำการล็อกอินได้
+                        localStorage.setItem('medtech_student_id', studentIdTrimmed);
+                        localStorage.setItem('medtech_user_cache', JSON.stringify({ ...userData, hasPassword: true }));
+
                         clearInterval(progressInterval);
                         setLoginProgress(100);
                         
