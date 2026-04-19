@@ -2168,7 +2168,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )}
 
-                        {billCount > 0 ? (
+                       {billCount > 0 ? (
                             <div className="flex justify-between items-stretch">
                                 <div className="flex-[1.4] pr-4 flex flex-col justify-between">
                                     <div>
@@ -2190,9 +2190,19 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex justify-between items-center py-2">
-                                <div><span className="font-bold text-gray-800 text-sm">ยอดค้างชำระ</span><div className="flex items-baseline gap-1 mt-1"><span className="text-4xl font-black tracking-tight text-[#1a237e]">0</span><span className="text-xs font-bold text-gray-400">บาท</span></div><p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-200"></span> ไม่มีรายการค้างชำระ</p></div>
-                                <div className="w-14 h-14 bg-green-50 text-green-500 rounded-full flex items-center justify-center shadow-inner border border-green-100 shrink-0"><i className="fa-solid fa-check-double text-2xl"></i></div>
+                            // 🌟 ส่วนที่ปรับใหม่: ไม่มียอดค้างชำระ (ไอคอนซ้าย ข้อความขวา จัดกึ่งกลาง)
+                            <div className="flex justify-center items-center py-5">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center shadow-inner border border-green-100 shrink-0">
+                                        <i className="fa-solid fa-check-double text-3xl"></i>
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-2xl font-black text-gray-800 tracking-tight leading-none mb-1.5">ไม่มียอดค้างชำระ</h3>
+                                        <p className="text-[11px] font-bold text-gray-500 flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-200"></span> ขอบคุณที่ชำระเงินตรงเวลา
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
