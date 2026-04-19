@@ -1012,6 +1012,7 @@
                             status: res.isUnderpaid ? "" : res.status, // ถ้ายอดขาด ให้สถานะหน้าบิลว่างไว้
                             slipUrl: res.slipUrl, 
                             payDate: payIsoDate
+                            transRef: res.transRef
                         };
                         
                         // ถ้ายอดไม่ครบ นำไปทบเป็นส่วนลด
@@ -1051,7 +1052,8 @@
                             status: res.status,
                             studentId: String(user.studentId),  
                             total: newTotal,                    // 🌟 ยอดรวมสะสม (เก่า + ใหม่)
-                            timestamp: Date.now()               
+                            timestamp: Date.now() 
+                            transRef: res.transRef
                         };
 
                         if (historyDocId) {
@@ -1064,7 +1066,8 @@
 
                         // 4. ส่ง LINE แจ้งเตือน
                         await runGoogleScript('notifyPayment', [{
-                            payload: payload, status: res.status, slipUrl: res.slipUrl, 
+                            payload: { ...payload, transRef: res.transRef }, // 🌟 ยัด transRef เพิ่มเข้าไปตรงนี้
+                            status: res.status, slipUrl: res.slipUrl, 
                             isUnderpaid: res.isUnderpaid, actualAmount: res.actualAmount, 
                             isOverpaid: res.isOverpaid, message: res.message
                         }]);
@@ -1451,12 +1454,20 @@
                             slip: res.slipUrl,
                             status: 'ชำระแล้ว',
                             studentId: String(user.studentId),
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            transRef: res.transRef // 🌟 เติมบรรทัดนี้ เพื่อเก็บรหัสอ้างอิงสลิปไว้ในฐานข้อมูลด้วย
                         });
 
                         setProgress(100);
                         onClose();
                         fireOrderSuccessAlert(res.orderId).then(() => onSuccess());
+
+                        // 4. ส่ง LINE แจ้งเตือนแอดมิน
+                        await runGoogleScript('notifyOrder', [{
+                            payload: { ...payload, transRef: res.transRef }, // 🌟 แก้ตรงนี้ ยัด transRef ไปด้วย
+                            orderId: res.orderId, 
+                            slipUrl: res.slipUrl, actualAmount: actualAmount
+                        }]);
 
                     } else {
                         throw new Error(res.message || "ตรวจสอบสลิปไม่ผ่าน");
