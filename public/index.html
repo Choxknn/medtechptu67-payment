@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MedTech 67">
 
-    <link rel="icon" type="image/png" href="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f">
-    <link rel="apple-touch-icon" href="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f">
+    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/11iyLHefyZCF3xPzMhG1ybSS542m52CEp">
+    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/11iyLHefyZCF3xPzMhG1ybSS542m52CEp">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -289,7 +289,7 @@
             const [id, setId] = useState('');
             const [pass, setPass] = useState('');
             
-            const logoUrl = "https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T-Photoroom.png?alt=media&token=f50f9944-6bd3-43cb-abf9-56d9fdb50c81";
+            const logoUrl = "https://lh3.googleusercontent.com/d/1cAJOdPaXyO2gzIp5uRNklP3OwrOMK1IZ";
 
             return (
                 <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 bg-[#F0F4F8] md:bg-gray-200 relative overflow-y-auto no-scrollbar">
@@ -381,7 +381,7 @@
             const [confirmPass, setConfirmPass] = useState('');
             const [loading, setLoading] = useState(false);
 
-            const logoUrl = "https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T-Photoroom.png?alt=media&token=f50f9944-6bd3-43cb-abf9-56d9fdb50c81";
+            const logoUrl = "https://lh3.googleusercontent.com/d/1cAJOdPaXyO2gzIp5uRNklP3OwrOMK1IZ";
 
             // 🔍 ฟังก์ชันตรวจสอบข้อมูลและแยก Case
             const handleVerify = async () => {
@@ -1051,7 +1051,7 @@
                             status: res.status,
                             studentId: String(user.studentId),  
                             total: newTotal,                    // 🌟 ยอดรวมสะสม (เก่า + ใหม่)
-                            timestamp: Date.now() 
+                            timestamp: Date.now()               
                         };
 
                         if (historyDocId) {
@@ -1064,8 +1064,7 @@
 
                         // 4. ส่ง LINE แจ้งเตือน
                         await runGoogleScript('notifyPayment', [{
-                            payload: { ...payload, transRef: res.transRef }, // 🌟 ยัด transRef เพิ่มเข้าไปตรงนี้
-                            status: res.status, slipUrl: res.slipUrl, 
+                            payload: payload, status: res.status, slipUrl: res.slipUrl, 
                             isUnderpaid: res.isUnderpaid, actualAmount: res.actualAmount, 
                             isOverpaid: res.isOverpaid, message: res.message
                         }]);
@@ -1452,20 +1451,12 @@
                             slip: res.slipUrl,
                             status: 'ชำระแล้ว',
                             studentId: String(user.studentId),
-                            timestamp: Date.now(),
-                            transRef: res.transRef // 🌟 เติมบรรทัดนี้ เพื่อเก็บรหัสอ้างอิงสลิปไว้ในฐานข้อมูลด้วย
+                            timestamp: Date.now()
                         });
 
                         setProgress(100);
                         onClose();
                         fireOrderSuccessAlert(res.orderId).then(() => onSuccess());
-
-                        // 4. ส่ง LINE แจ้งเตือนแอดมิน
-                        await runGoogleScript('notifyOrder', [{
-                            payload: { ...payload, transRef: res.transRef }, // 🌟 แก้ตรงนี้ ยัด transRef ไปด้วย
-                            orderId: res.orderId, 
-                            slipUrl: res.slipUrl, actualAmount: actualAmount
-                        }]);
 
                     } else {
                         throw new Error(res.message || "ตรวจสอบสลิปไม่ผ่าน");
@@ -2218,47 +2209,92 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
         });
     };
 
-   // 🌟 หน้าแรก (Home)
+// 🌟 หน้าแรก (Home) อัปเดตใหม่! ปรับหัวข้อประวัติเป็นสไตล์คลีนๆ
     const renderHomeContent = () => {
         const formattedName = user?.name ? user.name.replace(/^(นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.)\s*/, '') : 'นักศึกษา';
         const pendingBills = data?.bills || [];
-        const totalUnpaid = pendingBills.reduce((sum, b) => sum + (Number(b.total) || 0), 0);
         const billCount = pendingBills.length;
-        const billIdsString = pendingBills.map(b => b.billId).join(', ');
-        const overdueBills = pendingBills.filter(b => b.daysLate > 0 && b.status !== 'รอตรวจสอบ');
-        const hasOverdue = overdueBills.length > 0;
         
-        // 🌟 ปรับตรงนี้: ดึงออเดอร์มาแสดง "ทั้งหมด" โดยไม่ซ่อนสถานะ 'รับแล้ว' หรือ 'ยกเลิก'
+        // 🌟 ดึงชั้นปีจากรหัสนักศึกษา (เช่น "67")
+        const cohort = user?.studentId ? String(user.studentId).substring(0, 2) : '';
+        // 🌟 เช็คเปิด/ปิดร้านค้าจาก orderSystem_ตามด้วยชั้นปี เท่านั้น!
+        const isStoreOpen = data?.[`orderSystem_${cohort}`] === 'ON' || data?.[`orderSystem_${cohort}`] === true;
+
+        // 🌟 คัดกรองบิลที่จะนำมาโชว์ (ด่วนที่สุด/เลยกำหนด/รอตรวจสอบ)
+        let featuredBill = null;
+        let minDaysLeft = Infinity;
+        let maxDaysLate = -1;
+        let isOverdueAny = false;
+
+        pendingBills.forEach(bill => {
+            if (bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ') {
+                isOverdueAny = true;
+                if (bill.daysLate > maxDaysLate) {
+                    maxDaysLate = bill.daysLate;
+                    featuredBill = bill;
+                    minDaysLeft = -bill.daysLate; 
+                }
+            } else if (bill.dueDate && !isOverdueAny) {
+                const target = new Date(bill.dueDate.includes('/') ? `${bill.dueDate.split('/')[2]}-${bill.dueDate.split('/')[1]}-${bill.dueDate.split('/')[0]}` : bill.dueDate);
+                const diffTime = target.getTime() - new Date().getTime();
+                const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (daysLeft >= 0 && daysLeft < minDaysLeft) {
+                    minDaysLeft = daysLeft;
+                    featuredBill = bill;
+                }
+            }
+        });
+
+        if (!featuredBill && pendingBills.length > 0) {
+            featuredBill = pendingBills[0];
+        }
+
         const activeOrders = data?.orders || [];
         const hasActiveOrders = activeOrders.length > 0;
-        
         const recentHistory = (data?.history || []).slice(0, 5);
+
+        // 🌟 จัดการสีของ "ยอดเงิน" และ "ปุ่ม" ตามสถานะ
+        let priceColor = "text-[#0066FF]";
+        let btnClass = "bg-[#0066FF] hover:bg-blue-700 shadow-blue-200 cursor-pointer";
+        let btnText = "ชำระเงิน";
+        let btnIcon = null;
+        let isDisabled = false;
+
+        if (featuredBill?.status === 'รอตรวจสอบ') {
+            priceColor = "text-gray-800";
+            btnClass = "bg-yellow-500 shadow-yellow-200 cursor-not-allowed opacity-90";
+            btnText = "รอตรวจสอบ";
+            btnIcon = "fa-solid fa-spinner animate-spin-slow";
+            isDisabled = true;
+        } else if (isOverdueAny) {
+            priceColor = "text-red-600";
+            btnClass = "bg-red-600 hover:bg-red-700 shadow-red-200 cursor-pointer";
+        }
 
         return (
             <div className="w-full pb-24 relative bg-[#F4F7FB] min-h-[100dvh]">
                 {/* Header กรมท่า */}
-                <div className="bg-[#1a237e] rounded-b-[2.5rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-16 px-6 relative overflow-hidden shadow-lg">
+                <div className="bg-[#1a237e] rounded-b-[2.5rem] pt-[calc(env(safe-area-inset-top)+20px)] pb-[80px] px-6 md:px-10 lg:px-16 relative overflow-hidden shadow-lg">
                     <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
                         <svg width="250" height="250" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path fill="#ffffff" d="M45.7,-76.4C58.9,-69.1,69.1,-55.5,76.5,-40.8C83.9,-26.1,88.4,-10.4,87.6,5C86.7,20.4,80.5,35.4,70.9,47.8C61.3,60.2,48.2,69.9,33.5,76.4C18.8,82.9,2.6,86.2,-13.2,85.1C-29,84,-44.4,78.5,-57.4,68.9C-70.4,59.3,-80.9,45.6,-86.6,30.3C-92.3,15,-93.2,-1.8,-88.4,-16.7C-83.5,-31.6,-72.9,-44.5,-60.1,-53C-47.3,-61.5,-32.3,-65.6,-18,-68.8C-3.7,-72,10.6,-74.3,25.1,-75.9C39.6,-77.5,54.2,-78.4,45.7,-76.4Z" transform="translate(100 100) scale(1.1)" /></svg>
                     </div>
-                    <div className="flex items-center gap-3 mb-3 relative z-10">
-                        <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/MEDTECH-Finance%20System.png?alt=media&token=c67a5a66-eec6-4e3f-a6e7-9f24f61b8ed9" alt="Logo" className="h-10 md:h-12 object-contain drop-shadow-md" />
+                    <div className="flex items-center gap-6 mb-4 relative z-10 lg:max-w-6xl lg:mx-auto">
+                        <img src="https://lh3.googleusercontent.com/d/11iyLHefyZCF3xPzMhG1ybSS542m52CEp" alt="Logo" className="h-8 md:h-10 object-contain drop-shadow-md scale-150 origin-left" />
                         <span className="text-white font-black text-xl tracking-widest drop-shadow-md mt-1 uppercase">Finance System</span>
                     </div>
-                    <div className="flex justify-between items-center relative z-10">
+                    <div className="flex justify-between items-center relative z-10 lg:max-w-6xl lg:mx-auto">
                         <div className="flex items-center gap-3">
-                            <img src="https://firebasestorage.googleapis.com/v0/b/medtechptu67-payment.firebasestorage.app/o/T.png?alt=media&token=99b9e790-78f1-435d-a023-f0eb710cd88f" alt="Profile" className="w-[52px] h-[52px] bg-white rounded-full object-cover shadow-lg border-2 border-white/40" />
-                            <div className="text-white"><p className="text-sm font-medium opacity-90 leading-tight">สวัสดี</p><p className="font-bold text-lg leading-tight">คุณ {formattedName}</p></div>
+                            <img src="https://lh3.googleusercontent.com/d/1cAJOdPaXyO2gzIp5uRNklP3OwrOMK1IZ" alt="Profile" className="w-[48px] h-[48px] bg-white rounded-full object-cover shadow-lg border-2 border-white/40" />
+                            <div className="text-white"><p className="text-xs font-medium opacity-90 leading-tight">สวัสดี</p><p className="font-bold text-base leading-tight">คุณ {formattedName}</p></div>
                         </div>
                         
                         <div className="flex items-center gap-2">
-                            {/* กระดิ่งแจ้งเตือนประกาศแบบจุดกระพริบ */}
-                            <div onClick={() => data?.announcement ? setShowAnnouncement(true) : null} className={`w-11 h-11 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30 relative shadow-sm ${data?.announcement ? 'cursor-pointer active:scale-95' : ''}`}>
-                                <i className="fa-regular fa-bell text-lg"></i>
+                            <div onClick={() => data?.announcement ? setShowAnnouncement(true) : null} className={`w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30 relative shadow-sm ${data?.announcement ? 'cursor-pointer active:scale-95' : ''}`}>
+                                <i className="fa-regular fa-bell text-base"></i>
                                 {data?.announcement && (
-                                    <span className="absolute top-0 right-0 flex h-3.5 w-3.5 -mt-0.5 -mr-0.5">
+                                    <span className="absolute top-0 right-0 flex h-3 w-3 -mt-0.5 -mr-0.5">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-[#1a237e]"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-[#1a237e]"></span>
                                     </span>
                                 )}
                             </div>
@@ -2266,385 +2302,258 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                     </div>
                 </div>
 
-                {/* 🌟 โซนการ์ดซ้อน (แจ้งเตือน + ยอดค้าง) */}
-                <div className="relative z-20 mx-4 -mt-10 space-y-3">
-                    
-                    {/* แจ้งเตือนสินค้าใหม่ */}
-                    {data?.orderEnabled && hasAccess('orders') && (
-                        <div onClick={() => handleTabChange('orders')} className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[1.25rem] p-3 shadow-lg shadow-indigo-500/30 flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-indigo-400">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white shrink-0 animate-pulse shadow-inner border border-white/30">
-                                    <i className="fa-solid fa-gift text-sm"></i>
-                                </div>
-                                <div>
-                                    <p className="text-white font-black text-xs leading-tight">มีสินค้าใหม่วางจำหน่าย!</p>
-                                    <p className="text-indigo-100 font-medium text-[9px] mt-0.5">แตะเพื่อไปที่ร้านค้าสวัสดิการ</p>
-                                </div>
-                            </div>
-                            <div className="bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-white shrink-0"><i className="fa-solid fa-chevron-right text-[10px]"></i></div>
-                        </div>
-                    )}
-
-                    {/* 💳 การ์ดยอดค้างชำระ */}
-                    <div className="bg-white rounded-[2rem] p-5 shadow-[0_15px_40px_rgba(0,0,0,0.12)] border border-gray-200">
-                        {/* แจ้งเตือนเมื่อเกินกำหนด */}
-                        {hasOverdue && (
-                            <div className="bg-red-700 border border-red-800 rounded-xl p-3 mb-4 flex items-center gap-3 text-white shadow-lg shadow-red-700/20">
-                                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shrink-0 shadow-sm border border-red-400 animate-[pulse_1s_ease-in-out_infinite]">
-                                    <i className="fa-solid fa-exclamation text-lg"></i>
-                                </div>
-                                <span className="text-xs font-bold leading-tight">มียอดค้างชำระเกินกำหนด!<br/><span className="text-[10px] font-medium text-red-200">กรุณาดำเนินการชำระเงินทันที</span></span>
-                            </div>
-                        )}
-
-                        {billCount > 0 ? (
-                            <div className="flex justify-between items-stretch">
-                                <div className="flex-[1.4] pr-4 flex flex-col justify-between">
-                                    <div>
-                                        <span className="font-bold text-gray-800 text-sm">ยอดค้างชำระ</span>
-                                        <div className="flex items-baseline gap-1 mt-1">
-                                            <span className={`text-4xl font-black tracking-tight ${hasOverdue ? 'text-red-600' : 'text-[#1a237e]'}`}>{formatCurrency(totalUnpaid).replace('฿','').trim()}</span>
-                                            <span className="text-xs font-bold text-gray-400">บาท</span>
-                                        </div>
-                                        <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1.5 font-medium"><span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse shadow-sm shadow-orange-200"></span> {billCount} รายการที่รอชำระ</p>
-                                    </div>
-                                    <button onClick={() => handleTabChange('bills')} className={`w-fit mt-4 px-4 py-2.5 rounded-full text-[11px] font-bold text-white shadow-md active:scale-95 transition-transform flex items-center gap-1.5 ${hasOverdue ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-[#0066FF] hover:bg-blue-700 shadow-blue-200'}`}>
-                                        จัดการชำระเงิน <i className="fa-solid fa-arrow-right text-[9px]"></i>
-                                    </button>
-                                </div>
-                                <div className="w-[1px] bg-gray-200 my-1"></div>
-                                <div className="flex-[1] pl-4 flex flex-col gap-3 justify-center">
-                                    <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 shadow-sm"><p className="text-[9px] text-gray-500 mb-0.5 font-bold uppercase tracking-wider"><i className="fa-solid fa-receipt text-yellow-500"></i> รหัสบิล</p><p className="font-black text-gray-800 text-[10px] truncate leading-tight">{billIdsString}</p></div>
-                                    <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 shadow-sm"><p className="text-[9px] text-gray-500 mb-0.5 font-bold uppercase tracking-wider"><i className="fa-solid fa-circle-exclamation text-red-500"></i> สถานะ</p><p className={`font-black text-[10px] truncate leading-tight ${hasOverdue ? 'text-red-600' : 'text-blue-600'}`}>{hasOverdue ? `เลยกำหนด` : 'รอชำระเงิน'}</p></div>
-                                </div>
-                            </div>
-                        ) : (
-                            // 🌟 ส่วนที่ปรับใหม่: ไม่มียอดค้างชำระ (ไอคอนซ้าย ข้อความขวา จัดกึ่งกลาง)
-                            <div className="flex justify-center items-center py-5">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center shadow-inner border border-green-100 shrink-0">
-                                        <i className="fa-solid fa-check-double text-3xl"></i>
-                                    </div>
-                                    <div className="text-left">
-                                        <h3 className="text-2xl font-black text-gray-800 tracking-tight leading-none mb-1.5">ไม่มียอดค้างชำระ</h3>
-                                        <p className="text-[11px] font-bold text-gray-500 flex items-center gap-1.5">
-                                            <span className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-200"></span> ขอบคุณที่ชำระเงินตรงเวลา
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 🌟 Quick Actions (ซ่อนปุ่มอัตโนมัติตามสิทธิ์) */}
-                <div className="ml-4 mt-7 flex gap-3 overflow-x-auto no-scrollbar snap-x pb-4 pr-4">
-                    
-                    {/* เช็คสิทธิ์ 'bills' */}
-                    {hasAccess('bills') && (
-                        <button onClick={() => handleTabChange('bills')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                            <i className="fa-solid fa-file-invoice-dollar text-3xl text-[#0066FF] drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">รายการบิล</span>
-                        </button>
-                    )}
-                    
-                    {/* เช็คสิทธิ์ 'finance' */}
-                    {hasAccess('finance') && (
-                        <button onClick={() => handleTabChange('finance')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                            <i className="fa-solid fa-wallet text-3xl text-emerald-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">การเงิน</span>
-                        </button>
-                    )}
-
-                    {/* เช็คสิทธิ์ 'orders' */}
-                    {data?.orderEnabled && hasAccess('orders') && (
-                        <button onClick={() => handleTabChange('orders')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group relative">
-                            <span className="absolute top-1.5 right-1.5 flex items-center justify-center bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-pulse border border-white z-10">NEW</span>
-                            <i className="fa-solid fa-store text-3xl text-amber-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">ร้านค้า</span>
-                        </button>
-                    )}
-
-                    {/* เช็คสิทธิ์ 'settings' */}
-                    {hasAccess('settings') && (
-                        <button onClick={() => handleTabChange('settings')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                            <i className="fa-solid fa-user-gear text-3xl text-slate-600 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">จัดการบัญชี</span>
-                        </button>
-                    )}
-
-                    {/* ปุ่มบริการทั้งหมด (โชว์เสมอเป็นตัวศูนย์กลาง แต่เนื้อหาข้างในจะถูกซ่อน) */}
-                    <button onClick={() => handleTabChange('services')} className="min-w-[85px] h-[90px] shrink-0 snap-start bg-white rounded-[1.25rem] p-3 shadow-sm border border-gray-100 active:scale-95 transition-transform flex flex-col items-center justify-center text-center group">
-                        <i className="fa-solid fa-layer-group text-3xl text-indigo-500 drop-shadow-sm mb-2 group-hover:scale-110 transition-transform duration-300"></i><span className="font-bold text-gray-800 text-[11px] block">บริการทั้งหมด</span>
-                    </button>
-                </div>
-
-                {/* 📋 Toggle Switch: ประวัติย่อ / ติดตามสินค้า */}
-                <div className="mx-4 mt-2 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden pb-4">
-                    <div className="p-3 pb-1">
-                        <div className="flex bg-gray-50 rounded-full p-1 relative border border-gray-100 shadow-inner">
-                            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#1a237e] rounded-full shadow-md transition-transform duration-300 ease-in-out ${homeTab === 'tracking' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}></div>
-                            <button onClick={() => setHomeTab('history')} className={`flex-1 py-2.5 text-xs font-bold rounded-full z-10 transition-colors ${homeTab === 'history' ? 'text-white' : 'text-gray-500'}`}>ประวัติล่าสุด</button>
-                            <button onClick={() => setHomeTab('tracking')} className={`flex-1 py-2.5 text-xs font-bold rounded-full z-10 transition-colors ${homeTab === 'tracking' ? 'text-white' : 'text-gray-500'}`}>ติดตามสินค้า</button>
-                        </div>
-                    </div>
-
-                    <div className="px-4 pt-3">
-                        {homeTab === 'history' ? (
-                            <div className="space-y-3">
-                                {recentHistory.length > 0 ? (
-                                    recentHistory.map((hist, i) => (
-                                        <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-100 rounded-2xl p-4 shadow-sm relative transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-[9px] font-bold text-[#0066FF] uppercase tracking-wider mb-0.5">ID: {hist.billId || hist.id}</p>
-                                                    <h4 className="font-bold text-gray-800 text-sm leading-tight mb-1 line-clamp-1">{hist.item}</h4>
-                                                </div>
-                                                <span className="text-[#00B900] font-black text-sm shrink-0 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100">{formatCurrency(hist.total)}</span>
-                                            </div>
-                                            <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-medium">
-                                                <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
-                                                {hist.status === 'ยอดไม่ครบ' ? (
-                                                    <span className="text-orange-500 font-bold"><i className="fa-solid fa-triangle-exclamation"></i> ยอดไม่ครบ</span>
-                                                ) : (
-                                                    <span className="text-emerald-500 font-bold"><i className="fa-solid fa-check-circle"></i> สำเร็จ</span>
-                                                )}
-                                            </div>
-                                            {hist.slipUrl && (
-                                                <div className="mt-3 pt-2 border-t border-gray-50 text-center">
-                                                    <span className="text-[10px] font-bold text-[#0066FF]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูสลิปหลักฐาน</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-6 text-gray-400"><div className="text-3xl mb-2 opacity-30"><i className="fa-solid fa-receipt"></i></div><p className="text-xs font-bold">ไม่มีประวัติทำรายการ</p></div>
-                                )}
-                                {data?.history?.length > 5 && ( 
-                                    <button onClick={() => handleTabChange('history')} className="w-full text-center text-[11px] font-bold text-[#0066FF] mt-2 py-3 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                                        ดูรายการเพิ่มเติม <i className="fa-solid fa-arrow-right ml-1"></i>
-                                    </button> 
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-3 px-1">
-                                {hasActiveOrders ? (
-                                    activeOrders.map((order, index) => {
-                                        // 🌟 ดึงชื่อสินค้าแบบครอบจักรวาล (รองรับ String, JSON String, Array, Object)
-                                        let itemName = 'รายการสั่งซื้อสวัสดิการ';
-                                        try {
-                                            const sourceItems = order.items || order.cart;
+                {/* 🌟 โซนเนื้อหา (ปรับเป็น Grid สำหรับ iPad และ PC) */}
+                <div className="relative z-20 mx-4 md:mx-8 lg:mx-auto lg:max-w-6xl -mt-14">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 lg:gap-8 items-start">
+                        
+                        {/* 📱 คอลัมน์ซ้าย: การ์ดบิลหลัก และ แบนเนอร์ร้านค้า */}
+                        <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
+                            
+                            {/* 💳 การ์ดบิลหลัก */}
+                            <div className="bg-white rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-200/80 transition-shadow hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+                                {billCount > 0 && featuredBill ? (
+                                    <>
+                                        {/* โซนบน: ข้อมูล ยอดเงิน และ ปุ่มจ่าย */}
+                                        <div className="p-5 md:p-6">
+                                            <p className="text-gray-500 text-xs font-bold mb-1.5 line-clamp-1">{featuredBill.item}</p>
                                             
-                                            if (sourceItems) {
-                                                if (typeof sourceItems === 'string') {
-                                                    // ลองเช็คว่าเป็น JSON String หรือไม่
-                                                    if (sourceItems.trim().startsWith('[') || sourceItems.trim().startsWith('{')) {
-                                                        const parsed = JSON.parse(sourceItems);
-                                                        if (Array.isArray(parsed)) {
-                                                            itemName = parsed.map(i => i.name || i.productName || i.item || i.title || 'สินค้า').join(', ');
-                                                        } else {
-                                                            itemName = parsed.name || parsed.productName || parsed.item || parsed.title || 'สินค้า';
-                                                        }
-                                                    } else {
-                                                        // ถ้าเป็นข้อความธรรมดาพิมพ์มาเลย
-                                                        itemName = sourceItems;
-                                                    }
-                                                } else if (Array.isArray(sourceItems)) {
-                                                    // ถ้าเป็น Array
-                                                    itemName = sourceItems.map(i => i?.name || i?.productName || i?.item || i?.title || (typeof i === 'string' ? i : 'สินค้า')).join(', ');
-                                                } else if (typeof sourceItems === 'object') {
-                                                    // ถ้าเป็น Object เดี่ยวๆ
-                                                    itemName = sourceItems.name || sourceItems.productName || sourceItems.item || sourceItems.title || 'สินค้า';
-                                                }
-                                            } else if (order.name || order.productName || order.item || order.title) {
-                                                // ถ้าฟิลด์อยู่ชั้นนอกสุด
-                                                itemName = order.name || order.productName || order.item || order.title;
-                                            }
-                                        } catch (error) {
-                                            console.error("Error parsing order items:", error);
-                                            // ถ้าพังก็ให้ใช้ชื่อเริ่มต้น
-                                            itemName = 'รายการสั่งซื้อ (ข้อผิดพลาดในการอ่านข้อมูล)';
-                                        }
-
-                                        // 🌟 อัปเดตสีตามสถานะออเดอร์
-                                        let statusColor = "text-gray-600 bg-gray-100 border-gray-200";
-                                        const st = order.status?.trim();
-                                        let displayStatus = st || 'รอดำเนินการ';
-                                        let isReadyToPickup = false;
-
-                                        if (st === 'รอตรวจสอบ') statusColor = "text-yellow-600 bg-yellow-50 border-yellow-200";
-                                        else if (st === 'ชำระแล้ว') statusColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
-                                        else if (st === 'อยู่ระหว่างสั่งซื้อ') statusColor = "text-blue-600 bg-blue-50 border-blue-200";
-                                        else if (st === 'อยู่ระหว่างผลิต') statusColor = "text-indigo-600 bg-indigo-50 border-indigo-200";
-                                        else if (st === 'รอรับของ') {
-                                            statusColor = "text-orange-600 bg-orange-100 border-orange-300";
-                                            displayStatus = "พร้อมรับสินค้า";
-                                            isReadyToPickup = true;
-                                        }
-                                        else if (st === 'รับแล้ว') statusColor = "text-green-600 bg-green-50 border-green-200";
-                                        else if (st === 'ยกเลิก') statusColor = "text-red-500 bg-red-50 border-red-200";
-
-                                        return (
-                                            <div key={order.id || index} onClick={() => setTrackingOrder(order)} className={`bg-white border rounded-2xl p-4 shadow-sm relative cursor-pointer hover:shadow-md transition-all active:scale-95 ${isReadyToPickup ? 'border-orange-200 hover:border-orange-400' : 'border-rose-100 hover:border-rose-300'}`}>
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isReadyToPickup ? 'bg-orange-50 text-orange-500' : 'bg-rose-50 text-rose-500'}`}>
-                                                            <i className={`fa-solid ${isReadyToPickup ? 'fa-box-open' : 'fa-box'} text-sm`}></i>
-                                                        </div>
-                                                        <div className="overflow-hidden pr-2">
-                                                            <p className="font-bold text-gray-800 text-sm line-clamp-1">{itemName}</p>
-                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ID: {order.id}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center border border-gray-100">
-                                                    <span className="text-[11px] font-bold text-gray-500">สถานะปัจจุบัน:</span>
-                                                    <span className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm border ${statusColor}`}>
-                                                        {displayStatus}
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                {/* ยอดเงิน */}
+                                                <div className="flex items-baseline font-sans">
+                                                    <span className={`text-lg font-semibold tracking-tighter mr-0.5 ${priceColor}`}>฿</span>
+                                                    <span className={`text-[34px] font-black tracking-tight leading-none ${priceColor}`}>
+                                                        {formatCurrency(featuredBill.total).replace('฿','').trim()}
                                                     </span>
                                                 </div>
                                                 
-                                                {isReadyToPickup ? (
-                                                    <div className="mt-3 pt-3 border-t border-orange-100 flex flex-col gap-2">
-                                                        <button className="w-full py-2.5 bg-orange-500 text-white text-[11px] font-bold rounded-xl shadow-md shadow-orange-200 flex items-center justify-center gap-2">
-                                                            <i className="fa-solid fa-qrcode text-sm"></i> แสดง QR Code เพื่อรับสินค้า
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="mt-3 pt-2 border-t border-rose-50 text-center">
-                                                        <span className="text-[10px] font-bold text-[#1a237e]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูรายละเอียดการจัดส่ง</span>
-                                                    </div>
-                                                )}
+                                                {/* ปุ่มชำระเงิน หรือ รอตรวจสอบ */}
+                                                <button 
+                                                    disabled={isDisabled} 
+                                                    onClick={() => !isDisabled && handleOpenPayment(featuredBill)} 
+                                                    className={`px-5 py-2.5 rounded-lg text-white font-bold text-[13px] shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 ${btnClass}`}
+                                                >
+                                                    {btnIcon && <i className={`${btnIcon} text-xs`}></i>}
+                                                    {btnText}
+                                                </button>
                                             </div>
-                                        );
-                                    })
+                                            
+                                            <p className="text-gray-400 text-[11px] mt-1 mb-2 font-medium">
+                                                วันครบกำหนดชำระ: {formatThaiDate(featuredBill.dueDate)}
+                                            </p>
+
+                                            {/* กล่องเตือน: เลยกำหนด (สีแดงเด่นชัด) */}
+                                            {isOverdueAny && featuredBill.status !== 'รอตรวจสอบ' ? (
+                                                <div className="mt-4 bg-red-50 rounded-xl p-3 border border-red-200 animate-pulse shadow-sm">
+                                                    <div className="flex gap-2.5">
+                                                        <div className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                                            <i className="fa-solid fa-exclamation text-[10px] font-bold"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-red-700 font-bold text-[13px] mb-0.5">เลยกำหนดชำระ {maxDaysLate} วัน!</h4>
+                                                            <p className="text-red-500 text-[11px] leading-relaxed font-medium">
+                                                                กรุณาชำระยอดค้างโดยด่วน เพื่อหลีกเลี่ยงค่าปรับที่จะเกิดขึ้น
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) 
+                                            /* กล่องเตือน: ใกล้ครบกำหนด (เหลือ <= 3 วัน โชว์สีเหลือง) */
+                                            : (minDaysLeft <= 3 && minDaysLeft >= 0 && featuredBill.status !== 'รอตรวจสอบ') ? (
+                                                <div className="mt-4 bg-[#FFF8E7] rounded-xl p-3 border border-[#FBE3B8] shadow-sm">
+                                                    <div className="flex gap-2.5">
+                                                        <div className="w-5 h-5 rounded-full bg-[#E5A545] text-white flex items-center justify-center shrink-0 mt-0.5">
+                                                            <i className="fa-solid fa-exclamation text-[10px] font-bold"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-[#CF8320] font-bold text-[13px] mb-0.5">
+                                                                ครบกำหนดชำระในอีก {minDaysLeft === 0 ? 'วันนี้' : minDaysLeft + ' วัน'}
+                                                            </h4>
+                                                            <p className="text-[#C89B51] text-[11px] leading-relaxed font-medium">
+                                                                กรุณาชำระบิลตามเวลาที่กำหนดเพื่อหลีกเลี่ยงค่าปรับ
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </div>
+
+                                        {/* โซนล่าง: ปุ่มบิลของฉัน ตรงกลาง (สีน้ำเงิน) */}
+                                        <div className="border-t border-blue-50 bg-blue-50/40">
+                                            <button onClick={() => handleTabChange('bills')} className="w-full py-4 flex items-center justify-center gap-1.5 hover:bg-blue-100/50 transition active:bg-blue-100">
+                                                <i className="fa-solid fa-file-invoice-dollar text-[#0066FF] text-[15px]"></i>
+                                                <span className="text-[#0066FF] text-[14px] font-bold">
+                                                    บิลของฉัน 
+                                                    {billCount > 1 && <span className="text-blue-500/80 font-medium ml-1">({billCount} รายการ)</span>}
+                                                </span>
+                                                <i className="fa-solid fa-chevron-right text-blue-400 text-[10px] ml-0.5"></i>
+                                            </button>
+                                        </div>
+                                    </>
                                 ) : (
-                                    <div className="text-center py-8 text-gray-400">
-                                        <div className="text-3xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>
-                                        <p className="text-xs font-bold text-gray-500">ไม่มีรายการสั่งซื้อ</p>
+                                    /* 🌟 สถานะชำระครบหมดแล้ว */
+                                    <div className="p-8 flex flex-col items-center justify-center text-center bg-white min-h-[220px]">
+                                        <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-3 border border-green-100 mt-2 shadow-sm">
+                                            <i className="fa-solid fa-check-double text-3xl"></i>
+                                        </div>
+                                        <h3 className="text-xl font-black text-gray-800 tracking-tight">ชำระครบหมดแล้ว</h3>
+                                        <p className="text-gray-500 text-sm mt-1.5 font-medium">คุณไม่มียอดค้างชำระในขณะนี้</p>
                                     </div>
                                 )}
                             </div>
-                        )}
+
+                            {/* 🌟 แบนเนอร์ร้านค้าสวัสดิการ */}
+                            {isStoreOpen && hasAccess('orders') && (
+                                <div onClick={() => handleTabChange('orders')} className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 shadow-[0_8px_24px_rgba(249,115,22,0.3)] flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-orange-300 relative overflow-hidden">
+                                    <div className="absolute right-[-10px] top-[-10px] opacity-10 pointer-events-none">
+                                        <i className="fa-solid fa-store text-6xl"></i>
+                                    </div>
+                                    <div className="flex items-center gap-3.5 relative z-10">
+                                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white border border-white/40 shadow-inner shrink-0">
+                                            <i className="fa-solid fa-store text-xl drop-shadow-sm"></i>
+                                        </div>
+                                        <div className="text-white drop-shadow-sm">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <h3 className="font-black text-[15px] leading-tight">ร้านค้าสวัสดิการ</h3>
+                                                <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">NEW</span>
+                                            </div>
+                                            <p className="text-orange-50 text-[11px] font-medium">ดูแคตตาล็อกและสั่งซื้อสินค้า</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white/20 text-white rounded-full w-8 h-8 flex items-center justify-center shrink-0 relative z-10 shadow-sm border border-white/30">
+                                        <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 💻 คอลัมน์ขวา: ประวัติและติดตามสินค้า */}
+                        <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
+                            
+                            {/* 📋 โซนประวัติและติดตามสินค้า */}
+                            <div className="bg-white rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.1)] border border-gray-200/80 overflow-hidden pb-4">
+                                {hasActiveOrders ? (
+                                    // 🌟 ถ้ามีออเดอร์ ให้โชว์ Toggle Switch
+                                    <div className="p-3 pb-1">
+                                        <div className="flex bg-gray-50 rounded-full p-1 relative border border-gray-200/60 shadow-inner">
+                                            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#1a237e] rounded-full shadow-md transition-transform duration-300 ease-in-out ${homeTab === 'tracking' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}></div>
+                                            <button onClick={() => setHomeTab('history')} className={`flex-1 py-2.5 text-[13px] font-bold rounded-full z-10 transition-colors ${homeTab === 'history' ? 'text-white' : 'text-gray-500'}`}>ประวัติล่าสุด</button>
+                                            <button onClick={() => setHomeTab('tracking')} className={`flex-1 py-2.5 text-[13px] font-bold rounded-full z-10 transition-colors ${homeTab === 'tracking' ? 'text-white' : 'text-gray-500'}`}>ติดตามสินค้า</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // 🌟 ถ้าไม่มีออเดอร์ โชว์เป็นแถบหัวข้อแบบคลีนๆ
+                                    <div className="p-4 pb-3 border-b border-gray-100/80">
+                                        <h3 className="font-extrabold text-gray-800 text-[14px] flex items-center gap-2">
+                                            <i className="fa-solid fa-clock-rotate-left text-[#0066FF]"></i> ประวัติทำรายการล่าสุด
+                                        </h3>
+                                    </div>
+                                )}
+
+                                <div className="px-4 pt-3">
+                                    {homeTab === 'history' || !hasActiveOrders ? (
+                                        // 📝 เนื้อหาแท็บ "ประวัติล่าสุด"
+                                        <div className="space-y-3">
+                                            {recentHistory.length > 0 ? (
+                                                recentHistory.map((hist, i) => (
+                                                    <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm relative transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="text-[9px] font-bold text-[#0066FF] uppercase tracking-wider mb-0.5">ID: {hist.billId || hist.id}</p>
+                                                                <h4 className="font-bold text-gray-800 text-[13px] leading-tight mb-1 line-clamp-1">{hist.item}</h4>
+                                                            </div>
+                                                            <span className="text-[#00B900] font-black text-[13px] shrink-0 bg-green-50 px-2 py-0.5 rounded-lg border border-green-100 shadow-sm">{formatCurrency(hist.total)}</span>
+                                                        </div>
+                                                        <div className="mt-2.5 flex justify-between items-center text-[10px] text-gray-500 font-medium">
+                                                            <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
+                                                            {hist.status === 'ยอดไม่ครบ' ? (
+                                                                <span className="text-orange-500 font-bold"><i className="fa-solid fa-triangle-exclamation"></i> ยอดไม่ครบ</span>
+                                                            ) : (
+                                                                <span className="text-emerald-500 font-bold"><i className="fa-solid fa-check-circle"></i> สำเร็จ</span>
+                                                            )}
+                                                        </div>
+                                                        {hist.slipUrl && (
+                                                            <div className="mt-3 pt-2.5 border-t border-gray-100 text-center">
+                                                                <span className="text-[10px] font-bold text-[#0066FF]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูสลิปหลักฐาน</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-8 text-gray-400"><div className="text-4xl mb-3 opacity-20"><i className="fa-solid fa-receipt"></i></div><p className="text-xs font-bold">ไม่มีประวัติทำรายการ</p></div>
+                                            )}
+                                            {data?.history?.length > 5 && ( 
+                                                <button onClick={() => handleTabChange('history')} className="w-full text-center text-[12px] font-bold text-[#0066FF] mt-3 py-3.5 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
+                                                    ดูรายการเพิ่มเติม <i className="fa-solid fa-arrow-right ml-1"></i>
+                                                </button> 
+                                            )}
+                                        </div>
+                                    ) : (
+                                        // 📦 เนื้อหาแท็บ "ติดตามสินค้า"
+                                        <div className="space-y-3 px-1">
+                                            {activeOrders.map((order, index) => {
+                                                let itemName = order.name || order.productName || order.item || 'สินค้า';
+                                                let statusColor = "text-gray-600 bg-gray-100 border-gray-200";
+                                                const st = order.status?.trim();
+                                                let displayStatus = st || 'รอดำเนินการ';
+                                                let isReadyToPickup = false;
+
+                                                if (st === 'รอตรวจสอบ') statusColor = "text-yellow-600 bg-yellow-50 border-yellow-200";
+                                                else if (st === 'ชำระแล้ว') statusColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
+                                                else if (st === 'อยู่ระหว่างสั่งซื้อ') statusColor = "text-blue-600 bg-blue-50 border-blue-200";
+                                                else if (st === 'อยู่ระหว่างผลิต') statusColor = "text-indigo-600 bg-indigo-50 border-indigo-200";
+                                                else if (st === 'รอรับของ') {
+                                                    statusColor = "text-orange-600 bg-orange-100 border-orange-300";
+                                                    displayStatus = "พร้อมรับสินค้า";
+                                                    isReadyToPickup = true;
+                                                }
+                                                else if (st === 'รับแล้ว') statusColor = "text-green-600 bg-green-50 border-green-200";
+                                                else if (st === 'ยกเลิก') statusColor = "text-red-500 bg-red-50 border-red-200";
+
+                                                return (
+                                                    <div key={order.id || index} onClick={() => setTrackingOrder(order)} className={`bg-white border rounded-2xl p-4 shadow-sm relative cursor-pointer hover:shadow-md transition-all active:scale-95 ${isReadyToPickup ? 'border-orange-200 hover:border-orange-400' : 'border-gray-200 hover:border-rose-300'}`}>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex items-center gap-3.5">
+                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm border ${isReadyToPickup ? 'bg-orange-50 text-orange-500 border-orange-100' : 'bg-rose-50 text-rose-500 border-rose-100'}`}>
+                                                                    <i className={`fa-solid ${isReadyToPickup ? 'fa-box-open' : 'fa-box'} text-sm`}></i>
+                                                                </div>
+                                                                <div className="overflow-hidden pr-2">
+                                                                    <p className="font-bold text-gray-800 text-[13px] line-clamp-1">{itemName}</p>
+                                                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ID: {order.id}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-gray-50/80 rounded-xl p-3 flex justify-between items-center border border-gray-100/80">
+                                                            <span className="text-[11px] font-bold text-gray-500">สถานะปัจจุบัน:</span>
+                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm border ${statusColor}`}>
+                                                                {displayStatus}
+                                                            </span>
+                                                        </div>
+                                                        {isReadyToPickup ? (
+                                                            <div className="mt-3 pt-3 border-t border-orange-100 flex flex-col gap-2">
+                                                                <button className="w-full py-2.5 bg-orange-500 text-white text-[11px] font-bold rounded-xl shadow-md shadow-orange-200 flex items-center justify-center gap-2">
+                                                                    <i className="fa-solid fa-qrcode text-sm"></i> แสดง QR Code เพื่อรับสินค้า
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-3 pt-2.5 border-t border-gray-100 text-center">
+                                                                <span className="text-[10px] font-bold text-[#1a237e]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูรายละเอียดการจัดส่ง</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
         );
     };
-
-    // 🌟 ฟังก์ชันสร้างปุ่มเมนูในหน้า "บริการทั้งหมด"
-    const renderServiceItem = (tabId, icon, title, subtitle, color, bgColor) => (
-        <button onClick={() => handleTabChange(tabId)} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
-            <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-2xl ${bgColor} flex items-center justify-center ${color}`}><i className={`fa-solid ${icon} text-sm`}></i></div>
-                <div><span className="text-sm font-bold text-gray-800 block leading-tight">{title}</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">{subtitle}</span></div>
-            </div>
-            <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-        </button>
-    );
-
-   // 🌟 หน้าบริการทั้งหมด (Services Hub) - ซ่อนเมนูตามสิทธิ์อัตโนมัติ
-    const renderServicesContent = () => {
-        // ดึงออเดอร์ที่ยังไม่เสร็จสิ้นมาเตรียมไว้สำหรับเมนู "ติดตามสินค้า"
-        const activeOrders = data?.orders || [];
-        
-        // เช็คว่าต้องโชว์หมวดหมู่ไหนบ้าง (ถ้าไม่มีสิทธิ์ในหมวดนั้นเลย จะซ่อนทั้งหมวด)
-        const showFinanceGroup = hasAccess('bills') || hasAccess('history') || hasAccess('finance');
-        const showStoreGroup = hasAccess('orders');
-        const showAccountGroup = hasAccess('settings') || true; // "ติดต่อแอดมิน" ให้โชว์เสมอ
-
-        return (
-            <div className="space-y-6 pb-6">
-                
-                {/* 💳 หมวดการเงิน & ชำระเงิน */}
-                {showFinanceGroup && (
-                    <div>
-                        <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2 pl-3">การเงิน & ชำระเงิน</h3>
-                        <div className="bg-white rounded-[1.5rem] shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
-                            {hasAccess('bills') && (
-                                <button onClick={() => handleTabChange('bills')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0066FF] shrink-0"><i className="fa-solid fa-file-invoice-dollar text-sm"></i></div>
-                                        <div><span className="text-sm font-bold text-gray-800 block">รายการบิลของคุณ</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">ตรวจสอบและชำระค่าใช้จ่าย</span></div>
-                                    </div>
-                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                                </button>
-                            )}
-                            {hasAccess('history') && (
-                                <button onClick={() => handleTabChange('history')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0"><i className="fa-solid fa-clock-rotate-left text-sm"></i></div>
-                                        <div><span className="text-sm font-bold text-gray-800 block">ประวัติทำรายการ</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">ดูประวัติการชำระเงินย้อนหลัง</span></div>
-                                    </div>
-                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                                </button>
-                            )}
-                            {hasAccess('finance') && (
-                                <button onClick={() => handleTabChange('finance')} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0"><i className="fa-solid fa-wallet text-sm"></i></div>
-                                        <div><span className="text-sm font-bold text-gray-800 block">สรุปการเงินชั้นปี</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">ภาพรวมรายรับ-รายจ่ายของรุ่น</span></div>
-                                    </div>
-                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* 🛒 หมวดร้านค้าสวัสดิการ */}
-                {showStoreGroup && (
-                    <div>
-                        <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2 pl-3">สวัสดิการ & สั่งซื้อ</h3>
-                        <div className="bg-white rounded-[1.5rem] shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
-                            {hasAccess('orders') && data?.orderEnabled && (
-                                <button onClick={() => handleTabChange('orders')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"><i className="fa-solid fa-store text-sm"></i></div>
-                                        <div><span className="text-sm font-bold text-gray-800 block">ร้านค้าสวัสดิการ</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">สั่งซื้อและดูรายการสินค้า</span></div>
-                                    </div>
-                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                                </button>
-                            )}
-                            {hasAccess('orders') && (
-                                <button onClick={() => {
-                                    if (activeOrders.length > 0) setTrackingOrder(activeOrders[0]);
-                                    else Swal.fire({icon: 'info', title: 'ไม่มีออเดอร์', text: 'คุณยังไม่มีรายการสั่งซื้อที่กำลังดำเนินการครับ', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}});
-                                }} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0"><i className="fa-solid fa-box-open text-sm"></i></div>
-                                        <div><span className="text-sm font-bold text-gray-800 block">ติดตามสถานะสินค้า</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">เช็คสถานะการจัดส่งออเดอร์</span></div>
-                                    </div>
-                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* ⚙️ หมวดบัญชีและช่วยเหลือ */}
-                {showAccountGroup && (
-                    <div>
-                        <h3 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-3 px-2 pl-3">บัญชี & ช่วยเหลือ</h3>
-                        <div className="bg-white rounded-[1.5rem] shadow-[0_4px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
-                            {hasAccess('settings') && (
-                                <button onClick={() => handleTabChange('settings')} className="w-full p-4 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0"><i className="fa-solid fa-user-gear text-sm"></i></div>
-                                        <div><span className="text-sm font-bold text-gray-800 block">จัดการบัญชีผู้ใช้</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">แก้ไขข้อมูลส่วนตัว / เปลี่ยนรหัส</span></div>
-                                    </div>
-                                    <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                                </button>
-                            )}
-                            <button onClick={handleContactAdmin} className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100 text-left">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-500 shrink-0"><i className="fa-solid fa-headset text-sm"></i></div>
-                                    <div><span className="text-sm font-bold text-gray-800 block">ติดต่อทีมแอดมิน</span><span className="text-[10px] text-gray-400 font-medium mt-0.5 block">แจ้งปัญหา / สอบถามข้อมูลเพิ่มเติม</span></div>
-                                </div>
-                                <i className="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
+    
 
     // 🌟 หน้า Finance
     const renderFinanceContent = () => {
@@ -2839,12 +2748,6 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                             </div>
                         )} 
 
-                        {tab === 'services' && (
-                            <div className="animate-window-slide w-full pb-8">
-                                {renderSubPageHeader("บริการทั้งหมด", "ศูนย์รวมเมนูและฟังก์ชัน")}
-                                <div className="px-1">{renderServicesContent()}</div>
-                            </div>
-                        )}
 
                         {tab === 'orders' && hasAccess('orders') && (
                             <div className="animate-window-slide w-full">
