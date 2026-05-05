@@ -1935,6 +1935,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
     }, [lastScrollY]);
 
     useEffect(() => {
+        if (!user?.studentId) return;
         const studentId = user.studentId;
         const cohort = String(studentId).substring(0, 2); // 🌟 ดึงรหัสชั้นปี 2 ตัวแรก (เช่น "67")
         setLoading(true);
@@ -2076,7 +2077,7 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
         
         setLoading(false);
         return () => unsubscribes.forEach(unsub => unsub());
-    }, [user.studentId]);
+    }, [user?.studentId]);
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
@@ -2273,6 +2274,16 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
         } else if (isOverdueAny) {
             priceColor = "text-red-600";
             btnClass = "bg-red-600 hover:bg-red-700 shadow-red-200 cursor-pointer";
+        }
+
+        // 🌟 1. เช็คว่าถ้าข้อมูลยังไม่มา (ยังเป็น undefined หรือ null) ให้โชว์หน้าโหลด
+        if (!data || Object.keys(data).length === 0) {
+            return (
+                <div className="w-full min-h-[100dvh] flex flex-col items-center justify-center bg-[#F4F7FB]">
+                    <div className="w-12 h-12 border-4 border-blue-200 border-t-[#0066FF] rounded-full animate-spin mb-4 shadow-sm"></div>
+                    <p className="text-[#0066FF] font-bold animate-pulse text-sm">กำลังเตรียมข้อมูลของคุณ...</p>
+                </div>
+            );
         }
 
         return (
@@ -2899,16 +2910,17 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
                 {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                {/* 🌟 Bottom Navigation (จัดเต็มเรื่องความลอยแบบ 3D) */}
+                {/* 🌟 Bottom Navigation (แก้บั๊กย่อขยายกระตุกบน iPad/PC) */}
                 <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-safe px-4 mb-5 pointer-events-none transition-all duration-500 ease-in-out ${(isSubPageOpen || !['home', 'finance', 'settings'].includes(tab)) ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
                     
-                    <nav className={`relative pointer-events-auto bg-white/95 backdrop-blur-2xl flex items-center border border-white transition-all duration-500 ease-in-out 
+                    {/* 🌟 ปรับมาตรึง w-full ไว้ แล้วอนิเมทที่ max-w แทน เพื่อความสมูท 100% */}
+                    <nav className={`relative pointer-events-auto bg-white/95 backdrop-blur-2xl flex items-center border border-white transition-all duration-500 ease-in-out w-full
                         ${showBottomNav 
-                            ? 'w-full max-w-md h-[76px] rounded-[2.5rem] p-1.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3),0_10px_20px_-5px_rgba(0,0,0,0.1)]' 
-                            : 'w-[220px] h-[58px] rounded-[2rem] p-1 translate-y-1 opacity-98 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4),0_8px_15px_-3px_rgba(0,0,0,0.1)]'
+                            ? 'max-w-[400px] h-[76px] rounded-[2.5rem] p-1.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3),0_10px_20px_-5px_rgba(0,0,0,0.1)]' 
+                            : 'max-w-[220px] h-[58px] rounded-[2rem] p-1 translate-y-1 opacity-98 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4),0_8px_15px_-3px_rgba(0,0,0,0.1)]'
                         }`}
                     >
-                        {/* 🌟 เพิ่มแผ่นรองเงาชั้นในเพื่อให้ดูมีมิติ (Glassmorphism Effect) */}
+                        {/* แผ่นรองเงาชั้นใน */}
                         <div className="absolute inset-0 rounded-[inherit] border-[1.5px] border-white/60 pointer-events-none"></div>
 
                         <div className="w-full h-full relative flex items-center">
@@ -3276,7 +3288,6 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                                 setAppProgress(100);
                                 setTimeout(() => {
                                     setUser({ studentId: savedId, ...cachedUser });
-                                    setDashboardData({});
                                     setPage('dashboard');
                                     setAppProgress(null);
                                 }, 500);
