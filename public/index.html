@@ -2899,56 +2899,61 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
 
                 {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                {/* 🌟 Bottom Navigation (ย่อเล็กลงและแคบลงเมื่อเลื่อนหน้าจอ) */}
-                <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-safe px-4 mb-4 pointer-events-none transition-all duration-500 ease-in-out ${(isSubPageOpen || !['home', 'finance', 'settings'].includes(tab)) ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
+                {/* 🌟 Bottom Navigation (จัดเต็มเรื่องความลอยแบบ 3D) */}
+                <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-safe px-4 mb-5 pointer-events-none transition-all duration-500 ease-in-out ${(isSubPageOpen || !['home', 'finance', 'settings'].includes(tab)) ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
                     
-                    {/* ❌ เอา Gradient Background ออกไปแล้ว เพื่อไม่ให้มีสีขาวบัง */}
-                    
-                    {/* 🌟 ปรับ nav ให้กลับมารับ event คลิกได้ด้วย pointer-events-auto */}
-                    <nav className={`relative pointer-events-auto bg-white/95 backdrop-blur-xl shadow-[0_10px_40px_-10px_rgba(0,102,255,0.2)] flex items-center border border-white transition-all duration-500 ease-in-out ${showBottomNav ? 'w-full max-w-md h-[75px] rounded-[2.5rem] p-1.5' : 'w-[240px] h-[55px] rounded-[2rem] p-1 translate-y-2 opacity-95'}`}>
-                        <div className="w-full h-full relative flex">
+                    <nav className={`relative pointer-events-auto bg-white/95 backdrop-blur-2xl flex items-center border border-white transition-all duration-500 ease-in-out 
+                        ${showBottomNav 
+                            ? 'w-full max-w-md h-[76px] rounded-[2.5rem] p-1.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3),0_10px_20px_-5px_rgba(0,0,0,0.1)]' 
+                            : 'w-[220px] h-[58px] rounded-[2rem] p-1 translate-y-1 opacity-98 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4),0_8px_15px_-3px_rgba(0,0,0,0.1)]'
+                        }`}
+                    >
+                        {/* 🌟 เพิ่มแผ่นรองเงาชั้นในเพื่อให้ดูมีมิติ (Glassmorphism Effect) */}
+                        <div className="absolute inset-0 rounded-[inherit] border-[1.5px] border-white/60 pointer-events-none"></div>
+
+                        <div className="w-full h-full relative flex items-center">
                             
-                            {/* กรอบสีฟ้าพื้นหลังเลื่อน */}
-                            <div className={`absolute top-0 bottom-0 w-1/3 transition-all duration-300 ease-out z-0 flex items-center justify-center ${showBottomNav ? 'rounded-3xl' : 'rounded-[1.5rem] scale-y-90 scale-x-95'}
+                            {/* กรอบพื้นหลังเลื่อน (Indicator) */}
+                            <div className={`absolute top-0 bottom-0 w-1/3 transition-all duration-300 ease-out z-0 flex items-center justify-center ${showBottomNav ? 'rounded-[1.8rem]' : 'rounded-[1.5rem] scale-y-90 scale-x-90'}
                                 ${tab === 'finance' && hasAccess('finance') ? 'translate-x-0 bg-blue-50' : 
-                                  tab === 'home' && hasAccess('home') ? 'translate-x-[100%] border-[2.5px] border-[#0066FF] shadow-[0_0_10px_rgba(0,102,255,0.15)] bg-white' : 
+                                  tab === 'home' && hasAccess('home') ? 'translate-x-[100%] border-[2px] border-[#0066FF]/80 shadow-[0_4px_15px_rgba(0,102,255,0.15)] bg-white' : 
                                   tab === 'settings' && hasAccess('settings') ? 'translate-x-[200%] bg-blue-50' : 'opacity-0'}`}
                             ></div>
 
                             {/* 1. ปุ่มการเงิน */}
                             <button 
                                 onClick={() => hasAccess('finance') ? handleTabChange('finance') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงเมนูการเงิน', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
-                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('finance') ? 'text-gray-300 cursor-not-allowed' : tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('finance') ? 'text-gray-300 cursor-not-allowed' : tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400'}`}
                             >
                                 <div className="relative">
                                     <i className={`fa-solid fa-wallet ${tab === 'finance' && hasAccess('finance') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
                                     {!hasAccess('finance') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
                                 </div>
-                                <span className={`text-[10px] font-bold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>การเงิน</span>
+                                <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>การเงิน</span>
                             </button>
                             
                             {/* 2. ปุ่มหน้าหลัก */}
                             <button 
                                 onClick={() => hasAccess('home') ? handleTabChange('home') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงหน้าหลัก', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
-                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('home') ? 'text-gray-300 cursor-not-allowed' : tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('home') ? 'text-gray-300 cursor-not-allowed' : tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400'}`}
                             >
                                 <div className="relative">
                                     <i className={`fa-solid fa-house ${tab === 'home' && hasAccess('home') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
                                     {!hasAccess('home') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
                                 </div>
-                                <span className={`text-[10px] font-bold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>หน้าหลัก</span>
+                                <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>หน้าหลัก</span>
                             </button>
                             
                             {/* 3. ปุ่มบัญชี */}
                             <button 
                                 onClick={() => hasAccess('settings') ? handleTabChange('settings') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงบัญชี', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
-                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('settings') ? 'text-gray-300 cursor-not-allowed' : tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('settings') ? 'text-gray-300 cursor-not-allowed' : tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400'}`}
                             >
                                 <div className="relative">
                                     <i className={`fa-regular fa-user ${tab === 'settings' && hasAccess('settings') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
                                     {!hasAccess('settings') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
                                 </div>
-                                <span className={`text-[10px] font-bold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>บัญชี</span>
+                                <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>บัญชี</span>
                             </button>
 
                         </div>
