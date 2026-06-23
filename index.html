@@ -105,7 +105,7 @@
         const formatCurrency = (val) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(val || 0);
 
         const formatThaiDate = (dateStr) => {
-    if (!dateStr || dateStr.includes('1899') || dateStr.includes('1970')) return "ไม่มีกำหนด";
+    if (!dateStr || String(dateStr).includes('1899') || String(dateStr).includes('1970')) return "ไม่มีกำหนด";
     
     try {
         let dateObj;
@@ -163,8 +163,7 @@
                     id = url.split("open?id=")[1].split("&")[0];
                 }
                 
-                // 🌟 แปลงเป็น Direct Link ผ่าน lh3 (เสถียรกว่าการใช้ uc?id=)
-                if (id) return `https://lh3.googleusercontent.com/d/${id}`; 
+                if (id) return `http://googleusercontent.com/profile/picture/${id}`;
                 
                 return url; 
             } catch (e) {
