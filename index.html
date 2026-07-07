@@ -105,7 +105,7 @@
         const formatCurrency = (val) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(val || 0);
 
         const formatThaiDate = (dateStr) => {
-    if (!dateStr || String(dateStr).includes('1899') || String(dateStr).includes('1970')) return "ไม่มีกำหนด";
+    if (!dateStr || dateStr.includes('1899') || dateStr.includes('1970')) return "ไม่มีกำหนด";
     
     try {
         let dateObj;
@@ -163,7 +163,8 @@
                     id = url.split("open?id=")[1].split("&")[0];
                 }
                 
-                if (id) return `http://googleusercontent.com/profile/picture/${id}`;
+                // 🌟 แปลงเป็น Direct Link ผ่าน lh3 (เสถียรกว่าการใช้ uc?id=)
+                if (id) return `https://lh3.googleusercontent.com/d/${id}`; 
                 
                 return url; 
             } catch (e) {
@@ -246,23 +247,7 @@
         };
 
         const Loading = ({ text = "กำลังประมวลผล...", progress = null }) => {
-            // 🌟 1. สร้าง State สำหรับควบคุมการมองเห็น
-            const [isVisible, setIsVisible] = useState(true);
             const isProgressMode = progress !== null;
-
-            // 🌟 2. ตั้งเวลาปิดอัตโนมัติ
-            useEffect(() => {
-                // ตั้งเวลา 3000 มิลลิวินาที (3 วินาที)
-                const timer = setTimeout(() => {
-                    setIsVisible(false); // สั่งซ่อน
-                }, 3000);
-
-                // ล้าง Timer ทิ้งเมื่อคอมโพเนนต์ถูกทำลาย (ป้องกัน Memory Leak)
-                return () => clearTimeout(timer);
-            }, []); // [] หมายถึงให้รันแค่ครั้งแรกที่คอมโพเนนต์ปรากฏขึ้นมา
-
-            // 🌟 3. ถ้าเวลาหมดแล้ว ให้คืนค่า null (หน้าต่างโหลดจะหายไปทันที)
-            if (!isVisible) return null;
 
             return ReactDOM.createPortal(
                 <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center backdrop-blur-sm">
