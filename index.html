@@ -246,7 +246,23 @@
         };
 
         const Loading = ({ text = "กำลังประมวลผล...", progress = null }) => {
+            // 🌟 1. สร้าง State สำหรับควบคุมการมองเห็น
+            const [isVisible, setIsVisible] = useState(true);
             const isProgressMode = progress !== null;
+
+            // 🌟 2. ตั้งเวลาปิดอัตโนมัติ
+            useEffect(() => {
+                // ตั้งเวลา 3000 มิลลิวินาที (3 วินาที)
+                const timer = setTimeout(() => {
+                    setIsVisible(false); // สั่งซ่อน
+                }, 3000);
+
+                // ล้าง Timer ทิ้งเมื่อคอมโพเนนต์ถูกทำลาย (ป้องกัน Memory Leak)
+                return () => clearTimeout(timer);
+            }, []); // [] หมายถึงให้รันแค่ครั้งแรกที่คอมโพเนนต์ปรากฏขึ้นมา
+
+            // 🌟 3. ถ้าเวลาหมดแล้ว ให้คืนค่า null (หน้าต่างโหลดจะหายไปทันที)
+            if (!isVisible) return null;
 
             return ReactDOM.createPortal(
                 <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center backdrop-blur-sm">
@@ -949,11 +965,10 @@
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [progress, setProgress] = useState(0); 
             
-            // 🌟 State สำหรับปุ่มสลับวิธีชำระเงิน
-            const [paymentMethod, setPaymentMethod] = useState('qr'); // 'qr' หรือ 'account'
+            const [paymentMethod, setPaymentMethod] = useState('qr'); 
 
-            // 🌟 เช็คว่ายอดชำระเป็น 0 หรือไม่
-            const isFree = Number(bill.total) <= 0;
+            // 🌟 แก้ไข: ดักจับค่าว่างให้เป็น 0 เสมอ เพื่อให้เงื่อนไข isFree ทำงานได้ถูกต้อง 100%
+            const isFree = !bill?.total || Number(bill?.total || 0) <= 0;
 
             const handleFile = (e) => {
                 const f = e.target.files[0];
@@ -961,7 +976,6 @@
                 else { fireErrorAlert('ไฟล์ขนาดใหญ่เกินไป', 'กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 5MB'); }
             };
 
-            // 🌟 ฟังก์ชันคัดลอกเลขบัญชี
             const handleCopy = () => {
                 navigator.clipboard.writeText("006660001474178");
                 Swal.fire({
@@ -1256,7 +1270,6 @@
                         
                         <button onClick={onClose} className="mb-4 text-gray-600 bg-white w-10 h-10 rounded-full shadow-md flex items-center justify-center active:scale-90 border border-gray-100"><i className="fa-solid fa-chevron-left"></i></button>
 
-                        {/* 🌟 1. กล่องรายละเอียดบิลที่ต้องชำระ */}
                         <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-4">
                             <div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
                                 <div className="w-10 h-10 bg-blue-50 text-[#0066FF] rounded-xl flex items-center justify-center shadow-inner shrink-0">
@@ -1291,7 +1304,7 @@
                             </div>
                         </div>
 
-                        {/* 🌟 แสดงผลตามยอดเงิน */}
+                        {/* 🌟 แสดงผลแบบไม่มีชำระเงิน หรือ มีชำระเงิน */}
                         {isFree ? (
                             <div className="bg-green-50 rounded-[2rem] p-6 shadow-sm border border-green-100 text-center mb-6">
                                 <div className="w-16 h-16 bg-white text-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl">
@@ -1302,7 +1315,6 @@
                             </div>
                         ) : (
                             <>
-                                {/* 🌟 2. กล่องแสดงวิธีชำระเงิน */}
                                 <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 text-center mb-6">
                                     <div className="flex p-1 bg-gray-100 rounded-2xl mb-6 shadow-inner">
                                         <button 
@@ -1371,7 +1383,6 @@
                                     )}
                                 </div>
 
-                                {/* 🌟 3. กล่องอัปโหลดสลิป */}
                                 <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
                                     <label className="block text-sm font-extrabold text-gray-800 mb-3">
                                         <i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน
@@ -1417,8 +1428,8 @@
             const strTotal = String(order.total);
             const paymentQrCode = safeQrMap[strTotal] || defaultQr;
 
-            // 🌟 เช็คว่าราคาสินค้าเป็น 0 หรือไม่
-            const isFree = Number(order.total) <= 0;
+            // 🌟 แก้ไข: ดักจับค่าว่างให้เป็น 0 เสมอ เพื่อให้เงื่อนไข isFree ทำงานได้ถูกต้อง 100%
+            const isFree = !order?.total || Number(order?.total || 0) <= 0;
 
             const handleFile = (e) => { 
                 const f = e.target.files[0]; 
@@ -1545,14 +1556,14 @@
                             </div>
                         </div>
 
-                        {/* 🌟 แสดงผลตามยอดราคาสินค้า */}
+                        {/* 🌟 แสดงผลแบบไม่มีชำระเงิน หรือ มีชำระเงิน */}
                         {isFree ? (
                             <div className="bg-green-50 rounded-[2rem] p-6 shadow-sm border border-green-100 text-center mb-6">
                                 <div className="w-16 h-16 bg-white text-green-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-3xl">
                                     <i className="fa-solid fa-check-circle"></i>
                                 </div>
                                 <h3 className="font-bold text-green-700 text-lg mb-1">ไม่ต้องชำระเงิน</h3>
-                                <p className="text-xs text-green-600">ราคาสินค้าเป็น 0 บาท ไม่ต้องแนบหลักฐาน <br/>กดปุ่ม "ยืนยันการสั่งซื้อ" ด้านล่างได้เลยครับ</p>
+                                <p className="text-xs text-green-600">ราคาสินค้าเป็น 0 บาท ไม่ต้องแนบหลักฐาน <br/>กดปุ่ม "ยืนยันทำรายการ" ด้านล่างได้เลยครับ</p>
                             </div>
                         ) : (
                             <>
@@ -1626,7 +1637,6 @@
                                     )}
                                 </div>
 
-                                {/* กล่องอัปโหลด */}
                                 <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-50 mb-6">
                                     <label className="block text-sm font-extrabold text-gray-800 mb-3">
                                         <i className="fa-solid fa-receipt mr-2 text-[#0066FF]"></i> แนบหลักฐานการโอนเงิน
@@ -1651,8 +1661,8 @@
                             </>
                         )}
                         
-                        <button onClick={submit} disabled={(!isFree && !file) || isSubmitting} className="w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50">
-                            ยืนยันการสั่งซื้อ <i className="fa-solid fa-check-circle ml-2"></i>
+                        <button onClick={submit} disabled={(!isFree && !file) || isSubmitting} className={`w-full py-4 bg-[#0066FF] text-white font-bold rounded-[1.5rem] shadow-lg shadow-blue-200 transition transform active:scale-95 text-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed`}>
+                            {isFree ? "ยืนยันทำรายการ" : "ยืนยันการชำระเงิน"} <i className="fa-solid fa-paper-plane ml-2"></i>
                         </button>
                     </div>
                 </div>
