@@ -1473,16 +1473,9 @@
                             throw new Error(`ยอดโอนไม่ครบ (โอนมา ${actualAmount} จาก ${expectedTotal}) ระบบไม่สามารถออกออเดอร์ได้`);
                         }
 
-                        // 1. ลดสต็อกสินค้า (Stock Reduction)
-                        const productId = order.id || order.productId;
-                        if (productId) {
-                            await db.collection('products').doc(productId).update({
-                                stock: firebase.firestore.FieldValue.increment(-Number(order.qty))
-                            });
-                        }
                         setProgress(80);
 
-                        // 2. บันทึกข้อมูลออเดอร์ลง Firestore
+                        // 1. บันทึกข้อมูลออเดอร์ลง Firestore (เอาการตัดสต๊อกออกแล้ว)
                         await db.collection('users').doc(user.studentId).collection('orders').doc(res.orderId).set({
                             date: new Date().toISOString(),
                             items: `${order.name} (${order.size}) x ${order.qty}`,
@@ -1948,58 +1941,7 @@
             );
         };
 
-const Dashboard = ({ user, setUser, initialData, onLogout }) => {
-    const [data, setData] = useState(initialData || {});
-    const [loading, setLoading] = useState(false);
-    const [tab, setTab] = useState('home'); 
-    const [homeTab, setHomeTab] = useState('history'); // สำหรับสลับหน้าแรก
-    const [showDropdown, setShowDropdown] = useState(false);
-    
-    const [selectedBill, setSelectedBill] = useState(null);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [pendingOrder, setPendingOrder] = useState(null);
-    const [selectedProject, setSelectedProject] = useState(null); 
-    const [trackingOrder, setTrackingOrder] = useState(null);
-    const [viewSlipUrl, setViewSlipUrl] = useState(null);
-    const [showAnnouncement, setShowAnnouncement] = useState(false); 
-    
-    const [financeSort, setFinanceSort] = useState('desc');
-    const [viewerProps, setViewerProps] = useState({ isOpen: false, images: [], startIndex: 0 });
-    
-    // 🌟 1. State สำหรับจัดการเมนูด้านล่าง
-    const [showBottomNav, setShowBottomNav] = useState(true);
-    const [lastScrollY, setLastScrollY] = useState(0);
-
-    // 🌟 2. Logic ตรวจจับการปัดขึ้น/ลง
-    useEffect(() => {
-        const handleScroll = (e) => {
-            const currentScrollY = e.target.scrollTop;
-            // ถ้าเลื่อนลง (มากกว่า 10px) ให้ซ่อน | ถ้าเลื่อนขึ้น ให้แสดง
-            if (currentScrollY > lastScrollY && currentScrollY > 10) {
-                setShowBottomNav(false);
-            } else if (currentScrollY < lastScrollY) {
-                setShowBottomNav(true);
-            }
-            setLastScrollY(currentScrollY);
-        };
-
-        // หา element ที่เป็นตัว scroll หลัก (ในที่นี้คือ main container ที่มี id 'main-scroll-area')
-        const scrollArea = document.getElementById('main-scroll-area');
-        if (scrollArea) {
-            scrollArea.addEventListener('scroll', handleScroll, { passive: true });
-        }
-        return () => {
-            if (scrollArea) scrollArea.removeEventListener('scroll', handleScroll);
-        };
-    }, [lastScrollY]);
-
-    useEffect(() => {
-        if (!user?.studentId) return;
-        const studentId = user.studentId;
-        const cohort = String(studentId).substring(0, 2); // 🌟 ดึงรหัสชั้นปี 2 ตัวแรก (เช่น "67")
-        setLoading(true);
-        const unsubscribes = [];
-
+// 🌟 ย้ายฟังก์ชัน getSortTime ออกมาไว้ด้านนอก เพื่อให้ใช้ร่วมกันได้
         const getSortTime = (dateStr, timestamp) => {
             if (timestamp) return Number(timestamp); 
             if (!dateStr) return 0;
@@ -2023,521 +1965,905 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
             return 0;
         };
 
-        // 🌟 1. ดึง System Config (ประกาศ & ร้านค้า แยกตามชั้นปี)
-        unsubscribes.push(db.collection('config').doc('system').onSnapshot(doc => {
-            if (doc.exists) {
-                const d = doc.data();
+        const Dashboard = ({ user, setUser, initialData, onLogout }) => {
+            const [data, setData] = useState(initialData || {});
+            const [loading, setLoading] = useState(false);
+            const [tab, setTab] = useState('home'); 
+            const [homeTab, setHomeTab] = useState('history'); 
+            const [showDropdown, setShowDropdown] = useState(false);
+            
+            const [selectedBill, setSelectedBill] = useState(null);
+            const [selectedProduct, setSelectedProduct] = useState(null);
+            const [pendingOrder, setPendingOrder] = useState(null);
+            const [selectedProject, setSelectedProject] = useState(null); 
+            const [trackingOrder, setTrackingOrder] = useState(null);
+            const [viewSlipUrl, setViewSlipUrl] = useState(null);
+            const [showAnnouncement, setShowAnnouncement] = useState(false); 
+            
+            const [financeSort, setFinanceSort] = useState('desc');
+            const [viewerProps, setViewerProps] = useState({ isOpen: false, images: [], startIndex: 0 });
+            
+            // 🌟 State สำหรับการดึงข้อมูลหน้าการเงิน (Lazy Loading)
+            const [hasVisitedFinance, setHasVisitedFinance] = useState(false);
+            
+            const [showBottomNav, setShowBottomNav] = useState(true);
+            const [lastScrollY, setLastScrollY] = useState(0);
+
+            useEffect(() => {
+                const handleScroll = (e) => {
+                    const currentScrollY = e.target.scrollTop;
+                    if (currentScrollY > lastScrollY && currentScrollY > 10) {
+                        setShowBottomNav(false);
+                    } else if (currentScrollY < lastScrollY) {
+                        setShowBottomNav(true);
+                    }
+                    setLastScrollY(currentScrollY);
+                };
+
+                const scrollArea = document.getElementById('main-scroll-area');
+                if (scrollArea) {
+                    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+                }
+                return () => {
+                    if (scrollArea) scrollArea.removeEventListener('scroll', handleScroll);
+                };
+            }, [lastScrollY]);
+
+            // 🌟 ตรวจจับการเข้าหน้าการเงินครั้งแรก เพื่อโหลดข้อมูล
+            useEffect(() => {
+                if (tab === 'finance' && !hasVisitedFinance) {
+                    setHasVisitedFinance(true);
+                }
+            }, [tab, hasVisitedFinance]);
+
+            // 🌟 ดึงข้อมูลหลักตอนเข้าเว็บ (หน้าแรก, บิล, ร้านค้า ฯลฯ)
+            useEffect(() => {
+                if (!user?.studentId) return;
+                const studentId = user.studentId;
+                const cohort = String(studentId).substring(0, 2);
+                setLoading(true);
+                const unsubscribes = [];
+
+                unsubscribes.push(db.collection('config').doc('system').onSnapshot(doc => {
+                    if (doc.exists) {
+                        const d = doc.data();
+                        const announcement = d.announcement ? d.announcement : (d[`announcement_${cohort}`] || null);
+                        
+                        let orderEnabled = false;
+                        if (d[`orderSystem_${cohort}`] !== undefined) {
+                            orderEnabled = d[`orderSystem_${cohort}`] === 'ON' || d[`orderSystem_${cohort}`] === true;
+                        } else {
+                            orderEnabled = d.orderSystem === 'ON' || d.orderSystem === true;
+                        }
+
+                        setData(prev => ({ ...prev, announcement, orderEnabled }));
+                    }
+                }));
+
+                unsubscribes.push(db.collection('config').doc(`qrMap_${cohort}`).onSnapshot(doc => {
+                    const newQrMap = {};
+                    let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
+
+                    if (doc.exists) {
+                        const dbData = doc.data();
+                        const codesArray = dbData.codes || []; 
+
+                        codesArray.forEach(item => {
+                            if (item && item.amount !== undefined) {
+                                const amt = String(item.amount);
+                                newQrMap[amt] = String(item.url); 
+                                
+                                if (amt === "0" || amt.toLowerCase() === "default") {
+                                    defaultUrl = String(item.url); 
+                                }
+                            }
+                        });
+                    }
+
+                    setData(prev => ({ ...prev, qrMap: newQrMap, defaultQr: defaultUrl }));
+                }));
+
+                unsubscribes.push(db.collection('users').doc(studentId).collection('bills').onSnapshot(snap => {
+                    const billsArray = snap.docs.map(doc => ({ billId: doc.id, ...doc.data() })).filter(bill => bill.status !== 'ชำระแล้ว'); 
+                    setData(prev => {
+                        const processedBills = billsArray.map(b => calculateBillData(b, prev.qrMap, prev.defaultQr));
+                        return { ...prev, bills: processedBills };
+                    });
+                }));
+
+                unsubscribes.push(db.collection('users').doc(studentId).collection('orders').onSnapshot(snap => {
+                    const ordersArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const sortedOrders = ordersArray.sort((a, b) => getSortTime(b.date, b.timestamp) - getSortTime(a.date, a.timestamp));
+                    setData(prev => ({ ...prev, orders: sortedOrders }));
+                }));
+
+                unsubscribes.push(db.collection('users').doc(studentId).collection('history').onSnapshot(snap => {
+                    const histArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const sortedHistory = histArray.sort((a, b) => getSortTime(b.payDate, b.timestamp) - getSortTime(a.payDate, a.timestamp));
+                    setData(prev => ({ ...prev, history: sortedHistory }));
+                }));
+
+                unsubscribes.push(db.collection('products').onSnapshot(snap => {
+                    const prodArray = snap.docs.map(doc => {
+                        const prodData = doc.data();
+                        const productGallery = [prodData.image].filter(Boolean); 
+                        for (let i = 2; i <= 10; i++) if (prodData[`image${i}`]) productGallery.push(prodData[`image${i}`]);
+                        const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
+                        for (let i = 2; i <= 5; i++) if (prodData[`sizeChart${i}`]) sizeChartGallery.push(prodData[`sizeChart${i}`]);
+                        return { id: doc.id, ...prodData, productGallery, sizeChartGallery };
+                    }).filter(p => !p.cohort || p.cohort === 'ALL' || p.cohort === cohort); 
+
+                    setData(prev => ({ ...prev, products: prodArray }));
+                }));
                 
-                // ประกาศ: ดึงกลางก่อน ถ้าว่างค่อยดึงชั้นปี
-                const announcement = d.announcement ? d.announcement : (d[`announcement_${cohort}`] || null);
+                setLoading(false);
+                return () => unsubscribes.forEach(unsub => unsub());
+            }, [user?.studentId]);
+
+            // 🌟 แยกการดึงข้อมูลการเงินออกมา (โหลดเฉพาะตอนเข้าหน้าการเงิน)
+            useEffect(() => {
+                if (!hasVisitedFinance || !user?.studentId) return;
                 
-                // 🌟 ร้านค้า: ให้ความสำคัญกับ "รายชั้นปี" ก่อน (เช่น orderSystem_67) ถ้าแอดมินไม่ได้สร้างฟิลด์นี้ ค่อยไปใช้ค่ารวม (orderSystem)
-                let orderEnabled = false;
-                if (d[`orderSystem_${cohort}`] !== undefined) {
-                    orderEnabled = d[`orderSystem_${cohort}`] === 'ON' || d[`orderSystem_${cohort}`] === true;
-                } else {
-                    orderEnabled = d.orderSystem === 'ON' || d.orderSystem === true;
+                const cohort = String(user.studentId).substring(0, 2);
+                
+                const unsubFinance = db.collection('finance').doc('summary').collection('logs').onSnapshot(snap => {
+                    const logsArray = snap.docs.map(doc => doc.data())
+                        .filter(log => !log.cohort || log.cohort === 'ALL' || log.cohort === cohort);
+
+                    const groupedProjects = {};
+                    let totalIncome = 0, totalExpense = 0;
+                    
+                    logsArray.forEach(log => {
+                        const amt = Number(log.amount) || 0;
+                        const isIncome = log.type === 'รายรับ';
+                        if (isIncome) totalIncome += amt; else totalExpense += amt;
+                        const pName = log.project; 
+                        if (!pName || String(pName).trim() === '' || pName === 'ทั่วไป') return;
+                        
+                        if (!groupedProjects[pName]) groupedProjects[pName] = { id: pName, name: pName, income: 0, expense: 0, transactions: [] };
+                        if (isIncome) groupedProjects[pName].income += amt; else groupedProjects[pName].expense += amt;
+                        
+                        groupedProjects[pName].transactions.push({
+                            type: isIncome ? 'income' : 'expense', amount: amt, item: log.item || '-', responsible: log.person || '-',
+                            date: formatThaiDateTime(log.date), receiptUrl: log.receiptUrl || '', transferSlipUrl: log.slipUrl || log.transferSlipUrl || '', 
+                            timestamp: getSortTime(log.date, log.timestamp)
+                        });
+                    });
+
+                    const projectsArray = Object.values(groupedProjects).map(p => { p.transactions.sort((a, b) => b.timestamp - a.timestamp); return p; });
+                    setData(prev => ({ ...prev, finance: { balance: totalIncome - totalExpense, income: totalIncome, expense: totalExpense, projects: projectsArray, isLoaded: true } }));
+                });
+                
+                return () => unsubFinance();
+            }, [hasVisitedFinance, user?.studentId]);
+
+            const handleTabChange = (newTab) => {
+                setTab(newTab);
+                setSelectedBill(null);
+                setSelectedProduct(null);
+                setPendingOrder(null);
+                setSelectedProject(null);
+                setTrackingOrder(null);
+                
+                const scrollArea = document.getElementById('main-scroll-area');
+                if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const handleOpenPayment = (bill) => {
+                if (bill.status === 'ชำระแล้ว' || bill.status === 'รอตรวจสอบ') {
+                    Swal.fire({ icon: 'info', title: 'สถานะถูกอัปเดตแล้ว', text: `บิลนี้อยู่ในสถานะ "${bill.status}" ไม่สามารถชำระซ้ำได้ครับ`, confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } });
+                } else setSelectedBill(bill);
+            };
+
+            const handleLogoutConfirm = () => {
+                Swal.fire({
+                    title: 'ออกจากระบบ?', text: "คุณต้องการออกจากระบบใช่หรือไม่?", icon: 'question', showCancelButton: true,
+                    confirmButtonColor: '#EF4444', cancelButtonColor: '#E5E7EB', confirmButtonText: 'ออกจากระบบ', cancelButtonText: '<span class="text-gray-700">ยกเลิก</span>',
+                    customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl px-6 py-2.5 font-bold shadow-md', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' }
+                }).then((result) => { if (result.isConfirmed) onLogout(); });
+            };
+
+            useEffect(() => { if (data?.announcement) setShowAnnouncement(true); }, [data?.announcement]);
+
+            const hasAccess = (page) => {
+                if (!user || !user.permissions) return false;
+
+                if (typeof user.permissions === 'string') {
+                    const permissionsArray = user.permissions.split(',').map(p => p.trim());
+                    return permissionsArray.includes(page);
+                }
+                
+                if (Array.isArray(user.permissions)) {
+                    return user.permissions.includes(page);
                 }
 
-                setData(prev => ({ ...prev, announcement, orderEnabled }));
-            }
-        }));
+                return false;
+            };
 
-       // 🌟 2. ดึง QR Code (ดึงจาก Document qrMap_67, qrMap_68 โดยตรง)
-        unsubscribes.push(db.collection('config').doc(`qrMap_${cohort}`).onSnapshot(doc => {
-            const newQrMap = {};
-            let defaultUrl = "https://placehold.co/200?text=No+QR+Found";
+            const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
 
-            if (doc.exists) {
-                const dbData = doc.data();
-                const codesArray = dbData.codes || []; // ดึง Field ที่ชื่อ codes ตามในรูป
+            const handleChangePassword = async () => {
+                setShowDropdown(false);
+                await Swal.fire({
+                    title: 'ตั้งรหัสผ่านใหม่',
+                    html: `
+                        <div class="space-y-4 mt-4 text-left">
+                            <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"><i class="fa-solid fa-key"></i></span><input id="new-pass" type="password" class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0066FF] outline-none text-sm shadow-sm transition-all" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"></div>
+                            <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"><i class="fa-solid fa-check-double"></i></span><input id="confirm-pass" type="password" class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0066FF] outline-none text-sm shadow-sm transition-all" placeholder="ยืนยันรหัสผ่านใหม่"></div>
+                        </div>
+                    `,
+                    showCancelButton: true, confirmButtonText: 'บันทึกรหัสผ่าน', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#0066FF', showLoaderOnConfirm: true,
+                    customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800', confirmButton: 'rounded-xl px-6 py-2.5 font-bold shadow-md text-sm', cancelButton: 'rounded-xl px-6 py-2.5 font-bold text-sm bg-gray-100 text-gray-600 hover:bg-gray-200' },
+                    preConfirm: async () => {
+                        const newInput = document.getElementById('new-pass'); const confirmInput = document.getElementById('confirm-pass');
+                        const newP = newInput.value; const cNewP = confirmInput.value;
+                        [newInput, confirmInput].forEach(el => { el.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200'); el.classList.add('border-gray-200', 'bg-gray-50'); });
+                        const setError = (inputEl, errorMsg) => { inputEl.classList.remove('border-gray-200', 'bg-gray-50'); inputEl.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200'); Swal.showValidationMessage(errorMsg); return false; };
+                        if (!newP) return setError(newInput, 'กรุณากรอกรหัสผ่านใหม่'); if (!cNewP) return setError(confirmInput, 'กรุณายืนยันรหัสผ่านใหม่');
+                        if (newP.length < 6) return setError(newInput, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'); if (newP !== cNewP) return setError(confirmInput, 'ยืนยันรหัสผ่านไม่ตรงกัน');
+                        try { 
+                            if (auth.currentUser) await auth.currentUser.updatePassword(newP); else throw new Error("ไม่พบเซสชันการล็อกอิน");
+                            await db.collection('users').doc(user.studentId).update({ hasPassword: true, password: firebase.firestore.FieldValue.delete() });
+                            return true; 
+                        } catch(e) { 
+                            let errMsg = e.code === 'auth/requires-recent-login' ? 'เซสชันหมดอายุ กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้งก่อนเปลี่ยนรหัสผ่าน' : e.message;
+                            Swal.showValidationMessage('เกิดข้อผิดพลาด: ' + errMsg); return false; 
+                        }
+                    }
+                }).then((result) => { if (result.isConfirmed) Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว', confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }); });
+            };
 
-                // วนลูปอ่านค่า Array
-                codesArray.forEach(item => {
-                    if (item && item.amount !== undefined) {
-                        const amt = String(item.amount);
-                        newQrMap[amt] = String(item.url); 
-                        
-                        // ถ้ายอดเป็น 0 ให้เก็บไว้เป็นคิวอาร์โค้ดเริ่มต้น
-                        if (amt === "0" || amt.toLowerCase() === "default") {
-                            defaultUrl = String(item.url); 
+            const handleLineConnectToggle = async () => {
+                const isLineConnected = user.userId && user.userId.length > 5;
+                if (isLineConnected) {
+                    Swal.fire({
+                        title: 'ยืนยันตัวตนก่อนยกเลิก', text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันการยกเลิกผูกบัญชี LINE', input: 'password', inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+                        showCancelButton: true, confirmButtonColor: '#EF4444', confirmButtonText: 'ยกเลิกการเชื่อมต่อ', cancelButtonText: 'ปิดหน้าต่าง',
+                        customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' }
+                    }).then(async (result) => {
+                        if (result.isConfirmed && result.value) {
+                            setLoading(true);
+                            try {
+                                await auth.signInWithEmailAndPassword(`${user.studentId}@ptu.ac.th`, result.value);
+                                await db.collection('users').doc(user.studentId).update({ userId: "", lineUid: "" });
+                                setUser(prev => ({ ...prev, userId: "", lineUid: "" }));
+                                Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
+                            } catch (e) { fireErrorAlert('ผิดพลาด', 'ไม่สามารถยกเลิกได้: ' + (e.message.includes('auth/') ? 'รหัสผ่านไม่ถูกต้อง' : e.message)); } finally { setLoading(false); }
+                        } else if (result.isConfirmed && !result.value) fireErrorAlert('แจ้งเตือน', 'กรุณากรอกรหัสผ่าน');
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'ยืนยันตัวตนก่อนเชื่อมต่อ', text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันตัวตน', input: 'password', inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+                        showCancelButton: true, confirmButtonText: 'เชื่อมต่อ LINE', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#00B900',
+                        customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' }
+                    }).then(async (res) => {
+                        if(res.isConfirmed && res.value) {
+                            setLoading(true);
+                            try {
+                                await auth.signInWithEmailAndPassword(`${user.studentId}@ptu.ac.th`, res.value);
+                                if (!liff.isLoggedIn()) { setLoading(false); liff.login(); return; }
+                                const profile = await liff.getProfile();
+                                const checkDup = await db.collection('users').where('userId', '==', profile.userId).get();
+                                if (!checkDup.empty && checkDup.docs[0].id !== user.studentId) throw new Error("LINE นี้ถูกผูกกับรหัสนักศึกษาอื่นไปแล้ว");
+                                await db.collection('users').doc(user.studentId).update({ userId: profile.userId });
+                                setUser(prev => ({ ...prev, userId: profile.userId }));
+                                Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
+                            } catch(e) { fireErrorAlert('พบข้อผิดพลาด', e.message.includes('auth/') ? 'รหัสผ่านไม่ถูกต้อง' : e.message); } finally { setLoading(false); }
+                        }
+                    });
+                }
+            };
+
+            const handleContactAdmin = () => {
+                const qrImgUrl = getDirectDriveUrl('https://drive.google.com/file/d/1oYL1NI9kbsYpa4pOM0KLoBhR91FRNVuH/view?usp=drivesdk');
+                Swal.fire({
+                    title: 'ติดต่อฝ่ายการเงิน / แอดมิน',
+                    html: `
+                        <div class="mt-4 flex flex-col items-center space-y-4">
+                            <div class="bg-white p-3 rounded-2xl border-2 border-dashed border-[#00B900]/30 inline-block shadow-sm relative"><img src="${qrImgUrl}" class="w-48 h-48 object-contain mx-auto rounded-xl" alt="LINE QR Code" /><div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#00B900] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-md">SCAN ME</div></div>
+                            <div class="w-full flex items-center gap-3 my-2 opacity-50"><div class="h-px bg-gray-300 flex-1"></div><span class="text-xs font-bold uppercase tracking-wider text-gray-500">หรือ</span><div class="h-px bg-gray-300 flex-1"></div></div>
+                            <a href="https://lin.ee/10OG1hK" target="_blank" rel="noopener noreferrer" class="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3 rounded-xl shadow-md shadow-[#00B900]/20 transition transform active:scale-95 flex items-center justify-center gap-2 no-underline"><i class="fa-brands fa-line text-2xl"></i> เพิ่มเพื่อนผ่านลิ้งค์</a>
+                        </div>
+                    `,
+                    showConfirmButton: false, showCloseButton: true, customClass: { popup: 'rounded-3xl pb-8', title: 'text-xl font-bold text-gray-800 pt-4', closeButton: 'focus:outline-none hover:text-red-500 transition-colors' }
+                });
+            };
+
+            const renderHomeContent = () => {
+                const formattedName = user?.name ? user.name.replace(/^(นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.)\s*/, '') : 'นักศึกษา';
+                const pendingBills = data?.bills || [];
+                const billCount = pendingBills.length;
+                
+                const cohort = user?.studentId ? String(user.studentId).substring(0, 2) : '';
+                
+                const isStoreOpen = data?.orderEnabled === true;
+
+                let featuredBill = null;
+                let minDaysLeft = Infinity;
+                let maxDaysLate = -1;
+                let isOverdueAny = false;
+
+                pendingBills.forEach(bill => {
+                    if (bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ') {
+                        isOverdueAny = true;
+                        if (bill.daysLate > maxDaysLate) {
+                            maxDaysLate = bill.daysLate;
+                            featuredBill = bill;
+                            minDaysLeft = -bill.daysLate; 
+                        }
+                    } else if (bill.dueDate && !isOverdueAny) {
+                        const target = new Date(bill.dueDate.includes('/') ? `${bill.dueDate.split('/')[2]}-${bill.dueDate.split('/')[1]}-${bill.dueDate.split('/')[0]}` : bill.dueDate);
+                        const diffTime = target.getTime() - new Date().getTime();
+                        const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (daysLeft >= 0 && daysLeft < minDaysLeft) {
+                            minDaysLeft = daysLeft;
+                            featuredBill = bill;
                         }
                     }
                 });
-            }
 
-            setData(prev => ({ ...prev, qrMap: newQrMap, defaultQr: defaultUrl }));
-        }));
-
-        // 🌟 บิล, ออเดอร์, ประวัติ (ดึงตาม user.studentId อยู่แล้ว)
-        unsubscribes.push(db.collection('users').doc(studentId).collection('bills').onSnapshot(snap => {
-            const billsArray = snap.docs.map(doc => ({ billId: doc.id, ...doc.data() })).filter(bill => bill.status !== 'ชำระแล้ว'); 
-            setData(prev => {
-                const processedBills = billsArray.map(b => calculateBillData(b, prev.qrMap, prev.defaultQr));
-                return { ...prev, bills: processedBills };
-            });
-        }));
-
-        unsubscribes.push(db.collection('users').doc(studentId).collection('orders').onSnapshot(snap => {
-            const ordersArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const sortedOrders = ordersArray.sort((a, b) => getSortTime(b.date, b.timestamp) - getSortTime(a.date, a.timestamp));
-            setData(prev => ({ ...prev, orders: sortedOrders }));
-        }));
-
-        unsubscribes.push(db.collection('users').doc(studentId).collection('history').onSnapshot(snap => {
-            const histArray = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const sortedHistory = histArray.sort((a, b) => getSortTime(b.payDate, b.timestamp) - getSortTime(a.payDate, a.timestamp));
-            setData(prev => ({ ...prev, history: sortedHistory }));
-        }));
-
-        // 🌟 3. สินค้าร้านค้า (กรองตาม cohort: 'ALL' หรือ ตรงรุ่น)
-        unsubscribes.push(db.collection('products').onSnapshot(snap => {
-            const prodArray = snap.docs.map(doc => {
-                const prodData = doc.data();
-                const productGallery = [prodData.image].filter(Boolean); 
-                for (let i = 2; i <= 10; i++) if (prodData[`image${i}`]) productGallery.push(prodData[`image${i}`]);
-                const sizeChartGallery = [prodData.sizeChart].filter(Boolean); 
-                for (let i = 2; i <= 5; i++) if (prodData[`sizeChart${i}`]) sizeChartGallery.push(prodData[`sizeChart${i}`]);
-                return { id: doc.id, ...prodData, productGallery, sizeChartGallery };
-            }).filter(p => !p.cohort || p.cohort === 'ALL' || p.cohort === cohort); // กรองชั้นปี
-
-            setData(prev => ({ ...prev, products: prodArray }));
-        }));
-        
-        // 🌟 4. การเงิน (กรองตาม cohort: 'ALL' หรือ ตรงรุ่น)
-        unsubscribes.push(db.collection('finance').doc('summary').collection('logs').onSnapshot(snap => {
-            // กรองเอาเฉพาะข้อมูลชั้นปีตัวเอง หรือ ALL
-            const logsArray = snap.docs.map(doc => doc.data())
-                .filter(log => !log.cohort || log.cohort === 'ALL' || log.cohort === cohort);
-
-            const groupedProjects = {};
-            let totalIncome = 0, totalExpense = 0;
-            
-            logsArray.forEach(log => {
-                const amt = Number(log.amount) || 0;
-                const isIncome = log.type === 'รายรับ';
-                if (isIncome) totalIncome += amt; else totalExpense += amt;
-                const pName = log.project; 
-                if (!pName || String(pName).trim() === '' || pName === 'ทั่วไป') return;
-                
-                if (!groupedProjects[pName]) groupedProjects[pName] = { id: pName, name: pName, income: 0, expense: 0, transactions: [] };
-                if (isIncome) groupedProjects[pName].income += amt; else groupedProjects[pName].expense += amt;
-                
-                groupedProjects[pName].transactions.push({
-                    type: isIncome ? 'income' : 'expense', amount: amt, item: log.item || '-', responsible: log.person || '-',
-                    date: formatThaiDateTime(log.date), receiptUrl: log.receiptUrl || '', transferSlipUrl: log.slipUrl || log.transferSlipUrl || '', 
-                    timestamp: getSortTime(log.date, log.timestamp)
-                });
-            });
-
-            const projectsArray = Object.values(groupedProjects).map(p => { p.transactions.sort((a, b) => b.timestamp - a.timestamp); return p; });
-            setData(prev => ({ ...prev, finance: { balance: totalIncome - totalExpense, income: totalIncome, expense: totalExpense, projects: projectsArray } }));
-        }));
-        
-        setLoading(false);
-        return () => unsubscribes.forEach(unsub => unsub());
-    }, [user?.studentId]);
-
-    const handleTabChange = (newTab) => {
-        setTab(newTab);
-        setSelectedBill(null);
-        setSelectedProduct(null);
-        setPendingOrder(null);
-        setSelectedProject(null);
-        setTrackingOrder(null);
-        
-        // 🌟 เพิ่มคำสั่งให้เลื่อนหน้าจอกลับไปบนสุดเสมอเมื่อเปลี่ยนหน้า
-        const scrollArea = document.getElementById('main-scroll-area');
-        if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const handleOpenPayment = (bill) => {
-        if (bill.status === 'ชำระแล้ว' || bill.status === 'รอตรวจสอบ') {
-            Swal.fire({ icon: 'info', title: 'สถานะถูกอัปเดตแล้ว', text: `บิลนี้อยู่ในสถานะ "${bill.status}" ไม่สามารถชำระซ้ำได้ครับ`, confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } });
-        } else setSelectedBill(bill);
-    };
-
-    const handleLogoutConfirm = () => {
-        Swal.fire({
-            title: 'ออกจากระบบ?', text: "คุณต้องการออกจากระบบใช่หรือไม่?", icon: 'question', showCancelButton: true,
-            confirmButtonColor: '#EF4444', cancelButtonColor: '#E5E7EB', confirmButtonText: 'ออกจากระบบ', cancelButtonText: '<span class="text-gray-700">ยกเลิก</span>',
-            customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl px-6 py-2.5 font-bold shadow-md', cancelButton: 'rounded-xl px-6 py-2.5 font-bold' }
-        }).then((result) => { if (result.isConfirmed) onLogout(); });
-    };
-
-    useEffect(() => { if (data?.announcement) setShowAnnouncement(true); }, [data?.announcement]);
-
-    // ✅ เก็บตัวนี้ไว้ตัวเดียวครับ
-    const hasAccess = (page) => {
-        if (!user || !user.permissions) return false;
-
-        if (typeof user.permissions === 'string') {
-            const permissionsArray = user.permissions.split(',').map(p => p.trim());
-            return permissionsArray.includes(page);
-        }
-        
-        if (Array.isArray(user.permissions)) {
-            return user.permissions.includes(page);
-        }
-
-        return false;
-    };
-
-    const isSubPageOpen = selectedBill || selectedProduct || pendingOrder || selectedProject || trackingOrder;
-
-    const handleChangePassword = async () => {
-        setShowDropdown(false);
-        await Swal.fire({
-            title: 'ตั้งรหัสผ่านใหม่',
-            html: `
-                <div class="space-y-4 mt-4 text-left">
-                    <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"><i class="fa-solid fa-key"></i></span><input id="new-pass" type="password" class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0066FF] outline-none text-sm shadow-sm transition-all" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)"></div>
-                    <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"><i class="fa-solid fa-check-double"></i></span><input id="confirm-pass" type="password" class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0066FF] outline-none text-sm shadow-sm transition-all" placeholder="ยืนยันรหัสผ่านใหม่"></div>
-                </div>
-            `,
-            showCancelButton: true, confirmButtonText: 'บันทึกรหัสผ่าน', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#0066FF', showLoaderOnConfirm: true,
-            customClass: { popup: 'rounded-3xl pb-6', title: 'text-xl font-bold text-gray-800', confirmButton: 'rounded-xl px-6 py-2.5 font-bold shadow-md text-sm', cancelButton: 'rounded-xl px-6 py-2.5 font-bold text-sm bg-gray-100 text-gray-600 hover:bg-gray-200' },
-            preConfirm: async () => {
-                const newInput = document.getElementById('new-pass'); const confirmInput = document.getElementById('confirm-pass');
-                const newP = newInput.value; const cNewP = confirmInput.value;
-                [newInput, confirmInput].forEach(el => { el.classList.remove('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200'); el.classList.add('border-gray-200', 'bg-gray-50'); });
-                const setError = (inputEl, errorMsg) => { inputEl.classList.remove('border-gray-200', 'bg-gray-50'); inputEl.classList.add('border-red-500', 'bg-red-50', 'ring-2', 'ring-red-200'); Swal.showValidationMessage(errorMsg); return false; };
-                if (!newP) return setError(newInput, 'กรุณากรอกรหัสผ่านใหม่'); if (!cNewP) return setError(confirmInput, 'กรุณายืนยันรหัสผ่านใหม่');
-                if (newP.length < 6) return setError(newInput, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'); if (newP !== cNewP) return setError(confirmInput, 'ยืนยันรหัสผ่านไม่ตรงกัน');
-                try { 
-                    if (auth.currentUser) await auth.currentUser.updatePassword(newP); else throw new Error("ไม่พบเซสชันการล็อกอิน");
-                    await db.collection('users').doc(user.studentId).update({ hasPassword: true, password: firebase.firestore.FieldValue.delete() });
-                    return true; 
-                } catch(e) { 
-                    let errMsg = e.code === 'auth/requires-recent-login' ? 'เซสชันหมดอายุ กรุณาออกจากระบบแล้วเข้าใหม่อีกครั้งก่อนเปลี่ยนรหัสผ่าน' : e.message;
-                    Swal.showValidationMessage('เกิดข้อผิดพลาด: ' + errMsg); return false; 
+                if (!featuredBill && pendingBills.length > 0) {
+                    featuredBill = pendingBills[0];
                 }
-            }
-        }).then((result) => { if (result.isConfirmed) Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว', confirmButtonText: 'ตกลง', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' } }); });
-    };
 
-    const handleLineConnectToggle = async () => {
-        const isLineConnected = user.userId && user.userId.length > 5;
-        if (isLineConnected) {
-            Swal.fire({
-                title: 'ยืนยันตัวตนก่อนยกเลิก', text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันการยกเลิกผูกบัญชี LINE', input: 'password', inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
-                showCancelButton: true, confirmButtonColor: '#EF4444', confirmButtonText: 'ยกเลิกการเชื่อมต่อ', cancelButtonText: 'ปิดหน้าต่าง',
-                customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' }
-            }).then(async (result) => {
-                if (result.isConfirmed && result.value) {
-                    setLoading(true);
-                    try {
-                        await auth.signInWithEmailAndPassword(`${user.studentId}@ptu.ac.th`, result.value);
-                        await db.collection('users').doc(user.studentId).update({ userId: "", lineUid: "" });
-                        setUser(prev => ({ ...prev, userId: "", lineUid: "" }));
-                        Swal.fire({ icon: 'success', title: 'ยกเลิกการเชื่อมต่อแล้ว', showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-3xl' } });
-                    } catch (e) { fireErrorAlert('ผิดพลาด', 'ไม่สามารถยกเลิกได้: ' + (e.message.includes('auth/') ? 'รหัสผ่านไม่ถูกต้อง' : e.message)); } finally { setLoading(false); }
-                } else if (result.isConfirmed && !result.value) fireErrorAlert('แจ้งเตือน', 'กรุณากรอกรหัสผ่าน');
-            });
-        } else {
-            Swal.fire({
-                title: 'ยืนยันตัวตนก่อนเชื่อมต่อ', text: 'กรุณากรอกรหัสผ่านเพื่อยืนยันตัวตน', input: 'password', inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
-                showCancelButton: true, confirmButtonText: 'เชื่อมต่อ LINE', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#00B900',
-                customClass: { popup: 'rounded-3xl', confirmButton: 'rounded-xl font-bold px-6', cancelButton: 'rounded-xl font-bold px-6 bg-gray-100 text-gray-600' }
-            }).then(async (res) => {
-                if(res.isConfirmed && res.value) {
-                    setLoading(true);
-                    try {
-                        await auth.signInWithEmailAndPassword(`${user.studentId}@ptu.ac.th`, res.value);
-                        if (!liff.isLoggedIn()) { setLoading(false); liff.login(); return; }
-                        const profile = await liff.getProfile();
-                        const checkDup = await db.collection('users').where('userId', '==', profile.userId).get();
-                        if (!checkDup.empty && checkDup.docs[0].id !== user.studentId) throw new Error("LINE นี้ถูกผูกกับรหัสนักศึกษาอื่นไปแล้ว");
-                        await db.collection('users').doc(user.studentId).update({ userId: profile.userId });
-                        setUser(prev => ({ ...prev, userId: profile.userId }));
-                        Swal.fire({ icon: 'success', title: 'เชื่อมต่อสำเร็จ!', confirmButtonColor: '#0066FF', customClass: { popup: 'rounded-3xl' }});
-                    } catch(e) { fireErrorAlert('พบข้อผิดพลาด', e.message.includes('auth/') ? 'รหัสผ่านไม่ถูกต้อง' : e.message); } finally { setLoading(false); }
+                const activeOrders = data?.orders || [];
+                const hasActiveOrders = activeOrders.length > 0;
+                const recentHistory = (data?.history || []).slice(0, 5);
+
+                let priceColor = "text-[#0066FF]";
+                let btnClass = "bg-[#0066FF] hover:bg-blue-700 shadow-blue-200 cursor-pointer";
+                let btnText = "ชำระเงิน";
+                let btnIcon = null;
+                let isDisabled = false;
+
+                if (featuredBill?.status === 'รอตรวจสอบ') {
+                    priceColor = "text-gray-800";
+                    btnClass = "bg-yellow-500 shadow-yellow-200 cursor-not-allowed opacity-90";
+                    btnText = "รอตรวจสอบ";
+                    btnIcon = "fa-solid fa-spinner animate-spin-slow";
+                    isDisabled = true;
+                } else if (isOverdueAny) {
+                    priceColor = "text-red-600";
+                    btnClass = "bg-red-600 hover:bg-red-700 shadow-red-200 cursor-pointer";
                 }
-            });
-        }
-    };
 
-    const handleContactAdmin = () => {
-        const qrImgUrl = getDirectDriveUrl('https://drive.google.com/file/d/1oYL1NI9kbsYpa4pOM0KLoBhR91FRNVuH/view?usp=drivesdk');
-        Swal.fire({
-            title: 'ติดต่อฝ่ายการเงิน / แอดมิน',
-            html: `
-                <div class="mt-4 flex flex-col items-center space-y-4">
-                    <div class="bg-white p-3 rounded-2xl border-2 border-dashed border-[#00B900]/30 inline-block shadow-sm relative"><img src="${qrImgUrl}" class="w-48 h-48 object-contain mx-auto rounded-xl" alt="LINE QR Code" /><div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#00B900] text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-md">SCAN ME</div></div>
-                    <div class="w-full flex items-center gap-3 my-2 opacity-50"><div class="h-px bg-gray-300 flex-1"></div><span class="text-xs font-bold uppercase tracking-wider text-gray-500">หรือ</span><div class="h-px bg-gray-300 flex-1"></div></div>
-                    <a href="https://lin.ee/10OG1hK" target="_blank" rel="noopener noreferrer" class="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-3 rounded-xl shadow-md shadow-[#00B900]/20 transition transform active:scale-95 flex items-center justify-center gap-2 no-underline"><i class="fa-brands fa-line text-2xl"></i> เพิ่มเพื่อนผ่านลิ้งค์</a>
-                </div>
-            `,
-            showConfirmButton: false, showCloseButton: true, customClass: { popup: 'rounded-3xl pb-8', title: 'text-xl font-bold text-gray-800 pt-4', closeButton: 'focus:outline-none hover:text-red-500 transition-colors' }
-        });
-    };
-
-// 🌟 หน้าแรก (Home) อัปเดตใหม่! ปรับหัวข้อประวัติเป็นสไตล์คลีนๆ
-    const renderHomeContent = () => {
-        const formattedName = user?.name ? user.name.replace(/^(นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.)\s*/, '') : 'นักศึกษา';
-        const pendingBills = data?.bills || [];
-        const billCount = pendingBills.length;
-        
-        // 🌟 ดึงชั้นปีจากรหัสนักศึกษา (เช่น "67")
-        const cohort = user?.studentId ? String(user.studentId).substring(0, 2) : '';
-        
-        // 🌟 เช็คสถานะเปิด/ปิดร้านค้า (รับค่าที่ผ่านการคำนวณแยกชั้นปีมาจาก useEffect แล้ว)
-        const isStoreOpen = data?.orderEnabled === true;
-
-        // 🌟 คัดกรองบิลที่จะนำมาโชว์ (ด่วนที่สุด/เลยกำหนด/รอตรวจสอบ)
-        let featuredBill = null;
-        let minDaysLeft = Infinity;
-        let maxDaysLate = -1;
-        let isOverdueAny = false;
-
-        pendingBills.forEach(bill => {
-            if (bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ') {
-                isOverdueAny = true;
-                if (bill.daysLate > maxDaysLate) {
-                    maxDaysLate = bill.daysLate;
-                    featuredBill = bill;
-                    minDaysLeft = -bill.daysLate; 
-                }
-            } else if (bill.dueDate && !isOverdueAny) {
-                const target = new Date(bill.dueDate.includes('/') ? `${bill.dueDate.split('/')[2]}-${bill.dueDate.split('/')[1]}-${bill.dueDate.split('/')[0]}` : bill.dueDate);
-                const diffTime = target.getTime() - new Date().getTime();
-                const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if (daysLeft >= 0 && daysLeft < minDaysLeft) {
-                    minDaysLeft = daysLeft;
-                    featuredBill = bill;
-                }
-            }
-        });
-
-        if (!featuredBill && pendingBills.length > 0) {
-            featuredBill = pendingBills[0];
-        }
-
-        const activeOrders = data?.orders || [];
-        const hasActiveOrders = activeOrders.length > 0;
-        const recentHistory = (data?.history || []).slice(0, 5);
-
-        // 🌟 จัดการสีของ "ยอดเงิน" และ "ปุ่ม" ตามสถานะ
-        let priceColor = "text-[#0066FF]";
-        let btnClass = "bg-[#0066FF] hover:bg-blue-700 shadow-blue-200 cursor-pointer";
-        let btnText = "ชำระเงิน";
-        let btnIcon = null;
-        let isDisabled = false;
-
-        if (featuredBill?.status === 'รอตรวจสอบ') {
-            priceColor = "text-gray-800";
-            btnClass = "bg-yellow-500 shadow-yellow-200 cursor-not-allowed opacity-90";
-            btnText = "รอตรวจสอบ";
-            btnIcon = "fa-solid fa-spinner animate-spin-slow";
-            isDisabled = true;
-        } else if (isOverdueAny) {
-            priceColor = "text-red-600";
-            btnClass = "bg-red-600 hover:bg-red-700 shadow-red-200 cursor-pointer";
-        }
-
-        // 🌟 1. เช็คว่าถ้าข้อมูลยังไม่มา (ยังเป็น undefined หรือ null) ให้โชว์หน้าโหลด
-        if (!data || Object.keys(data).length === 0) {
-            return (
-                <div className="w-full min-h-[100dvh] flex flex-col items-center justify-center bg-[#F4F7FB]">
-                    <div className="w-12 h-12 border-4 border-blue-200 border-t-[#0066FF] rounded-full animate-spin mb-4 shadow-sm"></div>
-                    <p className="text-[#0066FF] font-bold animate-pulse text-sm">กำลังเตรียมข้อมูลของคุณ...</p>
-                </div>
-            );
-        }
-
-        return (
-            // 🌟 เอา bg-[#F4F7FB] ออกจากกรอบนอกสุด เพื่อให้เห็นสีพื้นหลังแบบโปร่งแสง
-            <div className="w-full relative min-h-[100dvh]">
-                
-                {/* 🌟 1. Header กรมท่า (เพิ่ม sticky top-0 และ z-0 เพื่อให้อยู่กับที่ตอนเลื่อน) */}
-                <div className="sticky top-0 z-0 bg-[#1a237e] pt-[calc(env(safe-area-inset-top)+20px)] pb-[45px] px-6 md:px-10 lg:px-16 overflow-hidden">
-                    <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
-                        <svg width="250" height="250" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path fill="#ffffff" d="M45.7,-76.4C58.9,-69.1,69.1,-55.5,76.5,-40.8C83.9,-26.1,88.4,-10.4,87.6,5C86.7,20.4,80.5,35.4,70.9,47.8C61.3,60.2,48.2,69.9,33.5,76.4C18.8,82.9,2.6,86.2,-13.2,85.1C-29,84,-44.4,78.5,-57.4,68.9C-70.4,59.3,-80.9,45.6,-86.6,30.3C-92.3,15,-93.2,-1.8,-88.4,-16.7C-83.5,-31.6,-72.9,-44.5,-60.1,-53C-47.3,-61.5,-32.3,-65.6,-18,-68.8C-3.7,-72,10.6,-74.3,25.1,-75.9C39.6,-77.5,54.2,-78.4,45.7,-76.4Z" transform="translate(100 100) scale(1.1)" /></svg>
-                    </div>
-                    <div className="flex items-center gap-6 mb-4 relative z-10 lg:max-w-6xl lg:mx-auto">
-                        <img src="https://lh3.googleusercontent.com/d/11iyLHefyZCF3xPzMhG1ybSS542m52CEp" alt="Logo" className="h-8 md:h-10 object-contain drop-shadow-md scale-150 origin-left" />
-                        <span className="text-white font-black text-xl tracking-widest drop-shadow-md mt-1 uppercase">Finance System</span>
-                    </div>
-                    <div className="flex justify-between items-center relative z-10 lg:max-w-6xl lg:mx-auto">
-                        <div className="flex items-center gap-3">
-                            <img src="https://lh3.googleusercontent.com/d/1cAJOdPaXyO2gzIp5uRNklP3OwrOMK1IZ" alt="Profile" className="w-[48px] h-[48px] bg-white rounded-full object-cover shadow-lg border-2 border-white/40" />
-                            <div className="text-white"><p className="text-xs font-medium opacity-90 leading-tight">สวัสดี</p><p className="font-bold text-base leading-tight">คุณ {formattedName}</p></div>
+                if (!data || Object.keys(data).length === 0) {
+                    return (
+                        <div className="w-full min-h-[100dvh] flex flex-col items-center justify-center bg-[#F4F7FB]">
+                            <div className="w-12 h-12 border-4 border-blue-200 border-t-[#0066FF] rounded-full animate-spin mb-4 shadow-sm"></div>
+                            <p className="text-[#0066FF] font-bold animate-pulse text-sm">กำลังเตรียมข้อมูลของคุณ...</p>
                         </div>
+                    );
+                }
+
+                return (
+                    <div className="w-full relative min-h-[100dvh]">
                         
-                        <div className="flex items-center gap-2">
-                            <div onClick={() => data?.announcement ? setShowAnnouncement(true) : null} className={`w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30 relative shadow-sm ${data?.announcement ? 'cursor-pointer active:scale-95' : ''}`}>
-                                <i className="fa-regular fa-bell text-base"></i>
-                                {data?.announcement && (
-                                    <span className="absolute top-0 right-0 flex h-3 w-3 -mt-0.5 -mr-0.5">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-[#1a237e]"></span>
-                                    </span>
+                        <div className="sticky top-0 z-0 bg-[#1a237e] pt-[calc(env(safe-area-inset-top)+20px)] pb-[45px] px-6 md:px-10 lg:px-16 overflow-hidden">
+                            <div className="absolute right-[-20%] top-[-10%] opacity-10 pointer-events-none">
+                                <svg width="250" height="250" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path fill="#ffffff" d="M45.7,-76.4C58.9,-69.1,69.1,-55.5,76.5,-40.8C83.9,-26.1,88.4,-10.4,87.6,5C86.7,20.4,80.5,35.4,70.9,47.8C61.3,60.2,48.2,69.9,33.5,76.4C18.8,82.9,2.6,86.2,-13.2,85.1C-29,84,-44.4,78.5,-57.4,68.9C-70.4,59.3,-80.9,45.6,-86.6,30.3C-92.3,15,-93.2,-1.8,-88.4,-16.7C-83.5,-31.6,-72.9,-44.5,-60.1,-53C-47.3,-61.5,-32.3,-65.6,-18,-68.8C-3.7,-72,10.6,-74.3,25.1,-75.9C39.6,-77.5,54.2,-78.4,45.7,-76.4Z" transform="translate(100 100) scale(1.1)" /></svg>
+                            </div>
+                            <div className="flex items-center gap-6 mb-4 relative z-10 lg:max-w-6xl lg:mx-auto">
+                                <img src="https://lh3.googleusercontent.com/d/11iyLHefyZCF3xPzMhG1ybSS542m52CEp" alt="Logo" className="h-8 md:h-10 object-contain drop-shadow-md scale-150 origin-left" />
+                                <span className="text-white font-black text-xl tracking-widest drop-shadow-md mt-1 uppercase">Finance System</span>
+                            </div>
+                            <div className="flex justify-between items-center relative z-10 lg:max-w-6xl lg:mx-auto">
+                                <div className="flex items-center gap-3">
+                                    <img src="https://lh3.googleusercontent.com/d/1cAJOdPaXyO2gzIp5uRNklP3OwrOMK1IZ" alt="Profile" className="w-[48px] h-[48px] bg-white rounded-full object-cover shadow-lg border-2 border-white/40" />
+                                    <div className="text-white"><p className="text-xs font-medium opacity-90 leading-tight">สวัสดี</p><p className="font-bold text-base leading-tight">คุณ {formattedName}</p></div>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                    <div onClick={() => data?.announcement ? setShowAnnouncement(true) : null} className={`w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30 relative shadow-sm ${data?.announcement ? 'cursor-pointer active:scale-95' : ''}`}>
+                                        <i className="fa-regular fa-bell text-base"></i>
+                                        {data?.announcement && (
+                                            <span className="absolute top-0 right-0 flex h-3 w-3 -mt-0.5 -mr-0.5">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-[#1a237e]"></span>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative z-10 bg-[#F4F7FB] rounded-t-[2rem] w-full min-h-screen -mt-10 pt-8 pb-32 shadow-[0_-8px_20px_rgba(0,0,0,0.15)]">
+                            
+                            <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-12 h-1.5 bg-gray-300/80 rounded-full"></div>
+
+                            <div className="mx-4 md:mx-8 lg:mx-auto lg:max-w-6xl">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 lg:gap-8 items-start">
+                                
+                                    <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
+                                        
+                                        <div className="bg-white rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-200/80 transition-shadow hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+                                            {billCount > 0 && featuredBill ? (
+                                                <>
+                                                    <div className="p-5 md:p-6">
+                                                        <p className="text-gray-600 text-xs font-bold mb-2 line-clamp-1 flex items-center gap-1.5">
+                                                            <i className="fa-solid fa-file-invoice text-gray-400"></i> {featuredBill.item}
+                                                        </p>
+                                                        
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <div className="flex items-baseline font-sans">
+                                                                <span className={`text-lg font-semibold tracking-tighter mr-0.5 ${priceColor}`}>฿</span>
+                                                                <span className={`text-[34px] font-black tracking-tight leading-none ${priceColor}`}>
+                                                                    {formatCurrency(featuredBill.total).replace('฿','').trim()}
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            <button 
+                                                                disabled={isDisabled} 
+                                                                onClick={() => !isDisabled && handleOpenPayment(featuredBill)} 
+                                                                className={`px-5 py-2.5 rounded-lg text-white font-bold text-[13px] shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 ${btnClass}`}
+                                                            >
+                                                                {btnIcon && <i className={`${btnIcon} text-xs`}></i>}
+                                                                {btnText}
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-gray-200 bg-gray-50 mt-1 mb-2 shadow-sm">
+                                                            <i className="fa-regular fa-calendar text-gray-500 text-[10px]"></i>
+                                                            <span className="text-[10px] font-bold text-gray-500">
+                                                                วันครบกำหนดชำระ: <span className="text-red-700">{formatThaiDate(featuredBill.dueDate)}</span>
+                                                            </span>
+                                                        </div>
+
+                                                        {isOverdueAny && featuredBill.status !== 'รอตรวจสอบ' ? (
+                                                            <div className="mt-4 bg-red-50 rounded-xl p-3 border border-red-200 animate-pulse shadow-sm">
+                                                                <div className="flex gap-2.5">
+                                                                    <div className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                                                        <i className="fa-solid fa-exclamation text-[10px] font-bold"></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="text-red-700 font-bold text-[13px] mb-0.5">เลยกำหนดชำระ {maxDaysLate} วัน!</h4>
+                                                                        <p className="text-red-500 text-[11px] leading-relaxed font-medium">
+                                                                            กรุณาชำระยอดค้างโดยด่วน เพื่อหลีกเลี่ยงค่าปรับที่จะเกิดขึ้น
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) 
+                                                        : (minDaysLeft <= 3 && minDaysLeft >= 0 && featuredBill.status !== 'รอตรวจสอบ') ? (
+                                                            <div className="mt-4 bg-[#FFF8E7] rounded-xl p-3 border border-[#FBE3B8] shadow-sm">
+                                                                <div className="flex gap-2.5">
+                                                                    <div className="w-5 h-5 rounded-full bg-[#E5A545] text-white flex items-center justify-center shrink-0 mt-0.5">
+                                                                        <i className="fa-solid fa-exclamation text-[10px] font-bold"></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="text-[#CF8320] font-bold text-[13px] mb-0.5">
+                                                                            ครบกำหนดชำระในอีก {minDaysLeft === 0 ? 'วันนี้' : minDaysLeft + ' วัน'}
+                                                                        </h4>
+                                                                        <p className="text-[#C89B51] text-[11px] leading-relaxed font-medium">
+                                                                            กรุณาชำระบิลตามเวลาที่กำหนดเพื่อหลีกเลี่ยงค่าปรับ
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
+
+                                                    <div className="px-5 pb-5 md:px-6 md:pb-6">
+                                                        <div className="border-t border-dashed border-gray-200/80 mb-4 mt-1"></div>
+                                                        <button onClick={() => handleTabChange('bills')} className="w-full text-center text-[12px] font-bold text-[#0066FF] py-3.5 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
+                                                            บิลทั้งหมด {billCount > 1 && `(${billCount} รายการ)`} <i className="fa-solid fa-arrow-right ml-1"></i>
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="p-8 flex flex-col items-center justify-center text-center bg-white min-h-[220px]">
+                                                    <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-3 border border-green-100 mt-2 shadow-sm">
+                                                        <i className="fa-solid fa-check-double text-3xl"></i>
+                                                    </div>
+                                                    <h3 className="text-xl font-black text-gray-800 tracking-tight">ชำระครบหมดแล้ว</h3>
+                                                    <p className="text-gray-500 text-sm mt-1.5 font-medium">คุณไม่มียอดค้างชำระในขณะนี้</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {isStoreOpen && hasAccess('orders') && (
+                                            <div onClick={() => handleTabChange('orders')} className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 shadow-[0_8px_24px_rgba(249,115,22,0.3)] flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-orange-300 relative overflow-hidden">
+                                                <div className="absolute right-[-10px] top-[-10px] opacity-10 pointer-events-none">
+                                                    <i className="fa-solid fa-store text-6xl"></i>
+                                                </div>
+                                                <div className="flex items-center gap-3.5 relative z-10">
+                                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white border border-white/40 shadow-inner shrink-0">
+                                                        <i className="fa-solid fa-store text-xl drop-shadow-sm"></i>
+                                                    </div>
+                                                    <div className="text-white drop-shadow-sm">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <h3 className="font-black text-[15px] leading-tight">ร้านค้า</h3>
+                                                            <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">NEW</span>
+                                                        </div>
+                                                        <p className="text-orange-50 text-[11px] font-medium">รายการสินค้าจัดจำหน่าย</p>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white/20 text-white rounded-full w-8 h-8 flex items-center justify-center shrink-0 relative z-10 shadow-sm border border-white/30">
+                                                    <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
+                                        
+                                        <div className="bg-white rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.1)] border border-gray-200/80 overflow-hidden pb-4">
+                                            {hasActiveOrders ? (
+                                                <div className="p-3 pb-1">
+                                                    <div className="flex bg-gray-50 rounded-full p-1 relative border border-gray-200/60 shadow-inner">
+                                                        <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#1a237e] rounded-full shadow-md transition-transform duration-300 ease-in-out ${homeTab === 'tracking' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}></div>
+                                                        <button onClick={() => setHomeTab('history')} className={`flex-1 py-2.5 text-[13px] font-bold rounded-full z-10 transition-colors ${homeTab === 'history' ? 'text-white' : 'text-gray-500'}`}>ประวัติล่าสุด</button>
+                                                        <button onClick={() => setHomeTab('tracking')} className={`flex-1 py-2.5 text-[13px] font-bold rounded-full z-10 transition-colors ${homeTab === 'tracking' ? 'text-white' : 'text-gray-500'}`}>ติดตามสินค้า</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="p-4 pb-3 border-b border-gray-100/80">
+                                                    <h3 className="font-extrabold text-gray-800 text-[14px] flex items-center gap-2">
+                                                        <i className="fa-solid fa-clock-rotate-left text-[#0066FF]"></i> ประวัติทำรายการล่าสุด
+                                                    </h3>
+                                                </div>
+                                            )}
+
+                                            <div className="px-4 pt-3">
+                                                {homeTab === 'history' || !hasActiveOrders ? (
+                                                    <div className="space-y-3">
+                                                        {recentHistory.length > 0 ? (
+                                                            recentHistory.map((hist, i) => {
+                                                                let statusStyle = {
+                                                                    bgGradient: "from-emerald-100/50",
+                                                                    stampIcon: "fa-circle-check text-emerald-600",
+                                                                    amountColor: "text-emerald-600 bg-emerald-50 border-emerald-100",
+                                                                    statusText: "text-emerald-500",
+                                                                    statusIcon: "fa-circle-check",
+                                                                    statusLabel: "สำเร็จ"
+                                                                };
+                                                                if (hist.status === 'ยอดไม่ครบ') {
+                                                                    statusStyle = { bgGradient: "from-orange-100/60", stampIcon: "fa-triangle-exclamation text-orange-600", amountColor: "text-orange-600 bg-orange-50 border-orange-100", statusText: "text-orange-500", statusIcon: "fa-triangle-exclamation", statusLabel: "ยอดไม่ครบ" };
+                                                                } else if (hist.status === 'รอตรวจสอบ') {
+                                                                    statusStyle = { bgGradient: "from-blue-100/50", stampIcon: "fa-clock text-blue-600", amountColor: "text-[#0066FF] bg-blue-50 border-blue-100", statusText: "text-[#0066FF]", statusIcon: "fa-clock", statusLabel: "รอตรวจสอบ" };
+                                                                }
+
+                                                                return (
+                                                                    <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
+                                                                        <div className={`absolute inset-y-0 right-0 w-32 bg-gradient-to-l ${statusStyle.bgGradient} to-transparent pointer-events-none z-0`}></div>
+                                                                        <div className="absolute -right-3 -bottom-4 opacity-[0.07] pointer-events-none z-0 transform -rotate-12">
+                                                                            <i className={`fa-solid ${statusStyle.stampIcon} text-7xl`}></i>
+                                                                        </div>
+
+                                                                        <div className="relative z-10 flex justify-between items-start">
+                                                                            <div>
+                                                                                <p className="text-[9px] font-bold text-[#0066FF] uppercase tracking-wider mb-0.5">ID: {hist.billId || hist.id}</p>
+                                                                                <h4 className="font-bold text-gray-800 text-[13px] leading-tight mb-1 line-clamp-1 pr-2">{hist.item}</h4>
+                                                                            </div>
+                                                                            <span className={`font-black text-[13px] shrink-0 px-2 py-0.5 rounded-lg border shadow-sm ${statusStyle.amountColor}`}>
+                                                                                {formatCurrency(hist.total)}
+                                                                            </span>
+                                                                        </div>
+                                                                        
+                                                                        <div className="relative z-10 mt-2.5 flex justify-between items-center text-[10px] font-medium text-gray-500">
+                                                                            <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
+                                                                            <span className={`${statusStyle.statusText} font-bold`}><i className={`fa-solid ${statusStyle.statusIcon}`}></i> {statusStyle.statusLabel}</span>
+                                                                        </div>
+                                                                        
+                                                                        {hist.slipUrl && (
+                                                                            <div className="relative z-10 mt-3 pt-2.5 border-t border-gray-100/80 text-center">
+                                                                                <span className="text-[10px] font-bold text-[#0066FF]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูสลิปหลักฐาน</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <div className="text-center py-8 text-gray-400"><div className="text-4xl mb-3 opacity-20"><i className="fa-solid fa-receipt"></i></div><p className="text-xs font-bold">ไม่มีประวัติทำรายการ</p></div>
+                                                        )}
+                                                        {data?.history?.length > 5 && ( 
+                                                            <button onClick={() => handleTabChange('history')} className="w-full text-center text-[12px] font-bold text-[#0066FF] mt-3 py-3.5 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
+                                                                ดูรายการเพิ่มเติม <i className="fa-solid fa-arrow-right ml-1"></i>
+                                                            </button> 
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-3 px-1">
+                                                        {activeOrders.map((order, index) => {
+                                                            let itemName = order.name || order.productName || order.item || 'สินค้า';
+                                                            let statusColor = "text-gray-600 bg-gray-100 border-gray-200";
+                                                            const st = order.status?.trim();
+                                                            let displayStatus = st || 'รอดำเนินการ';
+                                                            let isReadyToPickup = false;
+
+                                                            if (st === 'รอตรวจสอบ') statusColor = "text-yellow-600 bg-yellow-50 border-yellow-200";
+                                                            else if (st === 'ชำระแล้ว') statusColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
+                                                            else if (st === 'อยู่ระหว่างสั่งซื้อ') statusColor = "text-blue-600 bg-blue-50 border-blue-200";
+                                                            else if (st === 'อยู่ระหว่างผลิต') statusColor = "text-indigo-600 bg-indigo-50 border-indigo-200";
+                                                            else if (st === 'รอรับของ') {
+                                                                statusColor = "text-orange-600 bg-orange-100 border-orange-300";
+                                                                displayStatus = "พร้อมรับสินค้า";
+                                                                isReadyToPickup = true;
+                                                            }
+                                                            else if (st === 'รับแล้ว') statusColor = "text-green-600 bg-green-50 border-green-200";
+                                                            else if (st === 'ยกเลิก') statusColor = "text-red-500 bg-red-50 border-red-200";
+
+                                                            return (
+                                                                <div key={order.id || index} onClick={() => setTrackingOrder(order)} className={`bg-white border rounded-2xl p-4 shadow-sm relative cursor-pointer hover:shadow-md transition-all active:scale-95 ${isReadyToPickup ? 'border-orange-200 hover:border-orange-400' : 'border-gray-200 hover:border-rose-300'}`}>
+                                                                    <div className="flex items-center justify-between mb-3">
+                                                                        <div className="flex items-center gap-3.5">
+                                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm border ${isReadyToPickup ? 'bg-orange-50 text-orange-500 border-orange-100' : 'bg-rose-50 text-rose-500 border-rose-100'}`}>
+                                                                                <i className={`fa-solid ${isReadyToPickup ? 'fa-box-open' : 'fa-box'} text-sm`}></i>
+                                                                            </div>
+                                                                            <div className="overflow-hidden pr-2">
+                                                                                <p className="font-bold text-gray-800 text-[13px] line-clamp-1">{itemName}</p>
+                                                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ID: {order.id}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="bg-gray-50/80 rounded-xl p-3 flex justify-between items-center border border-gray-100/80">
+                                                                        <span className="text-[11px] font-bold text-gray-500">สถานะปัจจุบัน:</span>
+                                                                        <span className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm border ${statusColor}`}>
+                                                                            {displayStatus}
+                                                                        </span>
+                                                                    </div>
+                                                                    {isReadyToPickup ? (
+                                                                        <div className="mt-3 pt-3 border-t border-orange-100 flex flex-col gap-2">
+                                                                            <button className="w-full py-2.5 bg-orange-500 text-white text-[11px] font-bold rounded-xl shadow-md shadow-orange-200 flex items-center justify-center gap-2">
+                                                                                <i className="fa-solid fa-qrcode text-sm"></i> แสดง QR Code เพื่อรับสินค้า
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="mt-3 pt-2.5 border-t border-gray-100 text-center">
+                                                                            <span className="text-[10px] font-bold text-[#1a237e]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูรายละเอียดการจัดส่ง</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+            
+            // 🌟 หน้า Finance
+            const renderFinanceContent = () => {
+                const fin = data?.finance || { balance: 0, income: 0, expense: 0, projects: [], isLoaded: false };
+                const safeProjects = fin.projects || [];
+                const sortedProjects = financeSort === 'desc' ? [...safeProjects] : [...safeProjects].reverse();
+
+                // 🌟 กรณีโหลดข้อมูลจาก Lazy Loading ยังไม่เสร็จ
+                if (!fin.isLoaded) {
+                    return (
+                        <div className="flex flex-col items-center justify-center py-24 animate-pop">
+                            <div className="w-12 h-12 border-4 border-blue-200 border-t-[#0066FF] rounded-full animate-spin mb-4 shadow-sm"></div>
+                            <p className="text-[#0066FF] font-bold text-sm animate-pulse">กำลังดึงข้อมูลสรุปการเงิน...</p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="space-y-6 animate-pop pb-8 pt-2">
+                        <div className="bg-gradient-to-br from-[#0066FF] to-indigo-600 p-6 rounded-[2rem] text-white shadow-lg shadow-blue-200 relative overflow-hidden">
+                            <div className="absolute -right-4 -top-4 opacity-10"><i className="fa-solid fa-sack-dollar text-8xl"></i></div>
+                            <p className="text-blue-100 text-sm font-bold tracking-wider mb-1 relative z-10"><i className="fa-solid fa-vault mr-1"></i> ยอดเงินคงเหลือชั้นปี</p>
+                            <h2 className="text-4xl font-black relative z-10">{formatCurrency(fin.balance)}</h2>
+                            <div className="flex gap-4 mt-6 pt-4 border-t border-blue-400/30 relative z-10">
+                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับรวม</p><p className="font-bold text-green-300 text-lg">{formatCurrency(fin.income)}</p></div>
+                                <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่ายรวม</p><p className="font-bold text-red-300 text-lg">{formatCurrency(fin.expense)}</p></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-4 px-2">
+                                <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-folder-open text-[#0066FF] mr-2"></i> โครงการทั้งหมด</h3>
+                                <button onClick={() => setFinanceSort(financeSort === 'desc' ? 'asc' : 'desc')} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 active:scale-95 transition">
+                                    <i className={`fa-solid ${financeSort === 'desc' ? 'fa-arrow-up-short-wide text-orange-500' : 'fa-arrow-down-short-wide text-[#0066FF]'}`}></i> {financeSort === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {sortedProjects.length === 0 ? (
+                                    <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50 shadow-sm md:col-span-2"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ไม่มีข้อมูลโครงการ</div>
+                                ) : (
+                                    sortedProjects.map(proj => (
+                                        <div key={proj.id} onClick={() => setSelectedProject(proj)} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-50 active:scale-95 transition-transform cursor-pointer group hover:border-blue-100 relative overflow-hidden">
+                                            <div className="flex justify-between items-center relative z-10">
+                                                <div className="flex-1 pr-4">
+                                                    <h4 className="font-bold text-gray-800 text-base leading-tight mb-2 group-hover:text-[#0066FF] transition-colors">{proj.name}</h4>
+                                                    <div className="flex flex-wrap gap-2 text-xs font-bold">
+                                                        {proj.income > 0 && <span className="text-green-500 bg-green-50 px-2 py-1 rounded-md border border-green-100/50"><i className="fa-solid fa-arrow-down mr-1"></i>{formatCurrency(proj.income)}</span>}
+                                                        {proj.expense > 0 && <span className="text-red-500 bg-red-50 px-2 py-1 rounded-md border border-red-100/50"><i className="fa-solid fa-arrow-up mr-1"></i>{formatCurrency(proj.expense)}</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="w-10 h-10 rounded-full bg-blue-50 text-[#0066FF] flex items-center justify-center shadow-inner shrink-0 group-hover:bg-[#0066FF] group-hover:text-white transition-colors"><i className="fa-solid fa-chevron-right"></i></div>
+                                            </div>
+                                            {(proj.income > 0 || proj.expense > 0) && (
+                                                <><div className="absolute bottom-0 left-0 h-1 bg-green-400 transition-all duration-500" style={{ width: `${(proj.income/(proj.income+proj.expense)*100)||0}%` }}></div><div className="absolute bottom-0 right-0 h-1 bg-red-400 transition-all duration-500" style={{ width: `${(proj.expense/(proj.income+proj.expense)*100)||0}%` }}></div></>
+                                            )}
+                                        </div>
+                                    ))
                                 )}
                             </div>
                         </div>
                     </div>
-                </div>
+                );
+            };
 
-                {/* 🌟 2. โซนเนื้อหา (ปรับเป็น Card ใหญ่มุมมน เลื่อนทับ Header ด้านบน) */}
-                <div className="relative z-10 bg-[#F4F7FB] rounded-t-[2rem] w-full min-h-screen -mt-10 pt-8 pb-32 shadow-[0_-8px_20px_rgba(0,0,0,0.15)]">
-                    
-                    {/* 🌟 ขีดสีเทาเล็กๆ ตรงกลาง (Drag Handle) */}
-                    <div className="absolute top-3 left-1/2 transform -translate-x-1/2 w-12 h-1.5 bg-gray-300/80 rounded-full"></div>
+            const renderSettingsContent = () => {
+                const isLineConnected = user.userId && user.userId.length > 5;
+                return (
+                    <div className="space-y-4 animate-pop pb-8 pt-2">
+                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 text-center">
+                            <div className="w-20 h-20 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center border-4 border-blue-50 shadow-inner"><i className="fa-solid fa-user text-3xl text-gray-300"></i></div>
+                            <h2 className="text-xl font-bold text-gray-800">{user.name}</h2>
+                            <p className="text-gray-400 text-sm font-medium mt-1">{user.studentId}</p>
+                            <div className="mt-4 flex justify-center gap-2">
+                                <span className="bg-blue-50 border border-blue-100 text-[#0066FF] px-3 py-1 rounded-full text-xs font-bold shadow-sm">นักศึกษา</span>
+                                {(isLineConnected) && <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Verified <i className="fa-solid fa-circle-check ml-0.5"></i></span>}
+                            </div>
+                        </div>
 
-                    <div className="mx-4 md:mx-8 lg:mx-auto lg:max-w-6xl">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 lg:gap-8 items-start">
-                        
-                            {/* 📱 คอลัมน์ซ้าย: การ์ดบิลหลัก และ แบนเนอร์ร้านค้า */}
-                            <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
-                                
-                                {/* 💳 การ์ดบิลหลัก */}
-                                <div className="bg-white rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-200/80 transition-shadow hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
-                                    {billCount > 0 && featuredBill ? (
-                                        <>
-                                            {/* โซนบน: ข้อมูล ยอดเงิน และ ปุ่มจ่าย */}
-                                            <div className="p-5 md:p-6">
-                                                <p className="text-gray-600 text-xs font-bold mb-2 line-clamp-1 flex items-center gap-1.5">
-                                                    <i className="fa-solid fa-file-invoice text-gray-400"></i> {featuredBill.item}
-                                                </p>
-                                                
-                                                <div className="flex justify-between items-center mb-2">
-                                                    {/* ยอดเงิน */}
-                                                    <div className="flex items-baseline font-sans">
-                                                        <span className={`text-lg font-semibold tracking-tighter mr-0.5 ${priceColor}`}>฿</span>
-                                                        <span className={`text-[34px] font-black tracking-tight leading-none ${priceColor}`}>
-                                                            {formatCurrency(featuredBill.total).replace('฿','').trim()}
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    {/* ปุ่มชำระเงิน หรือ รอตรวจสอบ */}
-                                                    <button 
-                                                        disabled={isDisabled} 
-                                                        onClick={() => !isDisabled && handleOpenPayment(featuredBill)} 
-                                                        className={`px-5 py-2.5 rounded-lg text-white font-bold text-[13px] shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 ${btnClass}`}
-                                                    >
-                                                        {btnIcon && <i className={`${btnIcon} text-xs`}></i>}
-                                                        {btnText}
-                                                    </button>
-                                                </div>
-                                                
-                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-gray-200 bg-gray-50 mt-1 mb-2 shadow-sm">
-                                                    <i className="fa-regular fa-calendar text-gray-500 text-[10px]"></i>
-                                                    <span className="text-[10px] font-bold text-gray-500">
-                                                        วันครบกำหนดชำระ: <span className="text-red-700">{formatThaiDate(featuredBill.dueDate)}</span>
-                                                    </span>
-                                                </div>
-
-                                                {/* กล่องเตือน: เลยกำหนด (สีแดงเด่นชัด) */}
-                                                {isOverdueAny && featuredBill.status !== 'รอตรวจสอบ' ? (
-                                                    <div className="mt-4 bg-red-50 rounded-xl p-3 border border-red-200 animate-pulse shadow-sm">
-                                                        <div className="flex gap-2.5">
-                                                            <div className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                                                                <i className="fa-solid fa-exclamation text-[10px] font-bold"></i>
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-red-700 font-bold text-[13px] mb-0.5">เลยกำหนดชำระ {maxDaysLate} วัน!</h4>
-                                                                <p className="text-red-500 text-[11px] leading-relaxed font-medium">
-                                                                    กรุณาชำระยอดค้างโดยด่วน เพื่อหลีกเลี่ยงค่าปรับที่จะเกิดขึ้น
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) 
-                                                /* กล่องเตือน: ใกล้ครบกำหนด (เหลือ <= 3 วัน โชว์สีเหลือง) */
-                                                : (minDaysLeft <= 3 && minDaysLeft >= 0 && featuredBill.status !== 'รอตรวจสอบ') ? (
-                                                    <div className="mt-4 bg-[#FFF8E7] rounded-xl p-3 border border-[#FBE3B8] shadow-sm">
-                                                        <div className="flex gap-2.5">
-                                                            <div className="w-5 h-5 rounded-full bg-[#E5A545] text-white flex items-center justify-center shrink-0 mt-0.5">
-                                                                <i className="fa-solid fa-exclamation text-[10px] font-bold"></i>
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-[#CF8320] font-bold text-[13px] mb-0.5">
-                                                                    ครบกำหนดชำระในอีก {minDaysLeft === 0 ? 'วันนี้' : minDaysLeft + ' วัน'}
-                                                                </h4>
-                                                                <p className="text-[#C89B51] text-[11px] leading-relaxed font-medium">
-                                                                    กรุณาชำระบิลตามเวลาที่กำหนดเพื่อหลีกเลี่ยงค่าปรับ
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) : null}
-                                            </div>
-
-                                            {/* โซนล่าง: ปุ่มบิลทั้งหมด */}
-                                            <div className="px-5 pb-5 md:px-6 md:pb-6">
-                                                <div className="border-t border-dashed border-gray-200/80 mb-4 mt-1"></div>
-                                                <button onClick={() => handleTabChange('bills')} className="w-full text-center text-[12px] font-bold text-[#0066FF] py-3.5 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
-                                                    บิลทั้งหมด {billCount > 1 && `(${billCount} รายการ)`} <i className="fa-solid fa-arrow-right ml-1"></i>
-                                                </button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        /* 🌟 สถานะชำระครบหมดแล้ว */
-                                        <div className="p-8 flex flex-col items-center justify-center text-center bg-white min-h-[220px]">
-                                            <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-3 border border-green-100 mt-2 shadow-sm">
-                                                <i className="fa-solid fa-check-double text-3xl"></i>
-                                            </div>
-                                            <h3 className="text-xl font-black text-gray-800 tracking-tight">ชำระครบหมดแล้ว</h3>
-                                            <p className="text-gray-500 text-sm mt-1.5 font-medium">คุณไม่มียอดค้างชำระในขณะนี้</p>
-                                        </div>
-                                    )}
+                        <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-50 mb-6">
+                            <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100"><span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">บัญชีและการแจ้งเตือน</span></div>
+                            <button onClick={handleChangePassword} className="w-full p-4 px-5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100">
+                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-lock text-sm"></i></div>
+                                    <div className="text-left"><span className="text-sm font-bold text-gray-700 block leading-tight">ตั้งรหัสผ่านใหม่ / เปลี่ยนรหัสผ่าน</span></div>
                                 </div>
+                                <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                            </button>
+                            <button onClick={!isLineConnected ? handleLineConnectToggle : null} className={`w-full p-4 px-5 flex items-center justify-between transition ${!isLineConnected ? 'hover:bg-gray-50 active:bg-gray-100 cursor-pointer' : 'cursor-default'}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isLineConnected ? 'bg-[#00B900] text-white shadow-md shadow-[#00B900]/30' : 'bg-gray-100 text-gray-400'}`}><i className="fa-brands fa-line text-xl"></i></div>
+                                            <div className="text-left"><span className="text-sm font-bold text-gray-700 block leading-tight">เชื่อมต่อ LINE</span><span className={`text-[10px] font-bold ${isLineConnected ? 'text-[#00B900]' : 'text-red-400'}`}>{isLineConnected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</span></div>
+                                        </div>
+                                        {isLineConnected ? <i className="fa-solid fa-circle-check text-[#00B900] text-lg"></i> : <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>}
+                                    </button>
+                        </div>
 
-                                {/* 🌟 แบนเนอร์ร้านค้าสวัสดิการ */}
-                                {isStoreOpen && hasAccess('orders') && (
-                                    <div onClick={() => handleTabChange('orders')} className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 shadow-[0_8px_24px_rgba(249,115,22,0.3)] flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-orange-300 relative overflow-hidden">
-                                        <div className="absolute right-[-10px] top-[-10px] opacity-10 pointer-events-none">
-                                            <i className="fa-solid fa-store text-6xl"></i>
+                        <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-50">
+                            <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100"><span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">ช่วยเหลือ</span></div>
+                            <button onClick={handleContactAdmin} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
+                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500"><i className="fa-solid fa-headset text-sm"></i></div><span className="text-sm font-bold text-gray-700">ความช่วยเหลือ / ติดต่อแอดมิน</span></div>
+                                <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden mt-6 border border-gray-50">
+                            <button onClick={handleLogoutConfirm} className="w-full p-4 px-5 flex items-center justify-between hover:bg-red-50 transition group active:bg-red-100">
+                                <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100"><i className="fa-solid fa-power-off text-sm"></i></div><span className="text-sm font-bold text-red-500">ออกจากระบบ</span></div>
+                            </button>
+                        </div>
+
+                        <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v2.0.1</p><p>🖥️ Develop by CHOKUN</p></div>
+                    </div>
+                );
+            };
+
+            const renderSubPageHeader = (title, subtitle) => {
+                const hideBackButton = tab === 'finance' || tab === 'settings';
+                
+                return (
+                    <div className="sticky top-0 z-40 bg-[#F4F7FB]/95 backdrop-blur-xl pt-[calc(env(safe-area-inset-top)+20px)] pb-4 px-5 -mx-4 mb-5 flex items-center justify-center relative shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] border-b border-white/60 transition-all min-h-[70px]">
+                        
+                        {!hideBackButton && (
+                            <button onClick={() => handleTabChange('home')} className="absolute left-5 w-10 h-10 shrink-0 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 z-10">
+                                <i className="fa-solid fa-chevron-left"></i>
+                            </button>
+                        )}
+                        
+                        <div className="text-center w-full px-12">
+                            <h2 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight leading-tight truncate">{title}</h2>
+                            {subtitle && <p className="text-[10px] font-bold text-[#0066FF] uppercase tracking-widest mt-0.5 truncate">{subtitle}</p>}
+                        </div>
+                        
+                    </div>
+                );
+            };
+
+        return (
+                <div className="h-[100dvh] w-full flex items-center justify-center bg-[#F0F4F8]">
+                    {loading && <Loading text="กำลังโหลดข้อมูล..." />}
+
+                    <div className="flex flex-col w-full h-[100dvh] max-w-none lg:max-w-6xl mx-auto bg-[#F0F4F8] relative overflow-hidden shadow-2xl">
+                        {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
+
+                        <main className="flex-1 w-full relative overflow-hidden bg-[#F4F7FB]">
+                            <div id="main-scroll-area" className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-4 pt-0'}`}>
+                                
+                                <style>{`
+                                    @keyframes slideInWindowRight { 0% { transform: translateX(100%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+                                    .animate-window-slide { animation: slideInWindowRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+                                `}</style>
+
+                                {tab === 'home' && hasAccess('home') && renderHomeContent()}
+
+                                {tab === 'finance' && hasAccess('finance') && (
+                                    <div className="animate-pop w-full">
+                                        {renderSubPageHeader("สรุปการเงินชั้นปี", "ภาพรวมรายรับรายจ่าย")}
+                                        <div className="px-1">{renderFinanceContent()}</div>
+                                    </div>
+                                )}
+                                
+                                {tab === 'bills' && hasAccess('bills') && (
+                                    <div className="animate-window-slide w-full">
+                                        {renderSubPageHeader("รายการบิลของคุณ", "ตรวจสอบและชำระเงินค้างชำระ")}
+                                        <div className="px-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {data?.bills?.length === 0 && !loading && (
+                                                <div className="bg-white p-8 rounded-[2rem] text-center shadow-sm border border-gray-50 md:col-span-2 lg:col-span-3"><div className="text-6xl mb-4">🎉</div><h3 className="font-bold text-gray-800 text-lg">ยอดเยี่ยมมาก!</h3><p className="text-gray-500 text-sm mt-1">ไม่มีบิลค้างชำระในขณะนี้</p></div>
+                                            )}
+                                            {(data?.bills || []).map(bill => {
+                                                const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
+                                                const isOverdue = bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ';
+                                                return (
+                                                    <div key={bill.billId} className={`bg-white rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden transition-all duration-300 flex flex-col justify-between ${isOverdue ? 'border-2 border-red-400 shadow-red-100 ring-4 ring-red-50' : 'border border-gray-100'}`}>
+                                                        <div>
+                                                            {isOverdue && (
+                                                                <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4 border border-red-100 flex items-start gap-3 animate-[pop_0.4s_ease-out]"><div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5 animate-pulse"><i className="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i></div><div><h5 className="font-bold text-sm">เกินกำหนดชำระ {bill.daysLate} วัน</h5><p className="text-[10px] font-medium text-red-500 mt-0.5 leading-snug">กรุณารีบดำเนินการชำระเงินโดยด่วน เพื่อหลีกเลี่ยงค่าปรับเพิ่มเติม</p></div></div>
+                                                            )}
+                                                            <div className="flex justify-between items-start mb-4">
+                                                                <div className="flex gap-3">
+                                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner shrink-0 ${isOverdue ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#0066FF]'}`}><i className="fa-solid fa-file-invoice-dollar"></i></div>
+                                                                    <div>
+                                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1"><i className="fa-solid fa-receipt mr-1"></i> {bill.billId}</p>
+                                                                        <h4 className="font-bold text-gray-800 text-base line-clamp-1 pr-2">{bill.item}</h4>
+                                                                        <p className={`text-[10px] font-bold mt-1 px-2 py-0.5 inline-block rounded-md ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}><i className="fa-regular fa-calendar-check mr-1"></i> ต้องชำระก่อน: {formatThaiDate(bill.dueDate)}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100 space-y-2.5">
+                                                            <div className="flex justify-between items-center text-xs font-medium text-gray-500"><span><i className="fa-solid fa-receipt mr-1.5 opacity-50"></i> ยอดบิลเริ่มต้น</span><span>{formatCurrency(bill.amount)}</span></div>
+                                                            {bill.discount > 0 && <div className="flex justify-between items-center text-xs font-bold text-green-600"><span><i className="fa-solid fa-tags mr-1.5 opacity-70"></i> ส่วนลด / หักยอดโอนแล้ว</span><span>-{formatCurrency(bill.discount)}</span></div>}
+                                                            {bill.fine > 0 && <div className="flex justify-between items-center text-xs font-bold text-red-500"><span><i className="fa-solid fa-scale-unbalanced mr-1.5 opacity-70"></i> ค่าปรับล่าช้า ({bill.daysLate} วัน)</span><span>+{formatCurrency(bill.fine)}</span></div>}
+                                                            <div className="pt-2.5 mt-1 border-t border-gray-200/80 flex justify-between items-center"><span className="text-xs font-bold text-gray-800 uppercase tracking-wider">ยอดชำระสุทธิ</span><span className={`font-black text-xl ${isOverdue ? 'text-red-600' : 'text-[#0066FF]'}`}>{formatCurrency(bill.total)}</span></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 mt-auto">
+                                                            {bill.status !== 'รอตรวจสอบ' && !isOverdue && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
+                                                            {bill.status === 'รอตรวจสอบ' ? (
+                                                                <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3.5 rounded-xl text-sm font-bold border border-yellow-100/50 flex justify-center items-center gap-2">รอตรวจสอบ <div className="loader w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div></button>
+                                                            ) : (
+                                                                <button onClick={() => handleOpenPayment(bill)} className={`flex-1 py-3.5 rounded-xl text-white text-sm font-bold shadow-lg active:scale-95 transition-all transform flex justify-center items-center gap-2 ${isOverdue ? 'bg-red-500 shadow-red-200 hover:bg-red-600' : 'bg-[#0066FF] shadow-blue-200 hover:bg-blue-700'}`}>ชำระเงิน <i className="fa-solid fa-arrow-right"></i></button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                        <div className="flex items-center gap-3.5 relative z-10">
-                                            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white border border-white/40 shadow-inner shrink-0">
-                                                <i className="fa-solid fa-store text-xl drop-shadow-sm"></i>
-                                            </div>
-                                            <div className="text-white drop-shadow-sm">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <h3 className="font-black text-[15px] leading-tight">ร้านค้า</h3>
-                                                    <span className="bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">NEW</span>
+                                    </div>
+                                )} 
+
+                                {tab === 'orders' && hasAccess('orders') && (
+                                    <div className="animate-window-slide w-full">
+                                        {renderSubPageHeader("ร้านค้า", "รายการสินค้าจัดจำหน่าย")}
+                                        <div className="px-1">
+                                            {(!data?.orderEnabled || !data?.products || data.products.filter(p => p.status !== 'OFF').length === 0) ? (
+                                                <div className="bg-white rounded-[2rem] p-10 text-center shadow-sm border border-gray-50 mt-4"><div className="text-5xl mb-4 text-gray-300"><i className="fa-solid fa-store-slash"></i></div><h3 className="font-bold text-gray-800 text-xl">ไม่มีสินค้าพร้อมขาย</h3><p className="text-gray-500 text-sm mt-2 leading-relaxed">ขณะนี้ยังไม่มีรายการสินค้าเปิดจำหน่าย</p></div>
+                                            ) : (
+                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                    {data.products.map(p => {
+                                                        if (p.status === 'OFF') return null;
+                                                        const isSoldOut = p.status === 'OUT' || p.stock <= 0;
+                                                        const displayImg = (p.productGallery && p.productGallery.length > 0) ? p.productGallery[0] : (p.image || p.img || "");
+                                                        return (
+                                                            <div key={p.id} onClick={() => !isSoldOut && setSelectedProduct(p)} className={`bg-white rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform border border-gray-50 cursor-pointer ${isSoldOut ? 'grayscale opacity-70' : 'hover:border-blue-200 hover:shadow-md'}`}>
+                                                                <div className="aspect-square bg-gray-100 relative"><img src={getDirectDriveUrl(displayImg)} className="w-full h-full object-cover" />{!isSoldOut && <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center text-[#0066FF] font-bold"><i className="fa-solid fa-plus"></i></div>}</div>
+                                                                <div className="p-3 bg-white"><h4 className="font-bold text-gray-800 text-sm truncate">{p.name}</h4><div className="flex justify-between items-center mt-1"><span className="text-[#0066FF] font-black">{formatCurrency(p.price)}</span>{isSoldOut && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-md">หมด</span>}</div></div>
+                                                            </div>
+                                                        )
+                                                    })}
                                                 </div>
-                                                <p className="text-orange-50 text-[11px] font-medium">รายการสินค้าจัดจำหน่าย</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white/20 text-white rounded-full w-8 h-8 flex items-center justify-center shrink-0 relative z-10 shadow-sm border border-white/30">
-                                            <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                                            )}
                                         </div>
                                     </div>
                                 )}
-                            </div>
 
-                            {/* 💻 คอลัมน์ขวา: ประวัติและติดตามสินค้า */}
-                            <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
-                                
-                                {/* 📋 โซนประวัติและติดตามสินค้า */}
-                                <div className="bg-white rounded-[1.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.1)] border border-gray-200/80 overflow-hidden pb-4">
-                                    {hasActiveOrders ? (
-                                        // 🌟 ถ้ามีออเดอร์ ให้โชว์ Toggle Switch
-                                        <div className="p-3 pb-1">
-                                            <div className="flex bg-gray-50 rounded-full p-1 relative border border-gray-200/60 shadow-inner">
-                                                <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#1a237e] rounded-full shadow-md transition-transform duration-300 ease-in-out ${homeTab === 'tracking' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`}></div>
-                                                <button onClick={() => setHomeTab('history')} className={`flex-1 py-2.5 text-[13px] font-bold rounded-full z-10 transition-colors ${homeTab === 'history' ? 'text-white' : 'text-gray-500'}`}>ประวัติล่าสุด</button>
-                                                <button onClick={() => setHomeTab('tracking')} className={`flex-1 py-2.5 text-[13px] font-bold rounded-full z-10 transition-colors ${homeTab === 'tracking' ? 'text-white' : 'text-gray-500'}`}>ติดตามสินค้า</button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        // 🌟 ถ้าไม่มีออเดอร์ โชว์เป็นแถบหัวข้อแบบคลีนๆ
-                                        <div className="p-4 pb-3 border-b border-gray-100/80">
-                                            <h3 className="font-extrabold text-gray-800 text-[14px] flex items-center gap-2">
-                                                <i className="fa-solid fa-clock-rotate-left text-[#0066FF]"></i> ประวัติทำรายการล่าสุด
-                                            </h3>
-                                        </div>
-                                    )}
-
-                                    <div className="px-4 pt-3">
-                                        {homeTab === 'history' || !hasActiveOrders ? (
-                                            // 📝 เนื้อหาแท็บ "ประวัติล่าสุด"
-                                            <div className="space-y-3">
-                                                {recentHistory.length > 0 ? (
-                                                    recentHistory.map((hist, i) => {
-                                                        // 🌟 จัดการสไตล์ตามสถานะ
+                                {tab === 'history' && hasAccess('history') && (
+                                            <div className="animate-pop w-full">
+                                                {renderSubPageHeader("ประวัติทำรายการ", "การชำระเงินย้อนหลังของคุณ")}
+                                                <div className="px-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    {(data?.history || []).map((hist, i) => {
                                                         let statusStyle = {
                                                             bgGradient: "from-emerald-100/50",
                                                             stampIcon: "fa-circle-check text-emerald-600",
@@ -2553,489 +2879,118 @@ const Dashboard = ({ user, setUser, initialData, onLogout }) => {
                                                         }
 
                                                         return (
-                                                            <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
+                                                            <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-100 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
                                                                 
-                                                                {/* พื้นหลังไล่สีด้านขวา */}
                                                                 <div className={`absolute inset-y-0 right-0 w-32 bg-gradient-to-l ${statusStyle.bgGradient} to-transparent pointer-events-none z-0`}></div>
-                                                                
-                                                                {/* ลายน้ำตราปั๊ม */}
                                                                 <div className="absolute -right-3 -bottom-4 opacity-[0.07] pointer-events-none z-0 transform -rotate-12">
                                                                     <i className={`fa-solid ${statusStyle.stampIcon} text-7xl`}></i>
                                                                 </div>
 
-                                                                {/* เนื้อหาการ์ด */}
                                                                 <div className="relative z-10 flex justify-between items-start">
                                                                     <div>
                                                                         <p className="text-[9px] font-bold text-[#0066FF] uppercase tracking-wider mb-0.5">ID: {hist.billId || hist.id}</p>
-                                                                        <h4 className="font-bold text-gray-800 text-[13px] leading-tight mb-1 line-clamp-1 pr-2">{hist.item}</h4>
+                                                                        <h4 className="font-bold text-gray-800 text-sm line-clamp-1 pr-2">{hist.item}</h4>
                                                                     </div>
-                                                                    <span className={`font-black text-[13px] shrink-0 px-2 py-0.5 rounded-lg border shadow-sm ${statusStyle.amountColor}`}>
+                                                                    <span className={`font-black text-sm shrink-0 px-2 py-0.5 rounded-lg border shadow-sm ${statusStyle.amountColor}`}>
                                                                         {formatCurrency(hist.total)}
                                                                     </span>
                                                                 </div>
                                                                 
-                                                                <div className="relative z-10 mt-2.5 flex justify-between items-center text-[10px] font-medium text-gray-500">
+                                                                <div className="relative z-10 mt-2 flex justify-between items-center text-[10px] text-gray-500 font-medium">
                                                                     <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
                                                                     <span className={`${statusStyle.statusText} font-bold`}><i className={`fa-solid ${statusStyle.statusIcon}`}></i> {statusStyle.statusLabel}</span>
                                                                 </div>
                                                                 
                                                                 {hist.slipUrl && (
-                                                                    <div className="relative z-10 mt-3 pt-2.5 border-t border-gray-100/80 text-center">
+                                                                    <div className="relative z-10 mt-3 pt-2 border-t border-gray-50 text-center">
                                                                         <span className="text-[10px] font-bold text-[#0066FF]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูสลิปหลักฐาน</span>
                                                                     </div>
                                                                 )}
                                                             </div>
                                                         );
-                                                    })
-                                                ) : (
-                                                    <div className="text-center py-8 text-gray-400"><div className="text-4xl mb-3 opacity-20"><i className="fa-solid fa-receipt"></i></div><p className="text-xs font-bold">ไม่มีประวัติทำรายการ</p></div>
-                                                )}
-                                                {data?.history?.length > 5 && ( 
-                                                    <button onClick={() => handleTabChange('history')} className="w-full text-center text-[12px] font-bold text-[#0066FF] mt-3 py-3.5 hover:bg-blue-50 transition bg-blue-50/50 rounded-2xl border border-blue-100/50 shadow-sm">
-                                                        ดูรายการเพิ่มเติม <i className="fa-solid fa-arrow-right ml-1"></i>
-                                                    </button> 
-                                                )}
-                                            </div>
-                                        ) : (
-                                            // 📦 เนื้อหาแท็บ "ติดตามสินค้า"
-                                            <div className="space-y-3 px-1">
-                                                {activeOrders.map((order, index) => {
-                                                    let itemName = order.name || order.productName || order.item || 'สินค้า';
-                                                    let statusColor = "text-gray-600 bg-gray-100 border-gray-200";
-                                                    const st = order.status?.trim();
-                                                    let displayStatus = st || 'รอดำเนินการ';
-                                                    let isReadyToPickup = false;
-
-                                                    if (st === 'รอตรวจสอบ') statusColor = "text-yellow-600 bg-yellow-50 border-yellow-200";
-                                                    else if (st === 'ชำระแล้ว') statusColor = "text-emerald-600 bg-emerald-50 border-emerald-200";
-                                                    else if (st === 'อยู่ระหว่างสั่งซื้อ') statusColor = "text-blue-600 bg-blue-50 border-blue-200";
-                                                    else if (st === 'อยู่ระหว่างผลิต') statusColor = "text-indigo-600 bg-indigo-50 border-indigo-200";
-                                                    else if (st === 'รอรับของ') {
-                                                        statusColor = "text-orange-600 bg-orange-100 border-orange-300";
-                                                        displayStatus = "พร้อมรับสินค้า";
-                                                        isReadyToPickup = true;
-                                                    }
-                                                    else if (st === 'รับแล้ว') statusColor = "text-green-600 bg-green-50 border-green-200";
-                                                    else if (st === 'ยกเลิก') statusColor = "text-red-500 bg-red-50 border-red-200";
-
-                                                    return (
-                                                        <div key={order.id || index} onClick={() => setTrackingOrder(order)} className={`bg-white border rounded-2xl p-4 shadow-sm relative cursor-pointer hover:shadow-md transition-all active:scale-95 ${isReadyToPickup ? 'border-orange-200 hover:border-orange-400' : 'border-gray-200 hover:border-rose-300'}`}>
-                                                            <div className="flex items-center justify-between mb-3">
-                                                                <div className="flex items-center gap-3.5">
-                                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm border ${isReadyToPickup ? 'bg-orange-50 text-orange-500 border-orange-100' : 'bg-rose-50 text-rose-500 border-rose-100'}`}>
-                                                                        <i className={`fa-solid ${isReadyToPickup ? 'fa-box-open' : 'fa-box'} text-sm`}></i>
-                                                                    </div>
-                                                                    <div className="overflow-hidden pr-2">
-                                                                        <p className="font-bold text-gray-800 text-[13px] line-clamp-1">{itemName}</p>
-                                                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ID: {order.id}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="bg-gray-50/80 rounded-xl p-3 flex justify-between items-center border border-gray-100/80">
-                                                                <span className="text-[11px] font-bold text-gray-500">สถานะปัจจุบัน:</span>
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm border ${statusColor}`}>
-                                                                    {displayStatus}
-                                                                </span>
-                                                            </div>
-                                                            {isReadyToPickup ? (
-                                                                <div className="mt-3 pt-3 border-t border-orange-100 flex flex-col gap-2">
-                                                                    <button className="w-full py-2.5 bg-orange-500 text-white text-[11px] font-bold rounded-xl shadow-md shadow-orange-200 flex items-center justify-center gap-2">
-                                                                        <i className="fa-solid fa-qrcode text-sm"></i> แสดง QR Code เพื่อรับสินค้า
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="mt-3 pt-2.5 border-t border-gray-100 text-center">
-                                                                    <span className="text-[10px] font-bold text-[#1a237e]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูรายละเอียดการจัดส่ง</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                                                    })}
+                                                    {data?.history?.length === 0 && <div className="text-center text-gray-400 py-10 font-bold bg-white rounded-3xl border border-gray-50 md:col-span-2 lg:col-span-3"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-clock-rotate-left"></i></div>ไม่มีประวัติทำรายการ</div>}
+                                                </div>
                                             </div>
                                         )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-    
-
-    // 🌟 หน้า Finance
-    const renderFinanceContent = () => {
-        const fin = data?.finance || { balance: 0, income: 0, expense: 0, projects: [] };
-        const safeProjects = fin.projects || [];
-        const sortedProjects = financeSort === 'desc' ? [...safeProjects] : [...safeProjects].reverse();
-
-        return (
-            <div className="space-y-6 animate-pop pb-8 pt-2">
-                <div className="bg-gradient-to-br from-[#0066FF] to-indigo-600 p-6 rounded-[2rem] text-white shadow-lg shadow-blue-200 relative overflow-hidden">
-                    <div className="absolute -right-4 -top-4 opacity-10"><i className="fa-solid fa-sack-dollar text-8xl"></i></div>
-                    <p className="text-blue-100 text-sm font-bold tracking-wider mb-1 relative z-10"><i className="fa-solid fa-vault mr-1"></i> ยอดเงินคงเหลือชั้นปี</p>
-                    <h2 className="text-4xl font-black relative z-10">{formatCurrency(fin.balance)}</h2>
-                    <div className="flex gap-4 mt-6 pt-4 border-t border-blue-400/30 relative z-10">
-                        <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-down mr-1"></i>รายรับรวม</p><p className="font-bold text-green-300 text-lg">{formatCurrency(fin.income)}</p></div>
-                        <div className="flex-1 bg-white/10 p-3 rounded-2xl backdrop-blur-sm"><p className="text-blue-100 text-[10px] uppercase font-bold tracking-wider mb-1"><i className="fa-solid fa-arrow-up mr-1"></i>รายจ่ายรวม</p><p className="font-bold text-red-300 text-lg">{formatCurrency(fin.expense)}</p></div>
-                    </div>
-                </div>
-
-                <div>
-                    <div className="flex justify-between items-center mb-4 px-2">
-                        <h3 className="font-bold text-gray-800 flex items-center"><i className="fa-solid fa-folder-open text-[#0066FF] mr-2"></i> โครงการทั้งหมด</h3>
-                        <button onClick={() => setFinanceSort(financeSort === 'desc' ? 'asc' : 'desc')} className="text-[10px] font-bold bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 active:scale-95 transition">
-                            <i className={`fa-solid ${financeSort === 'desc' ? 'fa-arrow-up-short-wide text-orange-500' : 'fa-arrow-down-short-wide text-[#0066FF]'}`}></i> {financeSort === 'desc' ? 'เรียงลำดับเก่าไปใหม่' : 'เรียงลำดับใหม่ไปเก่า'}
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {sortedProjects.length === 0 ? (
-                            <div className="bg-white rounded-[2rem] p-10 text-center text-gray-400 font-bold border border-gray-50 shadow-sm md:col-span-2"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-box-open"></i></div>ไม่มีข้อมูลโครงการ</div>
-                        ) : (
-                            sortedProjects.map(proj => (
-                                <div key={proj.id} onClick={() => setSelectedProject(proj)} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-50 active:scale-95 transition-transform cursor-pointer group hover:border-blue-100 relative overflow-hidden">
-                                    <div className="flex justify-between items-center relative z-10">
-                                        <div className="flex-1 pr-4">
-                                            <h4 className="font-bold text-gray-800 text-base leading-tight mb-2 group-hover:text-[#0066FF] transition-colors">{proj.name}</h4>
-                                            <div className="flex flex-wrap gap-2 text-xs font-bold">
-                                                {proj.income > 0 && <span className="text-green-500 bg-green-50 px-2 py-1 rounded-md border border-green-100/50"><i className="fa-solid fa-arrow-down mr-1"></i>{formatCurrency(proj.income)}</span>}
-                                                {proj.expense > 0 && <span className="text-red-500 bg-red-50 px-2 py-1 rounded-md border border-red-100/50"><i className="fa-solid fa-arrow-up mr-1"></i>{formatCurrency(proj.expense)}</span>}
-                                            </div>
-                                        </div>
-                                        <div className="w-10 h-10 rounded-full bg-blue-50 text-[#0066FF] flex items-center justify-center shadow-inner shrink-0 group-hover:bg-[#0066FF] group-hover:text-white transition-colors"><i className="fa-solid fa-chevron-right"></i></div>
-                                    </div>
-                                    {(proj.income > 0 || proj.expense > 0) && (
-                                        <><div className="absolute bottom-0 left-0 h-1 bg-green-400 transition-all duration-500" style={{ width: `${(proj.income/(proj.income+proj.expense)*100)||0}%` }}></div><div className="absolute bottom-0 right-0 h-1 bg-red-400 transition-all duration-500" style={{ width: `${(proj.expense/(proj.income+proj.expense)*100)||0}%` }}></div></>
-                                    )}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // 🌟 หน้า Settings
-    const renderSettingsContent = () => {
-        const isLineConnected = user.userId && user.userId.length > 5;
-        return (
-            <div className="space-y-4 animate-pop pb-8 pt-2">
-                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-50 text-center">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center border-4 border-blue-50 shadow-inner"><i className="fa-solid fa-user text-3xl text-gray-300"></i></div>
-                    <h2 className="text-xl font-bold text-gray-800">{user.name}</h2>
-                    <p className="text-gray-400 text-sm font-medium mt-1">{user.studentId}</p>
-                    <div className="mt-4 flex justify-center gap-2">
-                        <span className="bg-blue-50 border border-blue-100 text-[#0066FF] px-3 py-1 rounded-full text-xs font-bold shadow-sm">นักศึกษา</span>
-                        {(isLineConnected) && <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Verified <i className="fa-solid fa-circle-check ml-0.5"></i></span>}
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-50 mb-6">
-                    <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100"><span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">บัญชีและการแจ้งเตือน</span></div>
-                    <button onClick={handleChangePassword} className="w-full p-4 px-5 flex items-center justify-between border-b border-gray-50 hover:bg-gray-50 transition active:bg-gray-100">
-                        <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#0066FF]"><i className="fa-solid fa-lock text-sm"></i></div>
-                            <div className="text-left"><span className="text-sm font-bold text-gray-700 block leading-tight">ตั้งรหัสผ่านใหม่ / เปลี่ยนรหัสผ่าน</span></div>
-                        </div>
-                        <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                    </button>
-                    <button onClick={!isLineConnected ? handleLineConnectToggle : null} className={`w-full p-4 px-5 flex items-center justify-between transition ${!isLineConnected ? 'hover:bg-gray-50 active:bg-gray-100 cursor-pointer' : 'cursor-default'}`}>
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isLineConnected ? 'bg-[#00B900] text-white shadow-md shadow-[#00B900]/30' : 'bg-gray-100 text-gray-400'}`}><i className="fa-brands fa-line text-xl"></i></div>
-                                    <div className="text-left"><span className="text-sm font-bold text-gray-700 block leading-tight">เชื่อมต่อ LINE</span><span className={`text-[10px] font-bold ${isLineConnected ? 'text-[#00B900]' : 'text-red-400'}`}>{isLineConnected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</span></div>
-                                </div>
-                                {isLineConnected ? <i className="fa-solid fa-circle-check text-[#00B900] text-lg"></i> : <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>}
-                            </button>
-                </div>
-
-                <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-gray-50">
-                    <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100"><span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">ช่วยเหลือ</span></div>
-                    <button onClick={handleContactAdmin} className="w-full p-4 px-5 flex items-center justify-between hover:bg-gray-50 transition active:bg-gray-100">
-                        <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500"><i className="fa-solid fa-headset text-sm"></i></div><span className="text-sm font-bold text-gray-700">ความช่วยเหลือ / ติดต่อแอดมิน</span></div>
-                        <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                    </button>
-                </div>
-                
-                <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden mt-6 border border-gray-50">
-                    <button onClick={handleLogoutConfirm} className="w-full p-4 px-5 flex items-center justify-between hover:bg-red-50 transition group active:bg-red-100">
-                        <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-100"><i className="fa-solid fa-power-off text-sm"></i></div><span className="text-sm font-bold text-red-500">ออกจากระบบ</span></div>
-                    </button>
-                </div>
-
-                <div className="text-center text-gray-400 text-[10px] mt-8 font-medium tracking-wide"><p>Payment System v2.0.1</p><p>🖥️ Develop by CHOKUN</p></div>
-            </div>
-        );
-    };
-
-    // 🌟 ฟังก์ชันสร้างหัวข้อหน้าย่อยแบบปักหมุด (Sticky Header)
-    const renderSubPageHeader = (title, subtitle) => {
-        // เช็คว่าถ้าเป็นหน้าการเงิน หรือ หน้าการตั้งค่า ให้ซ่อนปุ่มกลับ
-        const hideBackButton = tab === 'finance' || tab === 'settings';
-        
-        return (
-            <div className="sticky top-0 z-40 bg-[#F4F7FB]/95 backdrop-blur-xl pt-[calc(env(safe-area-inset-top)+20px)] pb-4 px-5 -mx-4 mb-5 flex items-center justify-center relative shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] border-b border-white/60 transition-all min-h-[70px]">
-                
-                {/* 🔘 ปุ่มกลับ (ลอยอยู่ฝั่งซ้ายเสมอ) */}
-                {!hideBackButton && (
-                    <button onClick={() => handleTabChange('home')} className="absolute left-5 w-10 h-10 shrink-0 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 z-10">
-                        <i className="fa-solid fa-chevron-left"></i>
-                    </button>
-                )}
-                
-                {/* 📝 ข้อความหัวข้อ (จัดให้อยู่ตรงกลางเป๊ะ 100%) */}
-                <div className="text-center w-full px-12">
-                    <h2 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight leading-tight truncate">{title}</h2>
-                    {subtitle && <p className="text-[10px] font-bold text-[#0066FF] uppercase tracking-widest mt-0.5 truncate">{subtitle}</p>}
-                </div>
-                
-            </div>
-        );
-    };
-
-   return (
-        // 🌟 ปรับเอาการเว้นระยะ (py-6) ออก เพื่อให้ชิดขอบจอเสมอ
-        <div className="h-[100dvh] w-full flex items-center justify-center bg-[#F0F4F8]">
-            {loading && <Loading text="กำลังโหลดข้อมูล..." />}
-
-            {/* 🌟 ปลดล็อกความกว้าง (max-w-none) บนจอ iPad และให้ความสูงเต็ม 100dvh เสมอ */}
-            <div className="flex flex-col w-full h-[100dvh] max-w-none lg:max-w-6xl mx-auto bg-[#F0F4F8] relative overflow-hidden shadow-2xl">
-                {showDropdown && <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)}></div>}
-
-                <main className="flex-1 w-full relative overflow-hidden bg-[#F4F7FB]">
-                    <div id="main-scroll-area" className={`absolute inset-0 pb-32 overflow-y-auto no-scrollbar transition-all duration-500 ease-in-out ${isSubPageOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'} ${tab === 'home' ? 'px-0 pt-0' : 'px-4 pt-0'}`}>
-                        
-                        <style>{`
-                            @keyframes slideInWindowRight { 0% { transform: translateX(100%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
-                            .animate-window-slide { animation: slideInWindowRight 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-                        `}</style>
-
-                        {/* หน้าแรก */}
-                        {tab === 'home' && hasAccess('home') && renderHomeContent()}
-
-                        {/* หน้าย่อยต่างๆ */}
-                        {tab === 'finance' && hasAccess('finance') && (
-                            <div className="animate-pop w-full">
-                                {renderSubPageHeader("สรุปการเงินชั้นปี", "ภาพรวมรายรับรายจ่าย")}
-                                <div className="px-1">{renderFinanceContent()}</div>
-                            </div>
-                        )}
-                        
-                        {tab === 'bills' && hasAccess('bills') && (
-                            <div className="animate-window-slide w-full">
-                                {renderSubPageHeader("รายการบิลของคุณ", "ตรวจสอบและชำระเงินค้างชำระ")}
-                                <div className="px-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {data?.bills?.length === 0 && !loading && (
-                                        <div className="bg-white p-8 rounded-[2rem] text-center shadow-sm border border-gray-50 md:col-span-2 lg:col-span-3"><div className="text-6xl mb-4">🎉</div><h3 className="font-bold text-gray-800 text-lg">ยอดเยี่ยมมาก!</h3><p className="text-gray-500 text-sm mt-1">ไม่มีบิลค้างชำระในขณะนี้</p></div>
-                                    )}
-                                    {(data?.bills || []).map(bill => {
-                                        const isNoDate = !bill.dueDate || String(bill.dueDate || '').includes('1899') || String(bill.dueDate || '').includes('1970');
-                                        const isOverdue = bill.daysLate > 0 && bill.status !== 'รอตรวจสอบ';
-                                        return (
-                                            <div key={bill.billId} className={`bg-white rounded-[1.5rem] p-5 shadow-sm relative overflow-hidden transition-all duration-300 flex flex-col justify-between ${isOverdue ? 'border-2 border-red-400 shadow-red-100 ring-4 ring-red-50' : 'border border-gray-100'}`}>
-                                                <div>
-                                                    {isOverdue && (
-                                                        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4 border border-red-100 flex items-start gap-3 animate-[pop_0.4s_ease-out]"><div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5 animate-pulse"><i className="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i></div><div><h5 className="font-bold text-sm">เกินกำหนดชำระ {bill.daysLate} วัน</h5><p className="text-[10px] font-medium text-red-500 mt-0.5 leading-snug">กรุณารีบดำเนินการชำระเงินโดยด่วน เพื่อหลีกเลี่ยงค่าปรับเพิ่มเติม</p></div></div>
-                                                    )}
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div className="flex gap-3">
-                                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-inner shrink-0 ${isOverdue ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-[#0066FF]'}`}><i className="fa-solid fa-file-invoice-dollar"></i></div>
-                                                            <div>
-                                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1"><i className="fa-solid fa-receipt mr-1"></i> {bill.billId}</p>
-                                                                <h4 className="font-bold text-gray-800 text-base line-clamp-1 pr-2">{bill.item}</h4>
-                                                                <p className={`text-[10px] font-bold mt-1 px-2 py-0.5 inline-block rounded-md ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}><i className="fa-regular fa-calendar-check mr-1"></i> ต้องชำระก่อน: {formatThaiDate(bill.dueDate)}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100 space-y-2.5">
-                                                    <div className="flex justify-between items-center text-xs font-medium text-gray-500"><span><i className="fa-solid fa-receipt mr-1.5 opacity-50"></i> ยอดบิลเริ่มต้น</span><span>{formatCurrency(bill.amount)}</span></div>
-                                                    {bill.discount > 0 && <div className="flex justify-between items-center text-xs font-bold text-green-600"><span><i className="fa-solid fa-tags mr-1.5 opacity-70"></i> ส่วนลด / หักยอดโอนแล้ว</span><span>-{formatCurrency(bill.discount)}</span></div>}
-                                                    {bill.fine > 0 && <div className="flex justify-between items-center text-xs font-bold text-red-500"><span><i className="fa-solid fa-scale-unbalanced mr-1.5 opacity-70"></i> ค่าปรับล่าช้า ({bill.daysLate} วัน)</span><span>+{formatCurrency(bill.fine)}</span></div>}
-                                                    <div className="pt-2.5 mt-1 border-t border-gray-200/80 flex justify-between items-center"><span className="text-xs font-bold text-gray-800 uppercase tracking-wider">ยอดชำระสุทธิ</span><span className={`font-black text-xl ${isOverdue ? 'text-red-600' : 'text-[#0066FF]'}`}>{formatCurrency(bill.total)}</span></div>
-                                                </div>
-                                                <div className="flex items-center gap-3 mt-auto">
-                                                    {bill.status !== 'รอตรวจสอบ' && !isOverdue && !isNoDate && <BillTimer dueDate={bill.dueDate} />}
-                                                    {bill.status === 'รอตรวจสอบ' ? (
-                                                        <button disabled className="flex-1 bg-yellow-50 text-yellow-600 py-3.5 rounded-xl text-sm font-bold border border-yellow-100/50 flex justify-center items-center gap-2">รอตรวจสอบ <div className="loader w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div></button>
-                                                    ) : (
-                                                        <button onClick={() => handleOpenPayment(bill)} className={`flex-1 py-3.5 rounded-xl text-white text-sm font-bold shadow-lg active:scale-95 transition-all transform flex justify-center items-center gap-2 ${isOverdue ? 'bg-red-500 shadow-red-200 hover:bg-red-600' : 'bg-[#0066FF] shadow-blue-200 hover:bg-blue-700'}`}>ชำระเงิน <i className="fa-solid fa-arrow-right"></i></button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )} 
-
-
-                        {tab === 'orders' && hasAccess('orders') && (
-                            <div className="animate-window-slide w-full">
-                                {renderSubPageHeader("ร้านค้า", "รายการสินค้าจัดจำหน่าย")}
-                                <div className="px-1">
-                                    {(!data?.orderEnabled || !data?.products || data.products.filter(p => p.status !== 'OFF').length === 0) ? (
-                                        <div className="bg-white rounded-[2rem] p-10 text-center shadow-sm border border-gray-50 mt-4"><div className="text-5xl mb-4 text-gray-300"><i className="fa-solid fa-store-slash"></i></div><h3 className="font-bold text-gray-800 text-xl">ไม่มีสินค้าพร้อมขาย</h3><p className="text-gray-500 text-sm mt-2 leading-relaxed">ขณะนี้ยังไม่มีรายการสินค้าเปิดจำหน่าย</p></div>
-                                    ) : (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                            {data.products.map(p => {
-                                                if (p.status === 'OFF') return null;
-                                                const isSoldOut = p.status === 'OUT' || p.stock <= 0;
-                                                const displayImg = (p.productGallery && p.productGallery.length > 0) ? p.productGallery[0] : (p.image || p.img || "");
-                                                return (
-                                                    <div key={p.id} onClick={() => !isSoldOut && setSelectedProduct(p)} className={`bg-white rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform border border-gray-50 cursor-pointer ${isSoldOut ? 'grayscale opacity-70' : 'hover:border-blue-200 hover:shadow-md'}`}>
-                                                        <div className="aspect-square bg-gray-100 relative"><img src={getDirectDriveUrl(displayImg)} className="w-full h-full object-cover" />{!isSoldOut && <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center text-[#0066FF] font-bold"><i className="fa-solid fa-plus"></i></div>}</div>
-                                                        <div className="p-3 bg-white"><h4 className="font-bold text-gray-800 text-sm truncate">{p.name}</h4><div className="flex justify-between items-center mt-1"><span className="text-[#0066FF] font-black">{formatCurrency(p.price)}</span>{isSoldOut && <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-md">หมด</span>}</div></div>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === 'history' && hasAccess('history') && (
+                                
+                                {tab === 'settings' && hasAccess('settings') && (
                                     <div className="animate-pop w-full">
-                                        {renderSubPageHeader("ประวัติทำรายการ", "การชำระเงินย้อนหลังของคุณ")}
-                                        <div className="px-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {(data?.history || []).map((hist, i) => {
-                                                // 🌟 จัดการสไตล์ตามสถานะ
-                                                let statusStyle = {
-                                                    bgGradient: "from-emerald-100/50",
-                                                    stampIcon: "fa-circle-check text-emerald-600",
-                                                    amountColor: "text-emerald-600 bg-emerald-50 border-emerald-100",
-                                                    statusText: "text-emerald-500",
-                                                    statusIcon: "fa-circle-check",
-                                                    statusLabel: "สำเร็จ"
-                                                };
-                                                if (hist.status === 'ยอดไม่ครบ') {
-                                                    statusStyle = { bgGradient: "from-orange-100/60", stampIcon: "fa-triangle-exclamation text-orange-600", amountColor: "text-orange-600 bg-orange-50 border-orange-100", statusText: "text-orange-500", statusIcon: "fa-triangle-exclamation", statusLabel: "ยอดไม่ครบ" };
-                                                } else if (hist.status === 'รอตรวจสอบ') {
-                                                    statusStyle = { bgGradient: "from-blue-100/50", stampIcon: "fa-clock text-blue-600", amountColor: "text-[#0066FF] bg-blue-50 border-blue-100", statusText: "text-[#0066FF]", statusIcon: "fa-clock", statusLabel: "รอตรวจสอบ" };
-                                                }
-
-                                                return (
-                                                    <div key={i} onClick={() => hist.slipUrl ? setViewSlipUrl(hist.slipUrl) : null} className={`bg-white border border-gray-100 rounded-2xl p-4 shadow-sm relative overflow-hidden transition-all ${hist.slipUrl ? 'cursor-pointer hover:border-[#0066FF] hover:shadow-md active:scale-95' : ''}`}>
-                                                        
-                                                        {/* พื้นหลังไล่สีและตราปั๊ม */}
-                                                        <div className={`absolute inset-y-0 right-0 w-32 bg-gradient-to-l ${statusStyle.bgGradient} to-transparent pointer-events-none z-0`}></div>
-                                                        <div className="absolute -right-3 -bottom-4 opacity-[0.07] pointer-events-none z-0 transform -rotate-12">
-                                                            <i className={`fa-solid ${statusStyle.stampIcon} text-7xl`}></i>
-                                                        </div>
-
-                                                        <div className="relative z-10 flex justify-between items-start">
-                                                            <div>
-                                                                <p className="text-[9px] font-bold text-[#0066FF] uppercase tracking-wider mb-0.5">ID: {hist.billId || hist.id}</p>
-                                                                <h4 className="font-bold text-gray-800 text-sm line-clamp-1 pr-2">{hist.item}</h4>
-                                                            </div>
-                                                            <span className={`font-black text-sm shrink-0 px-2 py-0.5 rounded-lg border shadow-sm ${statusStyle.amountColor}`}>
-                                                                {formatCurrency(hist.total)}
-                                                            </span>
-                                                        </div>
-                                                        
-                                                        <div className="relative z-10 mt-2 flex justify-between items-center text-[10px] text-gray-500 font-medium">
-                                                            <span><i className="fa-regular fa-clock mr-1 opacity-70"></i> {formatThaiDateTime(hist.payDate)}</span>
-                                                            <span className={`${statusStyle.statusText} font-bold`}><i className={`fa-solid ${statusStyle.statusIcon}`}></i> {statusStyle.statusLabel}</span>
-                                                        </div>
-                                                        
-                                                        {hist.slipUrl && (
-                                                            <div className="relative z-10 mt-3 pt-2 border-t border-gray-50 text-center">
-                                                                <span className="text-[10px] font-bold text-[#0066FF]"><i className="fa-solid fa-hand-pointer mr-1 animate-pulse"></i> แตะเพื่อดูสลิปหลักฐาน</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                            {data?.history?.length === 0 && <div className="text-center text-gray-400 py-10 font-bold bg-white rounded-3xl border border-gray-50 md:col-span-2 lg:col-span-3"><div className="text-4xl mb-2 opacity-30"><i className="fa-solid fa-clock-rotate-left"></i></div>ไม่มีประวัติทำรายการ</div>}
-                                        </div>
+                                        {renderSubPageHeader("การตั้งค่าบัญชี", "จัดการข้อมูลและความปลอดภัย")}
+                                        <div className="px-1">{renderSettingsContent()}</div>
                                     </div>
                                 )}
-                        
-                        {tab === 'settings' && hasAccess('settings') && (
-                            <div className="animate-pop w-full">
-                                {renderSubPageHeader("การตั้งค่าบัญชี", "จัดการข้อมูลและความปลอดภัย")}
-                                <div className="px-1">{renderSettingsContent()}</div>
                             </div>
-                        )}
-                    </div>
 
-                    {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null);}} />}
-                    {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
-                    {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); }} />}
-                    {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
-                    {trackingOrder && <OrderTrackingSubPage order={trackingOrder} onClose={() => setTrackingOrder(null)} />}
-                </main> 
+                            {selectedBill && <PaymentModal bill={selectedBill} user={user} onClose={()=>setSelectedBill(null)} onSuccess={()=>{setSelectedBill(null);}} />}
+                            {selectedProduct && <OrderProductModal product={selectedProduct} onClose={()=>setSelectedProduct(null)} onConfirm={(p) => { setSelectedProduct(null); setPendingOrder(p); }} />}
+                            {pendingOrder && <OrderPaymentModal order={pendingOrder} user={user} qrMap={data?.qrMap} defaultQr={data?.defaultQr} onClose={()=>setPendingOrder(null)} onSuccess={() => { setPendingOrder(null); }} />}
+                            {selectedProject && <FinanceProjectSubPage project={selectedProject} onClose={()=>setSelectedProject(null)} onViewSlip={setViewSlipUrl} />}
+                            {trackingOrder && <OrderTrackingSubPage order={trackingOrder} onClose={() => setTrackingOrder(null)} />}
+                        </main> 
 
-                {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
+                        {showAnnouncement && data?.announcement && <AnnouncementModal text={data.announcement} onClose={() => setShowAnnouncement(false)} />}
 
-                {/* 🌟 Bottom Navigation (แก้บั๊กย่อขยายกระตุกบน iPad/PC) */}
-                <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-safe px-4 mb-5 pointer-events-none transition-all duration-500 ease-in-out ${(isSubPageOpen || !['home', 'finance', 'settings'].includes(tab)) ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                    
-                    {/* 🌟 ปรับมาตรึง w-full ไว้ แล้วอนิเมทที่ max-w แทน เพื่อความสมูท 100% */}
-                    <nav className={`relative pointer-events-auto bg-white/95 backdrop-blur-2xl flex items-center border border-white transition-all duration-500 ease-in-out w-full
-                        ${showBottomNav 
-                            ? 'max-w-[400px] h-[76px] rounded-[2.5rem] p-1.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3),0_10px_20px_-5px_rgba(0,0,0,0.1)]' 
-                            : 'max-w-[220px] h-[58px] rounded-[2rem] p-1 translate-y-1 opacity-98 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4),0_8px_15px_-3px_rgba(0,0,0,0.1)]'
-                        }`}
-                    >
-                        {/* แผ่นรองเงาชั้นใน */}
-                        <div className="absolute inset-0 rounded-[inherit] border-[1.5px] border-white/60 pointer-events-none"></div>
-
-                        <div className="w-full h-full relative flex items-center">
+                        <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-safe px-4 mb-5 pointer-events-none transition-all duration-500 ease-in-out ${(isSubPageOpen || !['home', 'finance', 'settings'].includes(tab)) ? 'translate-y-40 opacity-0' : 'translate-y-0 opacity-100'}`}>
                             
-                            {/* กรอบพื้นหลังเลื่อน (Indicator) */}
-                            <div className={`absolute top-0 bottom-0 w-1/3 transition-all duration-300 ease-out z-0 flex items-center justify-center ${showBottomNav ? 'rounded-[1.8rem]' : 'rounded-[1.5rem] scale-y-90 scale-x-90'}
-                                ${tab === 'finance' && hasAccess('finance') ? 'translate-x-0 bg-blue-50' : 
-                                  tab === 'home' && hasAccess('home') ? 'translate-x-[100%] border-[2px] border-[#0066FF]/80 shadow-[0_4px_15px_rgba(0,102,255,0.15)] bg-white' : 
-                                  tab === 'settings' && hasAccess('settings') ? 'translate-x-[200%] bg-blue-50' : 'opacity-0'}`}
-                            ></div>
+                            <nav className={`relative pointer-events-auto bg-white/95 backdrop-blur-2xl flex items-center border border-white transition-all duration-500 ease-in-out w-full
+                                ${showBottomNav 
+                                    ? 'max-w-[400px] h-[76px] rounded-[2.5rem] p-1.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3),0_10px_20px_-5px_rgba(0,0,0,0.1)]' 
+                                    : 'max-w-[220px] h-[58px] rounded-[2rem] p-1 translate-y-1 opacity-98 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.4),0_8px_15px_-3px_rgba(0,0,0,0.1)]'
+                                }`}
+                            >
+                                <div className="absolute inset-0 rounded-[inherit] border-[1.5px] border-white/60 pointer-events-none"></div>
 
-                            {/* 1. ปุ่มการเงิน */}
-                            <button 
-                                onClick={() => hasAccess('finance') ? handleTabChange('finance') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงเมนูการเงิน', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
-                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('finance') ? 'text-gray-300 cursor-not-allowed' : tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400'}`}
-                            >
-                                <div className="relative">
-                                    <i className={`fa-solid fa-wallet ${tab === 'finance' && hasAccess('finance') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
-                                    {!hasAccess('finance') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
-                                </div>
-                                <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>การเงิน</span>
-                            </button>
-                            
-                            {/* 2. ปุ่มหน้าหลัก */}
-                            <button 
-                                onClick={() => hasAccess('home') ? handleTabChange('home') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงหน้าหลัก', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
-                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('home') ? 'text-gray-300 cursor-not-allowed' : tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400'}`}
-                            >
-                                <div className="relative">
-                                    <i className={`fa-solid fa-house ${tab === 'home' && hasAccess('home') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
-                                    {!hasAccess('home') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
-                                </div>
-                                <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>หน้าหลัก</span>
-                            </button>
-                            
-                            {/* 3. ปุ่มบัญชี */}
-                            <button 
-                                onClick={() => hasAccess('settings') ? handleTabChange('settings') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงบัญชี', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
-                                className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('settings') ? 'text-gray-300 cursor-not-allowed' : tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400'}`}
-                            >
-                                <div className="relative">
-                                    <i className={`fa-regular fa-user ${tab === 'settings' && hasAccess('settings') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
-                                    {!hasAccess('settings') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
-                                </div>
-                                <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>บัญชี</span>
-                            </button>
+                                <div className="w-full h-full relative flex items-center">
+                                    
+                                    <div className={`absolute top-0 bottom-0 w-1/3 transition-all duration-300 ease-out z-0 flex items-center justify-center ${showBottomNav ? 'rounded-[1.8rem]' : 'rounded-[1.5rem] scale-y-90 scale-x-90'}
+                                        ${tab === 'finance' && hasAccess('finance') ? 'translate-x-0 bg-blue-50' : 
+                                        tab === 'home' && hasAccess('home') ? 'translate-x-[100%] border-[2px] border-[#0066FF]/80 shadow-[0_4px_15px_rgba(0,102,255,0.15)] bg-white' : 
+                                        tab === 'settings' && hasAccess('settings') ? 'translate-x-[200%] bg-blue-50' : 'opacity-0'}`}
+                                    ></div>
 
+                                    <button 
+                                        onClick={() => hasAccess('finance') ? handleTabChange('finance') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงเมนูการเงิน', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
+                                        className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('finance') ? 'text-gray-300 cursor-not-allowed' : tab === 'finance' ? 'text-[#0066FF]' : 'text-gray-400'}`}
+                                    >
+                                        <div className="relative">
+                                            <i className={`fa-solid fa-wallet ${tab === 'finance' && hasAccess('finance') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
+                                            {!hasAccess('finance') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
+                                        </div>
+                                        <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>การเงิน</span>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => hasAccess('home') ? handleTabChange('home') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงหน้าหลัก', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
+                                        className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('home') ? 'text-gray-300 cursor-not-allowed' : tab === 'home' ? 'text-[#0066FF]' : 'text-gray-400'}`}
+                                    >
+                                        <div className="relative">
+                                            <i className={`fa-solid fa-house ${tab === 'home' && hasAccess('home') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
+                                            {!hasAccess('home') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
+                                        </div>
+                                        <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>หน้าหลัก</span>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={() => hasAccess('settings') ? handleTabChange('settings') : Swal.fire({icon: 'error', title: 'เมนูถูกล็อก', text: 'คุณไม่มีสิทธิ์เข้าถึงบัญชี', confirmButtonColor: '#0066FF', customClass: {popup: 'rounded-3xl'}})} 
+                                        className={`flex-1 flex flex-col items-center justify-center gap-1 z-10 transition-colors ${!hasAccess('settings') ? 'text-gray-300 cursor-not-allowed' : tab === 'settings' ? 'text-[#0066FF]' : 'text-gray-400'}`}
+                                    >
+                                        <div className="relative">
+                                            <i className={`fa-regular fa-user ${tab === 'settings' && hasAccess('settings') ? (showBottomNav ? 'text-xl' : 'text-lg') : (showBottomNav ? 'text-lg' : 'text-base')} transition-all`}></i>
+                                            {!hasAccess('settings') && <div className="absolute -top-1.5 -right-2.5 bg-gray-50 rounded-full w-4 h-4 flex items-center justify-center border border-white shadow-sm"><i className="fa-solid fa-lock text-[8px] text-gray-400"></i></div>}
+                                        </div>
+                                        <span className={`text-[10px] font-extrabold transition-all duration-300 ${showBottomNav ? 'opacity-100 max-h-5 mt-1' : 'opacity-0 max-h-0 overflow-hidden m-0'}`}>บัญชี</span>
+                                    </button>
+
+                                </div>
+                            </nav>
                         </div>
-                    </nav>
+                        
+                        {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
+                    </div>
                 </div>
-                
-                {viewSlipUrl && <SlipModal url={viewSlipUrl} onClose={() => setViewSlipUrl(null)} />}
-            </div>
-        </div>
-    );
-};
+            );
+        };
 
         /// 🌟 1. เพิ่ม message เข้ามาในวงเล็บ
         const MaintenanceMode = ({ message, onBypass }) => {
