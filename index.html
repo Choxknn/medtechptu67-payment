@@ -3461,7 +3461,7 @@
             return (
                 <div>
                     {loginProgress !== null && <Loading text="กำลังเข้าสู่ระบบ..." progress={loginProgress} />}
-                    {page === 'loading' && <Loading text="กำลังโหลดระบบ..." progress={appProgress} />} 
+                    {page === 'loading' && <Loading text="กำลังดึงข้อมูล..." progress={appProgress} />} 
                     {page === 'login' && <Login onLogin={handleLogin} onRegister={() => setPage('register')} onLineLogin={handleLineLogin} />}
                     {page === 'register' && <Register onBack={() => setPage('login')} onRegisterSuccess={handleRegisterSuccess} />}
                     {page === 'dashboard' && user && (
