@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Body Fluid & Cytology Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; }
+        .option-btn { transition: all 0.2s ease-in-out; }
+        .option-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .correct { background-color: #10b981 !important; color: white !important; border-color: #10b981 !important; }
+        .incorrect { background-color: #ef4444 !important; color: white !important; border-color: #ef4444 !important; }
+        .disabled { opacity: 0.7; cursor: not-allowed; }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex items-center justify-center p-4">
+
+    <!-- App Container -->
+    <div id="app" class="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden relative">
+        
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-4 text-center relative shadow-md">
+            <h1 class="text-2xl font-bold">Clinical Microscopy Quiz</h1>
+            <button id="home-btn" class="hidden absolute left-4 top-1/2 transform -translate-y-1/2 bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition-colors">
+                &larr; กลับหน้าหลัก
+            </button>
+        </header>
+
+        <!-- Main Content Area -->
+        <div id="content-area" class="p-6 md:p-8 min-h-[400px] flex flex-col">
+            
+            <!-- Menu Screen -->
+            <div id="menu-screen" class="flex-1 flex flex-col justify-center animate-fade-in">
+                <h2 class="text-xl font-semibold text-center mb-6 text-gray-700">กรุณาเลือกหมวดหมู่ที่ต้องการทำแบบทดสอบ</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="startQuiz('CSF')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-2 border-indigo-200 font-semibold py-4 px-6 rounded-lg shadow-sm transition-colors text-lg">
+                        CSF
+                    </button>
+                    <button onclick="startQuiz('SYNOVIAL FLUID')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 border-2 border-teal-200 font-semibold py-4 px-6 rounded-lg shadow-sm transition-colors text-lg">
+                        SYNOVIAL FLUID
+                    </button>
+                    <button onclick="startQuiz('CYTOLOGY')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-200 font-semibold py-4 px-6 rounded-lg shadow-sm transition-colors text-lg">
+                        CYTOLOGY
+                    </button>
+                    <button onclick="startQuiz('ALL')" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-lg shadow-md transition-all text-lg transform hover:scale-[1.02]">
+                        สุ่มทุกบทรวมกัน
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quiz Screen -->
+            <div id="quiz-screen" class="hidden flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-4 text-sm font-medium text-gray-500">
+                    <span id="quiz-category" class="bg-gray-100 px-3 py-1 rounded-full text-blue-600"></span>
+                    <span id="quiz-progress">ข้อ 1 / 10</span>
+                </div>
+                
+                <h3 id="question-text" class="text-xl font-medium mb-6 text-gray-800 leading-relaxed"></h3>
+                
+                <div id="options-container" class="flex flex-col gap-3 mb-6 flex-1">
+                    <!-- Options will be injected here -->
+                </div>
+
+                <div class="mt-auto flex justify-end">
+                    <button id="next-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow transition-colors">
+                        ข้อต่อไป &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Screen -->
+            <div id="result-screen" class="hidden flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
+                <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4 text-5xl">
+                    🏆
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">สรุปผลคะแนน</h2>
+                <p id="score-text" class="text-4xl font-extrabold text-blue-600 mb-2"></p>
+                <p id="feedback-text" class="text-gray-600 mb-8"></p>
+                
+                <div class="flex gap-4 w-full max-w-xs">
+                    <button onclick="showMenu()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition-colors">
+                        หน้าหลัก
+                    </button>
+                    <button id="retry-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        ทำอีกครั้ง
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const database = [
+            // ================== CSF ==================
+            {
+                category: "CSF",
+                question: "CSF อยู่ระหว่างเยื่อหุ้มประสาทชั้นใด",
+                options: [
+                    { text: "arachnoid และ pia mater", correct: true },
+                    { text: "arachnoid และ dura mater", correct: false },
+                    { text: "pia mater และ dura mater", correct: false },
+                    { text: "pia mater และ choroid plexuses", correct: false },
+                    { text: "arachnoid และ choroid plexuses", correct: false }
+                ]
+            },
+            {
+                category: "CSF",
+                question: "น้ำไขสันหลัง (CSF) สร้างมาจากส่วนใดของระบบประสาทส่วนกลาง",
+                options: [
+                    { text: "Arachnoid villi", correct: false },
+                    { text: "Cerebral aqueduct", correct: false },
+                    { text: "Cerebral aqueduct และ Ependymal lining cells", correct: false },
+                    { text: "Arachnoid villi และ Ventricular choroid plexuses", correct: false },
+                    { text: "Ependymal lining cells และ Ventricular choroid plexuses", correct: true }
+                ]
+            },
+            {
+                category: "CSF",
+                question: "กรณีพบเม็ดเลือดแดงในตัวอย่าง CSF ในหลอดที่ 1 ถึง 3 แต่มีจำนวนลดลงตามลำดับในแต่ละหลอดเกิดจากสาเหตุใด",
+                options: [
+                    { text: "Traumatic tap", correct: true },
+                    { text: "Old hemorrhage", correct: false },
+                    { text: "Bacterial meningitis", correct: false },
+                    { text: "Radio contrast media", correct: false },
+                    { text: "Intracerebral hemorrhage", correct: false }
+                ]
+            },
+            {
+                category: "CSF",
+                question: "เซลล์ส่วนใหญ่ที่พบได้ใน CSF ปกติ",
+                options: [
+                    { text: "Eosinophils", correct: false },
+                    { text: "Neutrophils", correct: false },
+                    { text: "Plasma cells", correct: false },
+                    { text: "Lymphocytes", correct: true },
+                    { text: "Red blood cells", correct: false }
+                ]
+            },
+            {
+                category: "CSF",
+                question: "บริเวณใดนิยมใช้ในการเจาะเก็บ CSF ในเด็ก",
+                options: [
+                    { text: "Lumbar 5 (L5)", correct: false },
+                    { text: "Intervertebral space L1-2", correct: false },
+                    { text: "Intervertebral space L2-3", correct: false },
+                    { text: "Intervertebral space L3-4", correct: false },
+                    { text: "Intervertebral space L4-5", correct: true }
+                ]
+            },
+            {
+                category: "CSF",
+                question: "แพทย์ทำการเจาะเก็บ CSF 3 หลอด ข้อใดเรียงลำดับการส่งตรวจทางห้องปฏิบัติการได้ถูกต้อง",
+                options: [
+                    { text: "หลอดที่ 1 chemical หลอดที่ 2 culture หลอดที่ 3 cell count", correct: true },
+                    { text: "หลอดที่ 1 culture หลอดที่ 2 chemical หลอดที่ 3 cell count", correct: false },
+                    { text: "หลอดที่ 1 cell count หลอดที่ 2 chemical หลอดที่ 3 culture", correct: false },
+                    { text: "หลอดที่ 1 cell count หลอดที่ 2 culture หลอดที่ 3 chemical", correct: false },
+                    { text: "หลอดที่ 1 culture หลอดที่ 2 cell count หลอดที่ 3 chemical", correct: false }
+                ]
+            },
+            {
+                category: "CSF",
+                question: "การตรวจทางเคมีใดช่วยวินิจฉัยแยกภาวะ Viral meningitis ออกจาก Bacterial meningitis",
+                options: [
+                    { text: "Protein", correct: false },
+                    { text: "Lactate", correct: true },
+                    { text: "Glucose", correct: false },
+                    { text: "Albumin", correct: false },
+                    { text: "D-dimers", correct: false }
+                ]
+            },
+
+            // ================== SYNOVIAL FLUID ==================
+            {
+                category: "SYNOVIAL FLUID",
+                question: "Bulge test เป็นการตรวจที่เกี่ยวข้องกับการตรวจในข้อใด",
+                options: [
+                    { text: "Cerebrospinal Fluid", correct: false },
+                    { text: "Synovial Fluid", correct: true },
+                    { text: "Serous Fluid", correct: false },
+                    { text: "Effusion Fluid", correct: false },
+                    { text: "Amniotic fluid", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใดจัดเป็น specialized cellsใน Synovial Fluid",
+                options: [
+                    { text: "Synoviocytes", correct: true },
+                    { text: "Neuropathic", correct: false },
+                    { text: "Mesothelial cell", correct: false },
+                    { text: "Mast cell", correct: false },
+                    { text: "Fibrous cell", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใดอธิบายหน้าที่หลักของน้ำไขข้อ (Synovial fluid) ได้ถูกต้องที่สุด",
+                options: [
+                    { text: "ลำเลียงออกซิเจนไปยังข้อ", correct: false },
+                    { text: "สร้างเม็ดเลือดขาวภายในข้อ", correct: false },
+                    { text: "ควบคุมการแข็งตัวของเลือดในข้อ", correct: false },
+                    { text: "สร้างแคลเซียมให้กระดูก", correct: false },
+                    { text: "หล่อลื่นข้อและหล่อเลี้ยงกระดูกอ่อนผิวข้อ (Articular cartilage)", correct: true }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใด ใช้เพื่อการประเมินการทดสอบ Mucin clot test",
+                options: [
+                    { text: "คุณภาพของ Hyaluronic acid", correct: true },
+                    { text: "จำนวนเม็ดเลือดแดง", correct: false },
+                    { text: "ระดับโปรตีน", correct: false },
+                    { text: "จำนวนผลึก", correct: false },
+                    { text: "ระดับกลูโคส", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใด เป็นการแปลผลจากการทดสอบ String test พบว่าน้ำไขข้อยืดได้เพียง 1 เซนติเมตร",
+                options: [
+                    { text: "ปกติ", correct: false },
+                    { text: "มีเลือดปน", correct: false },
+                    { text: "เป็นโรคเกาต์แน่นอน", correct: false },
+                    { text: "ความหนืดลดลงจากการอักเสบ", correct: true },
+                    { text: "เป็นโรครูมาตอยด์แน่นอน", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใดตรงกับภาวะของผู้ป่วยเมื่อ ตรวจพบน้ำไขข้อมีลักษณะขุ่น สีเหลือง ตรวจจำแนกเซลล์ (Differential cell count) พบลักษณะเซลล์เม็ดเลือดขาวชนิด \"Neutrophils = 90%, WBC count = 75,000 cells/uL\"",
+                options: [
+                    { text: "Osteoarthritis", correct: false },
+                    { text: "Septic arthritis", correct: true },
+                    { text: "Acute Hemarthrosis", correct: false },
+                    { text: "Chronic Gouty arthritis", correct: false },
+                    { text: "Traumatic tap", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ภาวะในข้อใด ตรวจพบน้ำไขข้อสีแดง พบ RBC จำนวนมาก แต่ WBC ปกติ",
+                options: [
+                    { text: "Septic arthritis", correct: false },
+                    { text: "Gout", correct: false },
+                    { text: "Traumatic tap", correct: true },
+                    { text: "Rheumatoid arthritis", correct: false },
+                    { text: "Viral arthritis", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ในคนปกติ Synovial fluid มีลักษณะอย่างไร",
+                options: [
+                    { text: "transudate มี < 200 WBCs และ <20-25% neutrophils", correct: true },
+                    { text: "exudate มี > 200 WBCs และ > 50% neutrophils", correct: false },
+                    { text: "transudate มี < 500 WBCs และ < 50% neutrophils", correct: false },
+                    { text: "exudate มี < 200 WBCs และ < 20-25% neutrophils", correct: false },
+                    { text: "มี RBC > 2000 cells/uL", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใดเป็นองค์ประกอบสำคัญที่ทำให้น้ำไขข้อมีความหนืดสูง",
+                options: [
+                    { text: "Albumin", correct: false },
+                    { text: "Glucose", correct: false },
+                    { text: "Hyaluronic acid", correct: true },
+                    { text: "Fibrinogen", correct: false },
+                    { text: "Cholesterol", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ข้อใดเป็นลักษณะของ Monosodium urate crystal ในโรค gout ภายใต้ polarized light microscopy",
+                options: [
+                    { text: "Needle-shaped, negatively birefringent", correct: true },
+                    { text: "Rhomboid-shaped, positively birefringent", correct: false },
+                    { text: "Plate-shaped, non-birefringent", correct: false },
+                    { text: "Needle-shaped, no birefringence", correct: false },
+                    { text: "Spherocyte-like", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "การพบ fibrin clot ใน synovial fluid หลังการเจาะบ่งบอกถึงอะไร",
+                options: [
+                    { text: "การเพิ่มขึ้นของ fibrinogen in Inflammation", correct: true },
+                    { text: "การลดลงของ hyaluronic acid", correct: false },
+                    { text: "การมีเลือดออกในข้อ", correct: false },
+                    { text: "การติดเชื้อแบคทีเรียรุนแรง", correct: false },
+                    { text: "เป็นลักษณะปกติของ synovial fluid", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "ลักษณะของ Rice bodies ตรงกับข้อใด",
+                options: [
+                    { text: "Debris from joint prosthesis look like ground pepper", correct: false },
+                    { text: "Crystal found in Gout diseases", correct: false },
+                    { text: "Cells and debris found in Inflammation disease", correct: false },
+                    { text: "Free-floating aggregates of tissue found in Rheumatoid arthritis (RA)", correct: true },
+                    { text: "Crystals in Hemorrhagic arthritis", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "โรคในข้อใด ตรวจพบผลึก Rhomboid ที่มี Positive birefringence",
+                options: [
+                    { text: "Gout", correct: false },
+                    { text: "Pseudogout", correct: true },
+                    { text: "Rheumatoid arthritis", correct: false },
+                    { text: "Septic arthritis", correct: false },
+                    { text: "Osteoarthritis", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "Arthrocentesis คืออะไร",
+                options: [
+                    { text: "เจาะน้ำไขข้อโดยใช้วิธีใช้ Syringe Sterile เก็บประมาณ 2 - 5 ml โดยแบ่งเป็น หลอดต่าง ๆ ขึ้นกับชนิดของการตรวจ", correct: true },
+                    { text: "การเจาะน้ำไขสันหลังบริเวณ L4-L5 เพื่อส่งตรวจหาการติดเชื้อ", correct: false },
+                    { text: "การเจาะน้ำช่องอกเพื่อการวินิจฉัยโรคมะเร็ง", correct: false },
+                    { text: "การเจาะตรวจน้ำในช่องท้อง", correct: false },
+                    { text: "การทดสอบความหนืดของน้ำไขข้อด้วยวิธี String test", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "การตรวจพบ WBC >50,000 cells/uL ใน synovial fluid สัมพันธ์กับโรคใด",
+                options: [
+                    { text: "Osteoarthritis", correct: false },
+                    { text: "Gout", correct: false },
+                    { text: "Pseudogout", correct: false },
+                    { text: "Septic arthritis", correct: true },
+                    { text: "Traumatic tap", correct: false }
+                ]
+            },
+            {
+                category: "SYNOVIAL FLUID",
+                question: "การตรวจความหนืดของ synovial fluid สามารถทำได้โดยวิธีใด",
+                options: [
+                    { text: "String test โดยใช้หลอดหยด", correct: true },
+                    { text: "Mucin clot test", correct: false },
+                    { text: "Bulge test", correct: false },
+                    { text: "Cell count ด้วย Hemocytometer", correct: false },
+                    { text: "Gram stain", correct: false }
+                ]
+            },
+
+            // ================== CYTOLOGY & EFFUSION ==================
+            {
+                category: "CYTOLOGY",
+                question: "วัตถุประสงค์ที่สำคัญที่สุดของการตรวจ Cytology ใน Body fluid คือข้อใด",
+                options: [
+                    { text: "ตรวจระดับโปรตีนในสารน้ำ", correct: false },
+                    { text: "ตรวจหาความผิดปกติของเซลล์และค้นหาเซลล์มะเร็ง", correct: true },
+                    { text: "ตรวจหาน้ำตาลในสารน้ำ", correct: false },
+                    { text: "ตรวจหาอิเล็กโทรไลต์ในเลือด", correct: false },
+                    { text: "ตรวจหาระดับฮอร์โมนในเซลล์", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "Body fluid มีเซลล์จำนวนน้อยมาก วิธีใดช่วยเพิ่มโอกาสตรวจพบเซลล์ผิดปกติ",
+                options: [
+                    { text: "ตรวจโดยไม่ปั่นตัวอย่าง", correct: false },
+                    { text: "เติม EDTA เพิ่ม", correct: false },
+                    { text: "เติมน้ำกลั่น", correct: false },
+                    { text: "ใช้เทคนิค Cytocentrifuge (Cytospin)", correct: true },
+                    { text: "อุ่นตัวอย่างก่อนตรวจ", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "เซลล์ชนิดใดเป็นเซลล์ที่พบได้ตามปกติใน Pleural fluid และ Peritoneal fluid",
+                options: [
+                    { text: "Plasma cell", correct: false },
+                    { text: "Osteoblast", correct: false },
+                    { text: "Hepatocyte", correct: false },
+                    { text: "Chondrocyte", correct: false },
+                    { text: "Mesothelial cell", correct: true }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "ผู้ป่วยมี Ascitic fluid พบเซลล์ขนาดใหญ่ Cytoplasm มี Vacuole ดันนิวเคลียสไปด้านข้าง (Signet-ring appearance) ควรสงสัยมะเร็งชนิดใด",
+                options: [
+                    { text: "Squamous cell carcinoma", correct: false },
+                    { text: "Small cell carcinoma", correct: false },
+                    { text: "Lymphoma", correct: false },
+                    { text: "Mesothelioma", correct: false },
+                    { text: "Adenocarcinoma", correct: true }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "ข้อใดเป็นมะเร็งที่เกิดบริเวณเนื้อเยื่อเกี่ยวพัน (Connective Tissue) ของอวัยวะต่าง ๆ",
+                options: [
+                    { text: "Carcinoma", correct: false },
+                    { text: "Leukemia", correct: false },
+                    { text: "Sarcoma", correct: true },
+                    { text: "Lymphoma", correct: false },
+                    { text: "Blastoma", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "เมื่อตรวจพบเซลล์ที่มีลักษณะ \"Signet-ring appearance\" (ไซโตพลาสมามีเมือกดันนิวเคลียสไปติดขอบเซลล์) ปริมาณมากในน้ำช่องอก ผลตรวจนี้ประเมินค่าและสรุปพยาธิสภาพไปทางโรคใดชัดเจนที่สุด",
+                options: [
+                    { text: "Tuberculous pleuritis", correct: false },
+                    { text: "Malignant Mesothelioma", correct: false },
+                    { text: "Metastatic Adenocarcinoma", correct: true },
+                    { text: "Congestive Heart Failure", correct: false },
+                    { text: "Bacterial Empyema", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "ข้อใดคือลักษณะของ pleomorphism",
+                options: [
+                    { text: "เป็นลักษณะของ malignant cell ที่มีขนาดของเซลล์ที่แตกต่างกันอย่างมาก", correct: true },
+                    { text: "เป็นลักษณะของ monocyte ที่มีขนาดของเซลล์ที่แตกต่างกันอย่างมาก", correct: false },
+                    { text: "เป็นลักษณะของ benign cell ที่มีขนาดของเซลล์ที่เท่าๆกัน และ แตกต่างกัน โดยอยู่ปนกัน", correct: false },
+                    { text: "เป็นลักษณะของ benign cell ที่มีสีของ cytoplasm ติดสีเข้มกว่าปกติ", correct: false },
+                    { text: "เป็นลักษณะของ malignant cell ที่มีขนาดของเซลล์ที่เท่าๆกัน", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "ข้อใด เป็นมะเร็งที่พบได้บ่อย บริเวณเนื้อเยื่อบุ Epithelial Cell ของอวัยวะต่าง ๆ โดยจะพัฒนาขึ้นที่เซลล์เยื่อบุทั้งด้านในและด้านนอกของพื้นผิวร่างกาย",
+                options: [
+                    { text: "Sarcoma", correct: false },
+                    { text: "Carcinoma", correct: true },
+                    { text: "Lymphoma", correct: false },
+                    { text: "Leukemia", correct: false },
+                    { text: "Germ Cell Tumor", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "ข้อใดเป็นลักษณะเด่นของ Mesothelial cell",
+                options: [
+                    { text: "Nucleus หลายอัน และไม่มี Cytoplasm", correct: false },
+                    { text: "Cytoplasm มาก ขอบเซลล์เรียบ และอาจพบ \"window\" ระหว่างเซลล์", correct: true },
+                    { text: "ไม่มี Nucleus", correct: false },
+                    { text: "มี Granule จำนวนมาก", correct: false },
+                    { text: "รูปร่างเป็นแท่ง", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "Pleural fluid พบเซลล์รวมกันเป็นกลุ่ม (Three-dimensional clusters) มี N/C ratio สูง นิวเคลียสไม่สม่ำเสมอ และมี Nucleoli เด่น ควรสงสัยข้อใด",
+                options: [
+                    { text: "Reactive mesothelial cell", correct: false },
+                    { text: "Macrophage", correct: false },
+                    { text: "Neutrophil", correct: false },
+                    { text: "Malignant cell", correct: true },
+                    { text: "Mesothelial cell ปกติ", correct: false }
+                ]
+            },
+            {
+                category: "CYTOLOGY",
+                question: "การเตรียมสิ่งส่งตรวจประเภท Effusion ควรส่งถึงห้องปฏิบัติการภายในเวลาเท่าใด",
+                options: [
+                    { text: "2 ชั่วโมง", correct: false },
+                    { text: "6 ชั่วโมง", correct: false },
+                    { text: "12 ชั่วโมง", correct: true },
+                    { text: "24 ชั่วโมง", correct: false },
+                    { text: "48 ชั่วโมง", correct: false }
+                ]
+            }
+        ];
+
+        // App State
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let currentCategory = '';
+        let isAnswered = false;
+
+        // DOM Elements
+        const menuScreen = document.getElementById('menu-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const homeBtn = document.getElementById('home-btn');
+        const categoryLabel = document.getElementById('quiz-category');
+        const progressLabel = document.getElementById('quiz-progress');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const nextBtn = document.getElementById('next-btn');
+        const scoreText = document.getElementById('score-text');
+        const feedbackText = document.getElementById('feedback-text');
+        const retryBtn = document.getElementById('retry-btn');
+
+        // Event Listeners
+        homeBtn.addEventListener('click', showMenu);
+        nextBtn.addEventListener('click', handleNext);
+        retryBtn.addEventListener('click', () => startQuiz(currentCategory));
+
+        // Utility: Shuffle Array (Fisher-Yates)
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        // Functions
+        function showMenu() {
+            menuScreen.classList.remove('hidden');
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            homeBtn.classList.add('hidden');
+        }
+
+        function startQuiz(category) {
+            currentCategory = category;
+            
+            // Filter questions
+            if (category === 'ALL') {
+                currentQuestions = [...database];
+                categoryLabel.textContent = 'สุ่มทุกบท';
+            } else {
+                currentQuestions = database.filter(q => q.category === category);
+                categoryLabel.textContent = category;
+            }
+
+            // Shuffle questions
+            currentQuestions = shuffle(currentQuestions);
+            
+            // Reset state
+            currentIndex = 0;
+            score = 0;
+            
+            // UI transitions
+            menuScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            homeBtn.classList.remove('hidden');
+
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            isAnswered = false;
+            nextBtn.classList.add('hidden');
+            
+            const q = currentQuestions[currentIndex];
+            progressLabel.textContent = `ข้อ ${currentIndex + 1} / ${currentQuestions.length}`;
+            questionText.textContent = `${currentIndex + 1}. ${q.question}`;
+            
+            // Clear old options
+            optionsContainer.innerHTML = '';
+            
+            // Clone options and shuffle them
+            let options = JSON.parse(JSON.stringify(q.options));
+            options = shuffle(options);
+
+            options.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left bg-gray-50 border-2 border-gray-200 hover:bg-gray-100 text-gray-700 font-medium py-3 px-5 rounded-lg';
+                btn.textContent = opt.text;
+                
+                btn.onclick = () => selectOption(btn, opt.correct, options);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectOption(selectedBtn, isCorrect, optionsData) {
+            if (isAnswered) return; // Prevent multiple clicks
+            isAnswered = true;
+
+            const allBtns = optionsContainer.querySelectorAll('button');
+            
+            // Find the correct option text to highlight it if user was wrong
+            const correctText = optionsData.find(o => o.correct).text;
+
+            allBtns.forEach(btn => {
+                btn.classList.add('disabled');
+                
+                // Highlight correct answer
+                if (btn.textContent === correctText) {
+                    btn.classList.add('correct');
+                    btn.classList.remove('border-gray-200');
+                }
+                
+                // Highlight incorrect if user selected it
+                if (btn === selectedBtn && !isCorrect) {
+                    btn.classList.add('incorrect');
+                    btn.classList.remove('border-gray-200');
+                }
+            });
+
+            if (isCorrect) score++;
+
+            nextBtn.classList.remove('hidden');
+            if (currentIndex === currentQuestions.length - 1) {
+                nextBtn.textContent = 'ดูผลคะแนน';
+            } else {
+                nextBtn.textContent = 'ข้อต่อไป \u2192'; // Right arrow
+            }
+        }
+
+        function handleNext() {
+            if (currentIndex < currentQuestions.length - 1) {
+                currentIndex++;
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            homeBtn.classList.add('hidden');
+
+            const percent = Math.round((score / currentQuestions.length) * 100);
+            scoreText.textContent = `${score} / ${currentQuestions.length}`;
+            
+            if (percent >= 80) {
+                feedbackText.textContent = "ยอดเยี่ยมมาก! ความรู้แน่นสุดๆ 🎉";
+            } else if (percent >= 50) {
+                feedbackText.textContent = "เก่งมาก! ทบทวนอีกนิดรับรองว่าเป๊ะ 👍";
+            } else {
+                feedbackText.textContent = "สู้ๆ! ลองทำใหม่อีกครั้งเพื่อทบทวนความรู้นะ ✌️";
+            }
+        }
+    </script>
+</body>
+</html>
